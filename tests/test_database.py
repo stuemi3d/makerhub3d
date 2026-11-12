@@ -16,6 +16,7 @@ from app.config import Settings
 from app.db import DATABASE_FILE, Base, alembic_config, make_engine, run_migrations
 from app.main import create_app
 from app.models import AppSettings, Rounding
+from tests.auth import signed_in_client
 from tests.forms import valid_form
 
 
@@ -49,10 +50,10 @@ def test_creating_the_app_alone_does_not_touch_the_disk(data_dir: Path) -> None:
 
 
 def test_second_start_keeps_saved_values(data_dir: Path) -> None:
-    with start_app() as client:
+    with signed_in_client() as client:
         client.post("/settings", data=valid_form(electricity_price="0,3215"))
 
-    with start_app() as client:
+    with signed_in_client() as client:
         html = client.get("/settings").text
 
     assert 'value="0,3215"' in html
@@ -169,3 +170,56 @@ def test_amounts_are_stored_exactly_as_text(tmp_path: Path) -> None:
     with sqlite3.connect(tmp_path / "exact.db") as connection:
         stored = connection.execute("SELECT electricity_price FROM app_settings").fetchone()[0]
     assert stored == "0.35"
+
+
+# --- Issue #8: user and session tables ------------------------------------------------
+
+
+def test_login_tables_are_created(tmp_path: Path) -> None:
+    engine = make_engine(tmp_path / "login.db")
+    run_migrations(engine)
+
+    tables = inspect(engine).get_table_names()
+    assert "users" in tables
+    assert "login_sessions" in tables
+
+
+def test_login_migration_keeps_existing_settings(tmp_path: Path) -> None:
+    engine = make_engine(tmp_path / "upgrade.db")
+    with engine.begin() as connection:
+        command.upgrade(alembic_config(connection), "0001")
+    with Session(engine) as session, session.begin():
+        session.get(AppSettings, 1).markup = Decimal("42")
+
+    run_migrations(engine)
+
+    with Session(engine) as session:
+        assert session.get(AppSettings, 1).markup == Decimal("42")
+    assert "users" in inspect(engine).get_table_names()
+
+
+def test_deleting_a_user_also_deletes_their_sessions(tmp_path: Path) -> None:
+    database = tmp_path / "cascade.db"
+    run_migrations(make_engine(database))
+    with sqlite3.connect(database) as connection:
+        connection.execute("PRAGMA foreign_keys=ON")
+        connection.execute(
+            "INSERT INTO users (id, username, password_hash, role, failed_logins, created_at)"
+            " VALUES (1, 'erfunden', 'x', 'admin', 0, '2026-01-01 00:00:00')"
+        )
+        connection.execute(
+            "INSERT INTO login_sessions (id, user_id, csrf_token, created_at, last_seen_at)"
+            " VALUES ('abc', 1, 't', '2026-01-01 00:00:00', '2026-01-01 00:00:00')"
+        )
+        connection.execute("DELETE FROM users")
+        assert connection.execute("SELECT count(*) FROM login_sessions").fetchone() == (0,)
+
+
+def test_unknown_role_is_refused(tmp_path: Path) -> None:
+    database = tmp_path / "role.db"
+    run_migrations(make_engine(database))
+    with sqlite3.connect(database) as connection, pytest.raises(sqlite3.IntegrityError):
+        connection.execute(
+            "INSERT INTO users (username, password_hash, role, failed_logins, created_at)"
+            " VALUES ('erfunden', 'x', 'chef', 0, '2026-01-01 00:00:00')"
+        )

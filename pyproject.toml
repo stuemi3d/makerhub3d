@@ -7,6 +7,7 @@ license = "AGPL-3.0-only"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "alembic==1.20.1",
+    "argon2-cffi==25.1.0",
     "fastapi==0.162.5",
     "jinja2==3.1.6",
     "python-multipart==0.0.33",
@@ -37,4 +38,5 @@ line-length = 100
 select = ["E", "W", "F", "I", "B", "UP", "S", "SIM", "RUF"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101"]
+# Tests use invented passwords and tokens (S105, S106).
+"tests/**" = ["S101", "S105", "S106"]

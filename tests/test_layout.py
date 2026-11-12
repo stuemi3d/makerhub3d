@@ -2,6 +2,7 @@
 
 import json
 import re
+from contextlib import AbstractContextManager
 from pathlib import Path
 
 import pytest
@@ -9,6 +10,7 @@ from fastapi.testclient import TestClient
 
 from app.config import ConfigError, Settings, parse_embed_origins
 from app.main import create_app
+from tests.auth import AppClient, signed_in_client
 
 APP_DIR = Path(__file__).resolve().parent.parent / "app"
 NAV_KEYS = [
@@ -26,12 +28,13 @@ def locale(name: str) -> dict[str, str]:
     return json.loads((APP_DIR / "locales" / f"{name}.json").read_text(encoding="utf-8"))
 
 
-def make_client(monkeypatch: pytest.MonkeyPatch, **env: str) -> TestClient:
+def make_client(monkeypatch: pytest.MonkeyPatch, **env: str) -> AbstractContextManager[AppClient]:
+    """A logged-in client for an app started with the given environment variables."""
     for name in ("MAKERHUB_LANGUAGE", "MAKERHUB_EMBED_ORIGINS"):
         monkeypatch.delenv(name, raising=False)
     for name, value in env.items():
         monkeypatch.setenv(name, value)
-    return TestClient(create_app())
+    return signed_in_client()
 
 
 # --- Test case 1: shared frame ---------------------------------------------------------
@@ -116,8 +119,8 @@ def test_no_visible_text_is_hardcoded_in_templates() -> None:
 
 
 def test_english_can_be_selected(monkeypatch: pytest.MonkeyPatch) -> None:
-    client = make_client(monkeypatch, MAKERHUB_LANGUAGE="en")
-    html = client.get("/").text
+    with make_client(monkeypatch, MAKERHUB_LANGUAGE="en") as client:
+        html = client.get("/").text
 
     assert '<html lang="en"' in html
     assert locale("en")["nav.articles"] in html
@@ -126,15 +129,13 @@ def test_english_can_be_selected(monkeypatch: pytest.MonkeyPatch) -> None:
 
 @pytest.mark.parametrize("value", ["fr", "", "../de", "de-AT"])
 def test_unknown_language_falls_back_to_german(monkeypatch: pytest.MonkeyPatch, value: str) -> None:
-    client = make_client(monkeypatch, MAKERHUB_LANGUAGE=value)
-
-    assert '<html lang="de"' in client.get("/").text
+    with make_client(monkeypatch, MAKERHUB_LANGUAGE=value) as client:
+        assert '<html lang="de"' in client.get("/").text
 
 
 def test_language_value_ignores_case_and_spaces(monkeypatch: pytest.MonkeyPatch) -> None:
-    client = make_client(monkeypatch, MAKERHUB_LANGUAGE=" EN ")
-
-    assert '<html lang="en"' in client.get("/").text
+    with make_client(monkeypatch, MAKERHUB_LANGUAGE=" EN ") as client:
+        assert '<html lang="en"' in client.get("/").text
 
 
 def test_german_and_english_have_the_same_keys() -> None:
@@ -156,8 +157,8 @@ def test_by_default_nobody_may_embed_the_page(client: TestClient) -> None:
 
 
 def test_configured_origin_may_embed(monkeypatch: pytest.MonkeyPatch) -> None:
-    client = make_client(monkeypatch, MAKERHUB_EMBED_ORIGINS="https://bambuddy.example.com")
-    response = client.get("/")
+    with make_client(monkeypatch, MAKERHUB_EMBED_ORIGINS="https://bambuddy.example.com") as client:
+        response = client.get("/")
 
     assert (
         response.headers["content-security-policy"]
@@ -167,11 +168,11 @@ def test_configured_origin_may_embed(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_several_origins_separated_by_comma(monkeypatch: pytest.MonkeyPatch) -> None:
-    client = make_client(
+    with make_client(
         monkeypatch,
         MAKERHUB_EMBED_ORIGINS="https://bambuddy.example.com, http://localhost:8080",
-    )
-    response = client.get("/")
+    ) as client:
+        response = client.get("/")
 
     assert (
         response.headers["content-security-policy"]
@@ -220,8 +221,11 @@ def test_settings_from_env_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("MAKERHUB_LANGUAGE", raising=False)
     monkeypatch.delenv("MAKERHUB_EMBED_ORIGINS", raising=False)
     monkeypatch.delenv("MAKERHUB_DATA_DIR", raising=False)
+    monkeypatch.delenv("MAKERHUB_INSECURE_COOKIES", raising=False)
 
-    assert Settings.from_env() == Settings(language="de", embed_origins=(), data_dir=Path("data"))
+    assert Settings.from_env() == Settings(
+        language="de", embed_origins=(), data_dir=Path("data"), insecure_cookies=False
+    )
 
 
 # --- Test case 9: headers on every response --------------------------------------------
@@ -231,8 +235,8 @@ def test_settings_from_env_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_embedding_headers_apply_to_all_responses(
     monkeypatch: pytest.MonkeyPatch, path: str
 ) -> None:
-    client = make_client(monkeypatch, MAKERHUB_EMBED_ORIGINS="https://bambuddy.example.com")
-    response = client.get(path)
+    with make_client(monkeypatch, MAKERHUB_EMBED_ORIGINS="https://bambuddy.example.com") as client:
+        response = client.get(path)
 
     assert (
         "frame-ancestors 'self' https://bambuddy.example.com"
@@ -258,7 +262,8 @@ def test_embedding_headers_also_apply_to_unhandled_errors(
     def boom() -> None:
         raise RuntimeError("secret internal detail")
 
-    response = TestClient(app, raise_server_exceptions=False).get("/boom")
+    with signed_in_client(app, raise_server_exceptions=False) as client:
+        response = client.get("/boom")
 
     assert response.status_code == 500
     assert response.headers["content-security-policy"] == "frame-ancestors 'none'"
