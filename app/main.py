@@ -49,21 +49,21 @@ def _host_of(url: str) -> str:
 def is_foreign_request(request: Request) -> bool:
     """True when a browser sends a form from another website (cross-site request forgery).
 
-    Preliminary protection until login and CSRF tokens arrive (issue #8). Only the host is
-    compared, not the scheme: behind the reverse proxy the app itself sees plain http.
+    Preliminary protection until login and CSRF tokens arrive (issue #8). In the fallback only
+    the host is compared, not the scheme: behind the reverse proxy the app sees plain http.
     Requests without any of these headers do not come from a browser form and are allowed.
     """
+    # Modern browsers send Sec-Fetch-Site; it alone decides, so that a reverse proxy which
+    # rewrites the Host header does not block the app's own forms.
     fetch_site = request.headers.get("sec-fetch-site")
-    if fetch_site is not None and fetch_site not in {"same-origin", "none"}:
-        return True
+    if fetch_site is not None:
+        return fetch_site not in {"same-origin", "none"}
+    # Fallback for older browsers: compare Origin (or Referer) with the Host header.
     own_host = request.headers.get("host", "").lower()
-    origin = request.headers.get("origin")
-    if origin is not None:
-        return not own_host or _host_of(origin) != own_host
-    referer = request.headers.get("referer")
-    if fetch_site is None and referer is not None:
-        return not own_host or _host_of(referer) != own_host
-    return False
+    source = request.headers.get("origin") or request.headers.get("referer")
+    if source is None:
+        return False
+    return not own_host or _host_of(source) != own_host
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -106,7 +106,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.middleware("http")
     async def reject_foreign_forms(request: Request, call_next) -> Response:
         if request.method not in SAFE_METHODS and is_foreign_request(request):
-            return PlainTextResponse("Forbidden", status_code=403)
+            return PlainTextResponse(translate(language, "error.forbidden"), status_code=403)
         return await call_next(request)
 
     # Embedding (iframe) is allowed only for the configured origins, on every response.

@@ -258,7 +258,7 @@ def test_english_page(monkeypatch: pytest.MonkeyPatch) -> None:
         {"Origin": "https://evil.example"},
         {"Origin": "null"},
         {"Origin": "http://testserver.evil.example"},
-        {"Sec-Fetch-Site": "same-origin", "Origin": "https://evil.example"},
+        {"Sec-Fetch-Site": "cross-site", "Origin": "http://testserver"},
         {"Referer": "https://evil.example/form"},
     ],
 )
@@ -266,6 +266,7 @@ def test_saving_from_foreign_site_is_rejected(client: TestClient, headers: dict)
     response = client.post("/settings", data=valid_form(markup="99"), headers=headers)
 
     assert response.status_code == 403
+    assert response.text == DE["error.forbidden"]
     assert stored().markup == Decimal("30")
     assert response.headers["x-frame-options"] == "DENY"
 
@@ -278,6 +279,8 @@ def test_saving_from_foreign_site_is_rejected(client: TestClient, headers: dict)
         {"Sec-Fetch-Site": "same-origin"},
         {"Origin": "https://testserver"},
         {"Referer": "http://testserver/settings"},
+        # A reverse proxy may rewrite the Host header; the browser's own statement counts.
+        {"Sec-Fetch-Site": "same-origin", "Origin": "https://makerhub.example.com"},
     ],
 )
 def test_saving_from_the_app_itself_is_allowed(client: TestClient, headers: dict) -> None:

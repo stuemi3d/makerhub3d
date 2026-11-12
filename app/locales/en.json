@@ -40,5 +40,6 @@
   "settings.error.decimals": "Too many decimal places.",
   "settings.error.too_large": "The value is too large.",
   "settings.error.too_long": "At most 50 characters.",
-  "settings.error.choice": "Please choose one of the offered options."
+  "settings.error.choice": "Please choose one of the offered options.",
+  "error.forbidden": "Access denied."
 }

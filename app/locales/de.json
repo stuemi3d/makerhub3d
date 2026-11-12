@@ -40,5 +40,6 @@
   "settings.error.decimals": "Zu viele Nachkommastellen.",
   "settings.error.too_large": "Der Wert ist zu groß.",
   "settings.error.too_long": "Höchstens 50 Zeichen.",
-  "settings.error.choice": "Bitte eine der angebotenen Möglichkeiten wählen."
+  "settings.error.choice": "Bitte eine der angebotenen Möglichkeiten wählen.",
+  "error.forbidden": "Zugriff verweigert."
 }
