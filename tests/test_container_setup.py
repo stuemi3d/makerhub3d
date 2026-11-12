@@ -144,7 +144,7 @@ def test_build_job_does_not_publish_or_log_in() -> None:
     assert re.search(r"^\s*push:\s*false\s*$", job, re.MULTILINE)
     assert "docker/login-action" not in job
     assert "docker push" not in job
-    assert "ghcr.io" not in job
+    assert not re.search(r"ghcr\.io", job)
 
 
 def test_publish_runs_only_for_push_to_main_never_for_pull_requests() -> None:
@@ -182,7 +182,7 @@ def test_publish_tags_are_latest_and_short_commit_hash_only() -> None:
     job = workflow_job("publish")
 
     assert re.search(r"GITHUB_REPOSITORY,,", job)  # lower-case repository name
-    assert "ghcr.io/" in job
+    assert re.search(r'IMAGE="ghcr\.io/\$\{GITHUB_REPOSITORY,,\}"', job)
     assert re.search(r"GITHUB_SHA::7", job)
     pushes = re.findall(r"docker push (\S+)", job)
     assert sorted(pushes) == ['"$IMAGE:$SHORT_SHA"', '"$IMAGE:latest"']
