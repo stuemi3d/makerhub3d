@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}{{ t('log.title') }} – {{ app_name }}{% endblock %}
+{% block content %}
+{% set settings_tab = 'log' %}
+{% include "_settings_tabs.html" %}
+<h1>{{ t('log.title') }}</h1>
+<nav aria-label="{{ t('log.tabs') }}" class="settings-tabs">
+  <ul>
+    <li><a href="/settings/log"{% if log_tab == 'changes' %} aria-current="page"{% endif %}>{{ t('log.tab.changes') }}</a></li>
+    <li><a href="/settings/log/logins"{% if log_tab == 'logins' %} aria-current="page"{% endif %}>{{ t('log.tab.logins') }}</a></li>
+  </ul>
+</nav>
+<p><small>{{ t('log.hint.' ~ log_tab) }}</small></p>
+<div class="overflow-auto">
+<table>
+  <thead>
+    <tr>
+      <th scope="col">{{ t('log.col.time') }}</th>
+      <th scope="col">{{ t('log.col.user') }}</th>
+      <th scope="col">{{ t('log.col.event') }}</th>
+      {% if log_tab == 'changes' %}<th scope="col">{{ t('log.col.details') }}</th>{% endif %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for e in entries %}
+    <tr>
+      <td>{{ e.time }}</td>
+      <td>{{ e.user if e.user else t('log.unknown_user') }}</td>
+      {% if log_tab == 'changes' %}
+      <td>{{ t(e.action) }}{% if e.subject %}: {{ e.subject }}{% endif %}</td>
+      <td>{% for line in e.details %}{{ line }}{% if not loop.last %}<br>{% endif %}{% endfor %}</td>
+      {% else %}
+      <td>{{ t(e.event) }}</td>
+      {% endif %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% if not entries %}<p>{{ t('log.empty') }}</p>{% endif %}
+{% if last_page > 1 %}
+<nav aria-label="{{ t('log.paging') }}">
+  <ul>
+    {% if page > 1 %}<li><a href="{{ base_url }}?page={{ page - 1 }}">{{ t('log.newer') }}</a></li>{% endif %}
+    <li>{{ t('log.page').format(page=page, pages=last_page) }}</li>
+    {% if page < last_page %}<li><a href="{{ base_url }}?page={{ page + 1 }}">{{ t('log.older') }}</a></li>{% endif %}
+  </ul>
+</nav>
+{% endif %}
+{% endblock %}

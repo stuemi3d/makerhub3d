@@ -11,6 +11,7 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     String,
+    Text,
     UniqueConstraint,
     false,
     true,
@@ -97,3 +98,38 @@ class LoginSession(Base):
     csrf_token: Mapped[str] = mapped_column(String(64))
     created_at: Mapped[datetime] = mapped_column(DateTime)
     last_seen_at: Mapped[datetime] = mapped_column(DateTime)
+
+
+class ChangeLogEntry(Base):
+    """Who changed what and when (plan, section 8). Never changed or deleted."""
+
+    __tablename__ = "change_log"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, index=True)
+    # Users are never deleted, so the reference always stays valid.
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    # Translation key below "log.action.", e.g. "settings.changed"
+    action: Mapped[str] = mapped_column(String(50))
+    # The changed object as text, e.g. the user name; empty for the settings
+    subject: Mapped[str] = mapped_column(String(100))
+    # JSON list of {"field", "old", "new"} with stored (not formatted) values; never passwords
+    details: Mapped[str] = mapped_column(Text)
+
+
+class LoginLogEntry(Base):
+    """Logins, failed logins, locks and logouts; deleted after 365 days. No IP addresses."""
+
+    __tablename__ = "login_log"
+    __table_args__ = (
+        CheckConstraint(
+            "event IN ('success', 'failed', 'locked', 'logout', 'wrong_current_password')",
+            name="ck_login_log_event",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, index=True)
+    # Empty for unknown user names; the typed name is not stored.
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    event: Mapped[str] = mapped_column(String(30))

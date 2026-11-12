@@ -4,8 +4,10 @@ import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 DEFAULT_LANGUAGE = "de"
+DEFAULT_TIMEZONE = "Europe/Berlin"
 DEFAULT_DATA_DIR = Path("data")
 DATABASE_FILE = "makerhub3d.db"
 SUPPORTED_LANGUAGES = ("de", "en")
@@ -48,6 +50,18 @@ def parse_insecure_cookies(raw: str) -> bool:
     raise ConfigError("MAKERHUB_INSECURE_COOKIES is invalid: expected true or false.")
 
 
+def parse_timezone(raw: str) -> str:
+    name = raw.strip() or DEFAULT_TIMEZONE
+    try:
+        ZoneInfo(name)
+    except (ZoneInfoNotFoundError, ValueError, OSError):
+        # OSError: a region folder like "Europe" instead of a zone like "Europe/Berlin"
+        raise ConfigError(
+            "MAKERHUB_TIMEZONE is invalid: expected a time zone name like Europe/Berlin."
+        ) from None
+    return name
+
+
 def parse_language(raw: str) -> str:
     language = raw.strip().lower()
     return language if language in SUPPORTED_LANGUAGES else DEFAULT_LANGUAGE
@@ -60,6 +74,8 @@ class Settings:
     data_dir: Path = DEFAULT_DATA_DIR
     # True only for home networks without HTTPS: the login cookie is then sent unencrypted.
     insecure_cookies: bool = False
+    # Time zone for showing times; times are stored in UTC.
+    timezone: str = DEFAULT_TIMEZONE
 
     @property
     def database_path(self) -> Path:
@@ -74,4 +90,5 @@ class Settings:
             insecure_cookies=parse_insecure_cookies(
                 os.environ.get("MAKERHUB_INSECURE_COOKIES", "")
             ),
+            timezone=parse_timezone(os.environ.get("MAKERHUB_TIMEZONE", "")),
         )

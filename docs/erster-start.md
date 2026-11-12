@@ -69,3 +69,12 @@ Unter **Einstellungen → Benutzer** (nur für Admins) legst du weitere Benutzer
 - Das aktuelle Passwort ist nötig. Falsche Eingaben zählen wie Fehlversuche bei der Anmeldung: Nach 5 Fehlversuchen ist das Konto 15 Minuten gesperrt und überall abgemeldet.
 - Das neue Passwort braucht mindestens 12 Zeichen und muss sich vom bisherigen unterscheiden.
 - Nach dem Ändern bleibst du auf diesem Gerät angemeldet; auf allen anderen Geräten endet deine Anmeldung.
+
+## Protokoll
+
+Unter **Einstellungen → Protokoll** (nur für Admins) gibt es zwei Listen:
+
+- **Änderungen:** wer wann was geändert hat, bei Einstellungen und Rollen mit altem und neuem Wert. Passwörter stehen nie darin, nur „Passwort geändert“ bzw. „zurückgesetzt“. Einträge bleiben unbegrenzt erhalten und können nicht geändert oder gelöscht werden.
+- **Anmeldungen:** erfolgreiche und fehlgeschlagene Anmeldungen, Sperren und Abmeldungen. Bei unbekannten Benutzernamen wird der eingetippte Text nicht gespeichert. Einträge werden nach 365 Tagen automatisch gelöscht.
+
+IP-Adressen werden nicht gespeichert. Die Zeiten erscheinen in der Zeitzone aus `MAKERHUB_TIMEZONE` (Standard: `Europe/Berlin`).

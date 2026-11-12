@@ -12,7 +12,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app import auth
+from app import audit, auth
 from app.models import User, UserRole
 from app.permissions import Permission, requires
 
@@ -92,7 +92,7 @@ def add_user_admin_routes(
             request, "user_new.html", "nav.settings", values=values, errors={}, roles=ROLES
         )
 
-    def create(raw: dict[str, str]) -> dict[str, str]:
+    def create(actor_id: int, raw: dict[str, str]) -> dict[str, str]:
         errors = {}
         if error := auth.username_error(raw.get("username", "")):
             errors["username"] = error
@@ -105,19 +105,21 @@ def add_user_admin_routes(
             if errors:
                 return errors
             # The admin knows this password, so the user has to change it first (#32).
-            auth.create_user(
+            user = auth.create_user(
                 db,
                 raw["username"],
                 raw["password"],
                 UserRole(raw["role"]),
                 must_change_password=True,
             )
+            details = [{"field": "role", "old": "", "new": user.role}]
+            audit.record_change(db, actor_id, "user.created", user.username, details)
         return {}
 
     @app.post("/settings/users/new", response_class=HTMLResponse, dependencies=manage)
     async def create_user(request: Request) -> Response:
         raw = await read_form(request, NEW_USER_FIELDS)
-        errors = await run_in_threadpool(create, raw)
+        errors = await run_in_threadpool(create, request.state.user.id, raw)
         if errors:
             # Passwords are never sent back.
             values = {"username": raw.get("username", ""), "role": raw.get("role", "")}
@@ -169,8 +171,14 @@ def add_user_admin_routes(
                     errors["form"] = "user.error.last_admin"
             if errors:
                 return errors, _user_view(user)
-            user.role = UserRole(role)
-            user.active = active
+            if user.role != role:
+                details = [{"field": "role", "old": str(user.role), "new": role}]
+                audit.record_change(db, actor_id, "user.role_changed", user.username, details)
+                user.role = UserRole(role)
+            if user.active != active:
+                action = "user.activated" if active else "user.deactivated"
+                audit.record_change(db, actor_id, action, user.username)
+                user.active = active
             if not active:
                 auth.end_all_sessions(db, user.id)
             return {}, _user_view(user)
@@ -196,6 +204,7 @@ def add_user_admin_routes(
                 errors = {"form": "user.error.self_password"}
             if not errors:
                 auth.reset_password(db, user, raw["password"])
+                audit.record_change(db, actor_id, "user.password_reset", user.username)
             return errors, _user_view(user)
 
     @app.post(

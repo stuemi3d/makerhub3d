@@ -222,6 +222,7 @@ def test_settings_from_env_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("MAKERHUB_EMBED_ORIGINS", raising=False)
     monkeypatch.delenv("MAKERHUB_DATA_DIR", raising=False)
     monkeypatch.delenv("MAKERHUB_INSECURE_COOKIES", raising=False)
+    monkeypatch.delenv("MAKERHUB_TIMEZONE", raising=False)
 
     assert Settings.from_env() == Settings(
         language="de", embed_origins=(), data_dir=Path("data"), insecure_cookies=False

@@ -15,10 +15,11 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import sessionmaker
 
-from app import APP_NAME, auth
+from app import APP_NAME, audit, auth
 from app.config import Settings
 from app.db import make_engine, run_migrations
 from app.i18n import translate
+from app.log_pages import add_log_routes
 from app.models import AppSettings, Rounding, UserRole
 from app.permissions import Permission, PermissionDenied, has_permission, requires
 from app.settings_form import FIELD_NAMES, form_values, validate
@@ -281,6 +282,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             user = auth.create_user(
                 db, raw["username"], raw["password"], UserRole.ADMIN, must_change_password=False
             )
+            audit.record_change(db, user.id, "setup.admin_created", user.username)
             token = auth.start_session(db, user)
         app.state.setup_code = None
         return {}, token
@@ -328,9 +330,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         with new_session() as db, db.begin():
             auth.end_session(db, token)
 
+    def log_out(user_id: int, token: str) -> None:
+        with new_session() as db, db.begin():
+            auth.end_session(db, token)
+            audit.record_login(db, user_id, "logout")
+
     @app.post("/logout", dependencies=[requires(Permission.VIEW)])
     async def logout(request: Request) -> Response:
-        await run_in_threadpool(end_login, request.cookies.get(session_cookie, ""))
+        token = request.cookies.get(session_cookie, "")
+        await run_in_threadpool(log_out, request.state.user.id, token)
         response = redirect("/login")
         delete_cookie(response, session_cookie)
         return response
@@ -372,8 +380,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             )
         with new_session() as session, session.begin():
             row = session.get(AppSettings, 1)
+            old = {name: getattr(row, name) for name in values}
+            changed = audit.field_changes(old, values)
             for name, value in values.items():
                 setattr(row, name, value)
+            # Saving without any change leaves no entry in the change log.
+            if changed:
+                audit.record_change(session, request.state.user.id, "settings.changed", "", changed)
         # Redirect after saving, so that reloading the page does not send the form again.
         return RedirectResponse("/settings?saved=1", status_code=303)
 
@@ -404,6 +417,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return redirect("/account?changed=1")
 
     add_user_admin_routes(app, new_session, render, read_form)
+    add_log_routes(app, new_session, render, language, settings.timezone)
 
     # Deliberately without login: the container health check calls it. Returns no details.
     @app.get("/healthz", response_class=PlainTextResponse)
