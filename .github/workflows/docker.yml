@@ -1,5 +1,6 @@
 # Builds the container image and scans it with Trivy for every pull request and push to main.
-# The image is only built and checked here: it is not published and nothing is deployed.
+# Only after a push to main, and only when build and scan are green, the scanned image is
+# published to ghcr.io. Pull requests never publish. Nothing is deployed.
 name: Docker
 
 on:
@@ -8,7 +9,7 @@ on:
   push:
     branches: [main]
 
-# Read-only token: no job in this workflow writes anything.
+# Read-only token by default. Only the publish job below asks for more.
 permissions:
   contents: read
 
@@ -37,6 +38,7 @@ jobs:
           push: false
           load: true
           tags: makerhub3d:ci
+          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
 
       - name: Start container with the hardened settings and check /healthz
         run: |
@@ -62,3 +64,49 @@ jobs:
           ignore-unfixed: true
           exit-code: "1"
           format: table
+
+      # Hand the exact image that was just scanned over to the publish job.
+      - name: Save scanned image
+        run: docker save makerhub3d:ci --output image.tar
+
+      - name: Upload scanned image for the publish job
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: image
+          path: image.tar
+          retention-days: 1
+
+  publish:
+    name: Image veröffentlichen (ghcr.io)
+    needs: image
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    # The only job with write access, and only to packages.
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Download scanned image
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: image
+
+      - name: Load scanned image
+        run: docker load --input image.tar
+
+      - name: Log in to ghcr.io
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tag and push (latest and short commit hash)
+        run: |
+          IMAGE="ghcr.io/${GITHUB_REPOSITORY,,}"
+          SHORT_SHA="${GITHUB_SHA::7}"
+          docker tag makerhub3d:ci "$IMAGE:latest"
+          docker tag makerhub3d:ci "$IMAGE:$SHORT_SHA"
+          docker push "$IMAGE:$SHORT_SHA"
+          docker push "$IMAGE:latest"
