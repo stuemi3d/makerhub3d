@@ -12,6 +12,9 @@ Diese Datei gilt für jede Claude-Code-Sitzung in diesem Repository. Der vollst�
 - Kommunikation, Issues, Pull Requests, Commit-Nachrichten: **Deutsch**.
 - Code, Bezeichner, Kommentare im Code: **Englisch**.
 - Oberflächentexte: nie fest im Code, sondern über die Übersetzungsdateien (Deutsch Standard).
+- **Rückfragen an den Maintainer** (im Chat, in Issues und PRs) schreibst du so, dass er sie mit „OK“ oder einer kurzen Antwort entscheiden kann:
+  - in einfachen Worten, ohne Fachbegriffe (oder mit kurzer Erklärung in Klammern)
+  - pro Frage: worum es geht, deine Empfehlung, und was passiert, wenn er „OK“ sagt
 
 ## Ablauf pro Aufgabe (verbindlich)
 
