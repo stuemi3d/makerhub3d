@@ -19,8 +19,10 @@ from app import APP_NAME, auth
 from app.config import Settings
 from app.db import make_engine, run_migrations
 from app.i18n import translate
-from app.models import AppSettings, Rounding
+from app.models import AppSettings, Rounding, UserRole
+from app.permissions import Permission, PermissionDenied, has_permission, requires
 from app.settings_form import FIELD_NAMES, form_values, validate
+from app.user_admin import add_user_admin_routes
 
 APP_DIR = Path(__file__).parent
 TEMPLATES_DIR = APP_DIR / "templates"
@@ -29,15 +31,16 @@ STATIC_DIR = APP_DIR / "static"
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
 templates.env.globals["app_name"] = APP_NAME
 
-# Navigation from the plan (section 5). Entries without href are not built yet.
+# Navigation from the plan (section 5). Entries without href are not built yet; entries are
+# only shown to roles with the given permission.
 NAV_ITEMS = (
-    {"key": "nav.dashboard", "href": "/"},
-    {"key": "nav.articles", "href": None},
-    {"key": "nav.calculation", "href": None},
-    {"key": "nav.production", "href": None},
-    {"key": "nav.stock", "href": None},
-    {"key": "nav.analysis", "href": None},
-    {"key": "nav.settings", "href": "/settings"},
+    {"key": "nav.dashboard", "href": "/", "permission": Permission.VIEW},
+    {"key": "nav.articles", "href": None, "permission": Permission.VIEW},
+    {"key": "nav.calculation", "href": None, "permission": Permission.VIEW},
+    {"key": "nav.production", "href": None, "permission": Permission.VIEW},
+    {"key": "nav.stock", "href": None, "permission": Permission.VIEW},
+    {"key": "nav.analysis", "href": None, "permission": Permission.VIEW},
+    {"key": "nav.settings", "href": "/settings", "permission": Permission.MANAGE},
 )
 
 SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
@@ -133,6 +136,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def render(
         request: Request, template: str, current_nav: str, status_code: int = 200, **context
     ) -> HTMLResponse:
+        user = getattr(request.state, "user", None)
         return templates.TemplateResponse(
             request,
             template,
@@ -141,7 +145,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "t": lambda key: translate(language, key),
                 "nav_items": NAV_ITEMS,
                 "current_nav": current_nav,
-                "user": getattr(request.state, "user", None),
+                "user": user,
+                "can": lambda permission: (
+                    user is not None and has_permission(user.role, permission)
+                ),
                 "csrf_token": getattr(request.state, "csrf_token", ""),
                 **context,
             },
@@ -162,6 +169,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             if found is None:
                 return None, None, auth.has_users(db)
             login, user = found
+            # Read on every request, so that a changed role works at once.
             return CurrentUser(user.id, user.username, user.role), login.csrf_token, True
 
     # Every page needs a login, except the agreed exceptions. The middlewares defined later
@@ -231,6 +239,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             headers["X-Frame-Options"] = "DENY"
         return PlainTextResponse("Internal Server Error", status_code=500, headers=headers)
 
+    @app.exception_handler(PermissionDenied)
+    async def permission_denied(request: Request, exc: PermissionDenied) -> Response:
+        return render(request, "forbidden.html", "", status_code=403)
+
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
     def logged_in(response: Response, token: str) -> Response:
@@ -257,7 +269,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             errors = auth.validate_setup(raw, app.state.setup_code)
             if errors:
                 return errors, None
-            user = auth.create_admin(db, raw["username"], raw["password"])
+            user = auth.create_user(db, raw["username"], raw["password"], UserRole.ADMIN)
             token = auth.start_session(db, user)
         app.state.setup_code = None
         return {}, token
@@ -305,20 +317,19 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         with new_session() as db, db.begin():
             auth.end_session(db, token)
 
-    @app.post("/logout")
+    @app.post("/logout", dependencies=[requires(Permission.VIEW)])
     async def logout(request: Request) -> Response:
         await run_in_threadpool(end_login, request.cookies.get(session_cookie, ""))
         response = redirect("/login")
         delete_cookie(response, session_cookie)
         return response
 
-    @app.get("/", response_class=HTMLResponse)
+    @app.get("/", response_class=HTMLResponse, dependencies=[requires(Permission.VIEW)])
     def index(request: Request) -> HTMLResponse:
         return render(request, "index.html", "nav.dashboard")
 
-    # Login is checked by the middleware above.
-    # TODO(#28): allow both settings routes for the admin role only.
-    @app.get("/settings", response_class=HTMLResponse)
+    # Login is checked by the middleware above, the role by the dependency of each route.
+    @app.get("/settings", response_class=HTMLResponse, dependencies=[requires(Permission.MANAGE)])
     def settings_page(request: Request, saved: str | None = None) -> HTMLResponse:
         with new_session() as session:
             values = form_values(session.get(AppSettings, 1), language)
@@ -332,7 +343,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             roundings=list(Rounding),
         )
 
-    @app.post("/settings", response_class=HTMLResponse)
+    @app.post("/settings", response_class=HTMLResponse, dependencies=[requires(Permission.MANAGE)])
     async def save_settings(request: Request) -> Response:
         form = await request.form()
         raw = {name: value for name in FIELD_NAMES if isinstance(value := form.get(name), str)}
@@ -354,6 +365,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 setattr(row, name, value)
         # Redirect after saving, so that reloading the page does not send the form again.
         return RedirectResponse("/settings?saved=1", status_code=303)
+
+    add_user_admin_routes(app, new_session, render, read_form)
 
     # Deliberately without login: the container health check calls it. Returns no details.
     @app.get("/healthz", response_class=PlainTextResponse)

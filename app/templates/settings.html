@@ -9,6 +9,8 @@ id="{{ name }}" name="{{ name }}"{% if errors.get(name) %} aria-invalid="true" a
 {% endif %}
 {%- endmacro %}
 {% block content %}
+{% set settings_tab = 'values' %}
+{% include "_settings_tabs.html" %}
 <h1>{{ t('settings.title') }}</h1>
 {% if saved %}
 <p role="status"><ins>{{ t('settings.saved') }}</ins></p>

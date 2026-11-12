@@ -18,7 +18,7 @@ from app import auth
 from app.config import DATABASE_FILE, ConfigError, Settings
 from app.db import make_engine, run_migrations
 from app.main import create_app
-from app.models import AppSettings, User
+from app.models import AppSettings, User, UserRole
 from tests.auth import (
     ADMIN_NAME,
     ADMIN_PASSWORD,
@@ -166,14 +166,14 @@ def test_no_setup_code_is_printed_once_an_admin_exists(capfd: pytest.CaptureFixt
     ("overrides", "field", "message_key"),
     [
         ({"password": "elf-zeichen", "password_repeat": "elf-zeichen"}, "password",
-         "setup.error.password_too_short"),
+         "user.error.password_too_short"),
         ({"password": "x" * 1025, "password_repeat": "x" * 1025}, "password",
-         "setup.error.password_too_long"),
+         "user.error.password_too_long"),
         ({"password_repeat": ADMIN_PASSWORD + "!"}, "password_repeat",
-         "setup.error.password_mismatch"),
-        ({"username": ""}, "username", "setup.error.required"),
-        ({"username": "   "}, "username", "setup.error.required"),
-        ({"username": "x" * 51}, "username", "setup.error.username_too_long"),
+         "user.error.password_mismatch"),
+        ({"username": ""}, "username", "user.error.required"),
+        ({"username": "   "}, "username", "user.error.required"),
+        ({"username": "x" * 51}, "username", "user.error.username_too_long"),
     ],
 )  # fmt: skip
 def test_invalid_setup_input_creates_nobody(
@@ -722,7 +722,7 @@ def test_parallel_failures_still_lock_the_account(tmp_path: Path) -> None:
     run_migrations(engine)
     new_session = sessionmaker(engine)
     with new_session() as db, db.begin():
-        auth.create_admin(db, ADMIN_NAME, ADMIN_PASSWORD)
+        auth.create_user(db, ADMIN_NAME, ADMIN_PASSWORD, UserRole.ADMIN)
     start = threading.Barrier(20)
 
     def attempt() -> None:

@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% from "_form_macros.html" import field_attrs, feedback %}
+{% block title %}{{ target.username }} – {{ app_name }}{% endblock %}
+{% block content %}
+{% set settings_tab = 'users' %}
+{% include "_settings_tabs.html" %}
+<h1>{{ target.username }}</h1>
+{% if saved %}
+<p role="status"><ins>{{ t('user.saved') }}</ins></p>
+{% endif %}
+{% if password_reset %}
+<p role="status"><ins>{{ t('user.reset.done') }}</ins></p>
+{% endif %}
+{% if errors.get('form') %}
+<p role="alert"><mark>{{ t(errors['form']) }}</mark></p>
+{% elif errors %}
+<p role="alert"><mark>{{ t('user.has_errors') }}</mark></p>
+{% endif %}
+
+<section>
+  <h2>{{ t('user.edit.title') }}</h2>
+  {% if is_self %}
+  <p>{{ t('role.' ~ target.role) }} · {{ t('user.status.active') }}</p>
+  <p><small>{{ t('user.hint.self') }}</small></p>
+  {% else %}
+  <form method="post" action="/settings/users/{{ target.id }}" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label for="role">{{ t('user.field.role') }}</label>
+    <select {{ field_attrs('role', errors) }}>
+      {% for role in roles %}
+      <option value="{{ role }}"{% if values.get('role') == role %} selected{% endif %}>{{ t('role.' ~ role) }}</option>
+      {% endfor %}
+    </select>
+    {{ feedback('role', errors, t, 'user.hint.') }}
+    <label for="active">{{ t('user.field.active') }}</label>
+    <select {{ field_attrs('active', errors) }}>
+      {% for choice in ['1', '0'] %}
+      <option value="{{ choice }}"{% if values.get('active') == choice %} selected{% endif %}>{{ t('user.active.' ~ choice) }}</option>
+      {% endfor %}
+    </select>
+    {{ feedback('active', errors, t, 'user.hint.') }}
+    {% if target.locked_minutes %}
+    <p><small>{{ t('user.status.locked').format(minutes=target.locked_minutes) }}</small></p>
+    {% endif %}
+    <button type="submit">{{ t('user.save') }}</button>
+  </form>
+  {% endif %}
+</section>
+
+<section>
+  <h2>{{ t('user.reset.title') }}</h2>
+  <p>{{ t('user.reset.intro') }}</p>
+  <form method="post" action="/settings/users/{{ target.id }}/password" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label for="password">{{ t('user.field.new_password') }}</label>
+    <input type="password" autocomplete="new-password" {{ field_attrs('password', errors) }}>
+    {{ feedback('password', errors, t, 'user.hint.') }}
+    <label for="password_repeat">{{ t('user.field.password_repeat') }}</label>
+    <input type="password" autocomplete="new-password" {{ field_attrs('password_repeat', errors) }}>
+    {{ feedback('password_repeat', errors, t, 'user.hint.') }}
+    <button type="submit" class="secondary">{{ t('user.reset.submit') }}</button>
+  </form>
+</section>
+<p><a href="/settings/users">{{ t('users.back') }}</a></p>
+{% endblock %}

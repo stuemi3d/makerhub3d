@@ -15,7 +15,7 @@
       </ul>
       {% if user %}
       <ul class="main-nav">
-        {% for item in nav_items %}
+        {% for item in nav_items if can(item.permission) %}
         <li>
           {% if item.href %}
           <a href="{{ item.href }}"{% if item.key == current_nav %} aria-current="page"{% endif %}>{{ t(item.key) }}</a>

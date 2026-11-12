@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}{{ t('users.title') }} – {{ app_name }}{% endblock %}
+{% block content %}
+{% set settings_tab = 'users' %}
+{% include "_settings_tabs.html" %}
+<h1>{{ t('users.title') }}</h1>
+<p><a href="/settings/users/new" role="button">{{ t('users.new') }}</a></p>
+<div class="overflow-auto">
+<table>
+  <thead>
+    <tr>
+      <th scope="col">{{ t('users.col.name') }}</th>
+      <th scope="col">{{ t('users.col.role') }}</th>
+      <th scope="col">{{ t('users.col.status') }}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for u in users %}
+    <tr>
+      <td><a href="/settings/users/{{ u.id }}">{{ u.username }}</a></td>
+      <td>{{ t('role.' ~ u.role) }}</td>
+      <td>
+        {% if not u.active %}{{ t('user.status.inactive') }}
+        {% elif u.locked_minutes %}{{ t('user.status.locked').format(minutes=u.locked_minutes) }}
+        {% else %}{{ t('user.status.active') }}{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}
