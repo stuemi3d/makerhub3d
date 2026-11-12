@@ -1,0 +1,16 @@
+/* Small additions to Pico CSS. */
+.main-nav {
+  flex-wrap: wrap;
+}
+
+.main-nav a[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 767px) {
+  header nav {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
