@@ -58,7 +58,7 @@ def test_navigation_contains_all_entries_from_the_plan(client: TestClient) -> No
     assert positions == sorted(positions)
 
 
-def test_dashboard_is_marked_as_current_and_other_entries_are_not_links_yet(
+def test_dashboard_is_marked_as_current_and_unbuilt_entries_are_not_links_yet(
     client: TestClient,
 ) -> None:
     nav = re.search(r"<nav\b.*?</nav>", client.get("/").text, re.DOTALL).group(0)
@@ -66,7 +66,8 @@ def test_dashboard_is_marked_as_current_and_other_entries_are_not_links_yet(
     current = re.findall(r'<a\b[^>]*aria-current="page"[^>]*>', nav)
     assert len(current) == 1
     assert 'href="/"' in current[0]
-    assert len(re.findall(r'aria-disabled="true"', nav)) == len(NAV_KEYS) - 1
+    # Built so far: dashboard and settings.
+    assert len(re.findall(r'aria-disabled="true"', nav)) == len(NAV_KEYS) - 2
 
 
 # --- Test case 3: mobile, dark theme, local Pico CSS ----------------------------------
@@ -218,8 +219,9 @@ def test_empty_embed_origins_means_nobody() -> None:
 def test_settings_from_env_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("MAKERHUB_LANGUAGE", raising=False)
     monkeypatch.delenv("MAKERHUB_EMBED_ORIGINS", raising=False)
+    monkeypatch.delenv("MAKERHUB_DATA_DIR", raising=False)
 
-    assert Settings.from_env() == Settings(language="de", embed_origins=())
+    assert Settings.from_env() == Settings(language="de", embed_origins=(), data_dir=Path("data"))
 
 
 # --- Test case 9: headers on every response --------------------------------------------
