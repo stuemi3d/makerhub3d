@@ -11,8 +11,8 @@ from sqlalchemy.orm import Session
 
 from app.config import Settings
 from app.db import make_engine
-from app.main import create_app
 from app.models import AppSettings, Rounding
+from tests.auth import signed_in_client
 from tests.forms import valid_form
 
 APP_DIR = Path(__file__).resolve().parent.parent / "app"
@@ -240,7 +240,7 @@ def test_english_page(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("MAKERHUB_LANGUAGE", "en")
     en = json.loads((APP_DIR / "locales" / "en.json").read_text(encoding="utf-8"))
 
-    with TestClient(create_app()) as client:
+    with signed_in_client() as client:
         html = client.get("/settings").text
 
     assert en["settings.title"] in html

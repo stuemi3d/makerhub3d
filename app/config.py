@@ -39,6 +39,15 @@ def parse_embed_origins(raw: str) -> tuple[str, ...]:
     return tuple(origins)
 
 
+def parse_insecure_cookies(raw: str) -> bool:
+    value = raw.strip().lower()
+    if value in {"", "false"}:
+        return False
+    if value == "true":
+        return True
+    raise ConfigError("MAKERHUB_INSECURE_COOKIES is invalid: expected true or false.")
+
+
 def parse_language(raw: str) -> str:
     language = raw.strip().lower()
     return language if language in SUPPORTED_LANGUAGES else DEFAULT_LANGUAGE
@@ -49,6 +58,8 @@ class Settings:
     language: str = DEFAULT_LANGUAGE
     embed_origins: tuple[str, ...] = ()
     data_dir: Path = DEFAULT_DATA_DIR
+    # True only for home networks without HTTPS: the login cookie is then sent unencrypted.
+    insecure_cookies: bool = False
 
     @property
     def database_path(self) -> Path:
@@ -60,4 +71,7 @@ class Settings:
             language=parse_language(os.environ.get("MAKERHUB_LANGUAGE", "")),
             embed_origins=parse_embed_origins(os.environ.get("MAKERHUB_EMBED_ORIGINS", "")),
             data_dir=Path(os.environ.get("MAKERHUB_DATA_DIR", "").strip() or DEFAULT_DATA_DIR),
+            insecure_cookies=parse_insecure_cookies(
+                os.environ.get("MAKERHUB_INSECURE_COOKIES", "")
+            ),
         )

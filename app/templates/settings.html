@@ -17,6 +17,7 @@ id="{{ name }}" name="{{ name }}"{% if errors.get(name) %} aria-invalid="true" a
 <p role="alert"><mark>{{ t('settings.has_errors') }}</mark></p>
 {% endif %}
 <form method="post" action="/settings" novalidate>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <fieldset>
     <legend><strong>{{ t('settings.section.costs') }}</strong></legend>
     {% for name in ['electricity_price', 'labour_rate', 'scrap_rate', 'markup'] %}

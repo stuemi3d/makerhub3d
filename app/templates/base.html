@@ -13,6 +13,7 @@
       <ul>
         <li><strong>{{ app_name }}</strong></li>
       </ul>
+      {% if user %}
       <ul class="main-nav">
         {% for item in nav_items %}
         <li>
@@ -23,7 +24,14 @@
           {% endif %}
         </li>
         {% endfor %}
+        <li>
+          <form method="post" action="/logout" class="logout">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="secondary outline" title="{{ user.username }}">{{ t('nav.logout') }}</button>
+          </form>
+        </li>
       </ul>
+      {% endif %}
     </nav>
   </header>
   <main class="container">

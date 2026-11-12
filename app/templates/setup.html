@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}{{ t('setup.title') }} – {{ app_name }}{% endblock %}
+{% macro field_attrs(name) -%}
+id="{{ name }}" name="{{ name }}"{% if errors.get(name) %} aria-invalid="true" aria-describedby="{{ name }}-error"{% else %} aria-describedby="{{ name }}-hint"{% endif %}
+{%- endmacro %}
+{% macro feedback(name) -%}
+{% if errors.get(name) %}<small id="{{ name }}-error">{{ t(errors[name]) }}</small>
+{% else %}<small id="{{ name }}-hint">{{ t('setup.hint.' ~ name) }}</small>
+{% endif %}
+{%- endmacro %}
+{% block content %}
+<article class="auth-box">
+  <h1>{{ t('setup.title') }}</h1>
+  <p>{{ t('setup.intro') }}</p>
+  {% if errors %}
+  <p role="alert"><mark>{{ t('setup.has_errors') }}</mark></p>
+  {% endif %}
+  <form method="post" action="/setup" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label for="setup_code">{{ t('setup.field.setup_code') }}</label>
+    <input type="text" autocomplete="off" autocapitalize="none" spellcheck="false" {{ field_attrs('setup_code') }}>
+    {{ feedback('setup_code') }}
+    <label for="username">{{ t('setup.field.username') }}</label>
+    <input type="text" maxlength="50" autocomplete="username" autocapitalize="none" {{ field_attrs('username') }} value="{{ values.get('username', '') }}">
+    {{ feedback('username') }}
+    <label for="password">{{ t('setup.field.password') }}</label>
+    <input type="password" autocomplete="new-password" {{ field_attrs('password') }}>
+    {{ feedback('password') }}
+    <label for="password_repeat">{{ t('setup.field.password_repeat') }}</label>
+    <input type="password" autocomplete="new-password" {{ field_attrs('password_repeat') }}>
+    {{ feedback('password_repeat') }}
+    <button type="submit">{{ t('setup.submit') }}</button>
+  </form>
+</article>
+{% endblock %}

@@ -8,6 +8,10 @@ MakerHub 3D ist ein kleines, selbst gehostetes Tool für 3D-Druck-Kleingewerbe. 
 
 Ziele, Umfang, Technik und Meilensteine stehen in [docs/plan.md](docs/plan.md).
 
+## Erster Start
+
+Kein Standardpasswort: Den ersten Admin legst du beim ersten Start mit einem Einrichtungscode aus dem Container-Protokoll an. Anleitung: [docs/erster-start.md](docs/erster-start.md).
+
 ## Entwickeln
 
 Voraussetzung: [uv](https://docs.astral.sh/uv/). uv installiert Python 3.12 und alle Abhängigkeiten in den festen Versionen aus `uv.lock`.
@@ -15,6 +19,7 @@ Voraussetzung: [uv](https://docs.astral.sh/uv/). uv installiert Python 3.12 und 
 ```sh
 uv sync                                  # Abhängigkeiten installieren
 uv run uvicorn app.main:app --reload     # App starten, dann http://127.0.0.1:8000 öffnen
+                                         # (Einrichtungscode für den ersten Admin steht in der Ausgabe)
 uv run pytest                            # Tests
 uv run ruff check                        # Codestil prüfen
 uv run ruff format --check               # Formatierung prüfen
