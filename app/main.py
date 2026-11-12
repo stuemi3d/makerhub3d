@@ -3,7 +3,7 @@
 from pathlib import Path
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse
 from fastapi.templating import Jinja2Templates
 
 from app import APP_NAME
@@ -21,6 +21,11 @@ def create_app() -> FastAPI:
     @app.get("/", response_class=HTMLResponse)
     def index(request: Request) -> HTMLResponse:
         return templates.TemplateResponse(request, "index.html")
+
+    # Deliberately without login: the container health check calls it. Returns no details.
+    @app.get("/healthz", response_class=PlainTextResponse)
+    def healthz() -> PlainTextResponse:
+        return PlainTextResponse("ok")
 
     return app
 

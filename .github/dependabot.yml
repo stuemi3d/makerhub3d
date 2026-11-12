@@ -1,7 +1,6 @@
 # Dependabot: weekly update proposals as pull requests.
 # Version updates are bundled into one PR per ecosystem (groups).
 # Security updates are not grouped and still arrive immediately and individually.
-# The Docker base image is added together with the Dockerfile (issue #5).
 version: 2
 updates:
   - package-ecosystem: "uv"
@@ -21,5 +20,15 @@ updates:
     open-pull-requests-limit: 5
     groups:
       github-actions:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      docker-base-image:
         patterns:
           - "*"
