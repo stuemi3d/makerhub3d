@@ -111,5 +111,6 @@
   "user.error.self": "Not saved: you cannot deactivate yourself or take away your own admin role.",
   "user.error.last_admin": "Not saved: at least one active admin must remain.",
   "error.no_permission": "No permission",
-  "error.no_permission.text": "Your role does not allow this page. Ask an admin if needed."
+  "error.no_permission.text": "Your role does not allow this page. Ask an admin if needed.",
+  "user.error.self_password": "Not saved: you cannot reset your own password here."
 }

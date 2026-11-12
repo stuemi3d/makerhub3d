@@ -7,6 +7,7 @@ after 8 hours without activity, passwords have at least 12 characters.
 import hashlib
 import secrets
 import threading
+import unicodedata
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from functools import cache
@@ -129,8 +130,12 @@ def validate_setup(raw: dict[str, str], expected_code: str | None) -> dict[str, 
 
 
 def name_key(username: str) -> str:
-    """Names are unique regardless of case: "Anna" and "anna" are the same user."""
-    return username.strip().casefold()
+    """Names are unique regardless of case: "Anna" and "anna" are the same user.
+
+    NFKC first, so that the same letter typed in different ways (e.g. "ö" as one character
+    or as "o" plus dots) counts as the same name.
+    """
+    return unicodedata.normalize("NFKC", username.strip()).casefold()
 
 
 def username_error(username: str) -> str | None:

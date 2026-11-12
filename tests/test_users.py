@@ -440,3 +440,31 @@ def test_names_are_escaped(client: AppClient) -> None:
 
     assert "<b>fett</b>" not in html
     assert "&lt;b&gt;fett&lt;/b&gt;" in html
+
+
+# --- Review: own password, look-alike names --------------------------------------------
+
+
+def test_admin_cannot_reset_their_own_password_here(client: AppClient) -> None:
+    assert (
+        'action="/settings/users/1/password"'
+        not in client.get(f"/settings/users/{admin_id()}").text
+    )
+
+    response = reset(client, admin_id())
+
+    assert response.status_code == 422
+    assert DE["user.error.self_password"] in response.text
+    assert can_log_in(ADMIN_NAME, ADMIN_PASSWORD)
+    assert client.get("/settings/users").status_code == 200
+
+
+def test_the_same_letter_typed_differently_is_the_same_name(client: AppClient) -> None:
+    composed = "Jörg"  # "ö" as one character
+    decomposed = "Jörg"  # "o" followed by the two dots
+    client.post("/settings/users/new", data=new_user_form(username=composed))
+
+    response = client.post("/settings/users/new", data=new_user_form(username=decomposed))
+
+    assert field_error(response.text, "username") == DE["user.error.taken"]
+    assert can_log_in(decomposed)

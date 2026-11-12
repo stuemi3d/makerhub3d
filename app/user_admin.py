@@ -176,12 +176,15 @@ def add_user_admin_routes(
             return render_edit(request, user, status_code=422, values=values, errors=errors)
         return RedirectResponse(f"/settings/users/{user_id}?saved=1", status_code=303)
 
-    def reset(user_id: int, raw: dict[str, str]) -> tuple[dict, dict]:
+    def reset(user_id: int, actor_id: int, raw: dict[str, str]) -> tuple[dict, dict]:
         errors = auth.password_errors(raw)
         with _users_lock, new_session() as db, db.begin():
             user = db.get(User, user_id)
             if user is None:
                 raise HTTPException(status_code=404)
+            if user.id == actor_id:
+                # The own password is changed under "Mein Konto" (issue #32), with the old one.
+                errors = {"form": "user.error.self_password"}
             if not errors:
                 auth.reset_password(db, user, raw["password"])
             return errors, _user_view(user)
@@ -191,7 +194,7 @@ def add_user_admin_routes(
     )
     async def reset_password(request: Request, user_id: int) -> Response:
         raw = await read_form(request, ("password", "password_repeat"))
-        errors, user = await run_in_threadpool(reset, user_id, raw)
+        errors, user = await run_in_threadpool(reset, user_id, request.state.user.id, raw)
         if errors:
             return render_edit(request, user, status_code=422, errors=errors)
         return RedirectResponse(f"/settings/users/{user_id}?password_reset=1", status_code=303)

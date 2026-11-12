@@ -211,3 +211,42 @@ def test_changed_role_works_without_new_login(client: AppClient) -> None:
         assert employee.get("/settings").status_code == 200
         client.post(f"/settings/users/{user_id}", data={"role": "read_only", "active": "1"})
         assert employee.get("/settings").status_code == 403
+
+
+# --- Review: user-changing pages are admin only ----------------------------------------
+
+
+def test_every_settings_page_needs_the_manage_level() -> None:
+    app = create_app()
+    settings_routes = [
+        route
+        for route in app.routes
+        if isinstance(route, APIRoute) and route.path.startswith("/settings")
+    ]
+
+    assert len(settings_routes) >= 7
+    for route in settings_routes:
+        assert route_permission(route) == Permission.MANAGE, route.path
+
+
+@pytest.mark.parametrize("role", ["employee", "read_only"])
+def test_others_cannot_change_users_or_themselves(client: AppClient, role: str) -> None:
+    own_id = add_user(EMPLOYEE_NAME, role)
+    with client_as(EMPLOYEE_NAME) as other:
+        for target in (own_id, 1):
+            assert other.get(f"/settings/users/{target}").status_code == 403
+            response = other.post(
+                f"/settings/users/{target}", data={"role": "admin", "active": "1"}
+            )
+            assert response.status_code == 403
+            response = other.post(
+                f"/settings/users/{target}/password",
+                data={
+                    "password": "neues-langes-passwort",
+                    "password_repeat": "neues-langes-passwort",
+                },
+            )
+            assert response.status_code == 403
+
+    with Session(make_engine(Settings.from_env().database_path)) as session:
+        assert session.get(User, own_id).role == role

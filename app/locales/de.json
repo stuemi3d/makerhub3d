@@ -111,5 +111,6 @@
   "user.error.self": "Nicht gespeichert: Du kannst dich nicht selbst deaktivieren oder dir die Admin-Rolle nehmen.",
   "user.error.last_admin": "Nicht gespeichert: Es muss mindestens ein aktiver Admin bleiben.",
   "error.no_permission": "Keine Berechtigung",
-  "error.no_permission.text": "Deine Rolle erlaubt diese Seite nicht. Wende dich bei Bedarf an einen Admin."
+  "error.no_permission.text": "Deine Rolle erlaubt diese Seite nicht. Wende dich bei Bedarf an einen Admin.",
+  "user.error.self_password": "Nicht gespeichert: Dein eigenes Passwort kannst du hier nicht zurücksetzen."
 }

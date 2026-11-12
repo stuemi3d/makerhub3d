@@ -5,6 +5,7 @@ Revises: 0002
 Create Date: 2026-11-12
 """
 
+import unicodedata
 from collections.abc import Sequence
 
 import sqlalchemy as sa
@@ -22,13 +23,13 @@ def upgrade() -> None:
         batch.add_column(
             sa.Column("active", sa.Boolean(), server_default=sa.true(), nullable=False)
         )
-    # Filled in Python: SQLite's lower() only knows A-Z, casefold() also knows umlauts.
+    # Filled in Python like app.auth.name_key: SQLite's lower() only knows A-Z.
     connection = op.get_bind()
     users = connection.execute(sa.text("SELECT id, username FROM users")).fetchall()
     for user_id, username in users:
         connection.execute(
             sa.text("UPDATE users SET username_key = :key WHERE id = :id"),
-            {"key": username.strip().casefold(), "id": user_id},
+            {"key": unicodedata.normalize("NFKC", username.strip()).casefold(), "id": user_id},
         )
     with op.batch_alter_table("users") as batch:
         batch.alter_column("username_key", existing_type=sa.String(length=50), nullable=False)

@@ -13,7 +13,14 @@ from sqlalchemy import inspect
 from sqlalchemy.orm import Session
 
 from app.config import Settings
-from app.db import DATABASE_FILE, Base, alembic_config, make_engine, run_migrations
+from app.db import (
+    DATABASE_FILE,
+    Base,
+    MigrationError,
+    alembic_config,
+    make_engine,
+    run_migrations,
+)
 from app.main import create_app
 from app.models import AppSettings, Rounding
 from tests.auth import signed_in_client
@@ -272,3 +279,49 @@ def test_user_migration_can_be_undone(tmp_path: Path) -> None:
 
     assert "active" not in columns
     assert "username_key" not in columns
+
+
+def test_migrations_keep_rows_of_dependent_tables(tmp_path: Path) -> None:
+    # SQLite rebuilds a changed table; that must not delete rows that point to it.
+    database = tmp_path / "children.db"
+    engine = make_engine(database)
+    with engine.begin() as connection:
+        command.upgrade(alembic_config(connection), "0002")
+    with sqlite3.connect(database) as connection:
+        connection.execute(
+            "INSERT INTO users (id, username, password_hash, role, failed_logins, created_at)"
+            " VALUES (1, 'erfunden', 'x', 'admin', 0, '2026-01-01 00:00:00')"
+        )
+        connection.execute(
+            "INSERT INTO login_sessions (id, user_id, csrf_token, created_at, last_seen_at)"
+            " VALUES ('abc', 1, 't', '2026-01-01 00:00:00', '2026-01-01 00:00:00')"
+        )
+
+    run_migrations(engine)
+
+    with sqlite3.connect(database) as connection:
+        assert connection.execute("SELECT count(*) FROM login_sessions").fetchone() == (1,)
+
+
+def test_foreign_keys_are_on_again_after_migrating(tmp_path: Path) -> None:
+    engine = make_engine(tmp_path / "pragma.db")
+    run_migrations(engine)
+
+    with engine.connect() as connection:
+        assert connection.exec_driver_sql("PRAGMA foreign_keys").scalar() == 1
+
+
+def test_broken_references_stop_the_migration(tmp_path: Path) -> None:
+    database = tmp_path / "broken.db"
+    engine = make_engine(database)
+    with engine.begin() as connection:
+        command.upgrade(alembic_config(connection), "0002")
+    with sqlite3.connect(database) as connection:
+        # Foreign keys are off in a plain sqlite3 connection, so this orphan gets in.
+        connection.execute(
+            "INSERT INTO login_sessions (id, user_id, csrf_token, created_at, last_seen_at)"
+            " VALUES ('abc', 99, 't', '2026-01-01 00:00:00', '2026-01-01 00:00:00')"
+        )
+
+    with pytest.raises(MigrationError):
+        run_migrations(engine)

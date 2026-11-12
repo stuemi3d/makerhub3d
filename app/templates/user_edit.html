@@ -47,6 +47,7 @@
   {% endif %}
 </section>
 
+{% if not is_self %}
 <section>
   <h2>{{ t('user.reset.title') }}</h2>
   <p>{{ t('user.reset.intro') }}</p>
@@ -61,5 +62,6 @@
     <button type="submit" class="secondary">{{ t('user.reset.submit') }}</button>
   </form>
 </section>
+{% endif %}
 <p><a href="/settings/users">{{ t('users.back') }}</a></p>
 {% endblock %}
