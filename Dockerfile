@@ -22,6 +22,12 @@ ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 
+# The base image can lag behind Debian security fixes (Trivy fails on fixable HIGH/CRITICAL findings),
+# so installed system packages are updated once while building.
+RUN apt-get update \
+    && apt-get upgrade -y --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
+
 # Normal user without login shell; /data is the only place the app may write to.
 RUN useradd --system --uid 10001 --user-group --no-create-home --shell /usr/sbin/nologin makerhub \
     && mkdir /data \

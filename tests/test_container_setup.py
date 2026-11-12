@@ -139,3 +139,11 @@ def test_dependabot_watches_docker_base_image() -> None:
     dependabot = read(".github/dependabot.yml")
 
     assert re.search(r'package-ecosystem:\s*"docker"', dependabot)
+
+
+def test_dockerfile_applies_operating_system_security_updates_in_final_image() -> None:
+    dockerfile = read("Dockerfile")
+    final_stage = dockerfile.rsplit("\nFROM ", maxsplit=1)[-1]
+
+    assert "apt-get upgrade" in final_stage
+    assert "rm -rf /var/lib/apt/lists" in final_stage
