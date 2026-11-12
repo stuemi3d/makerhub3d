@@ -57,6 +57,11 @@ class CurrentUser:
     id: int
     username: str
     role: str
+    must_change_password: bool
+
+
+# While an initial password must be changed, only these pages are open (issue #32).
+CHANGE_PASSWORD_PATHS = frozenset({"/account", "/account/password", "/logout"})
 
 
 def redirect(url: str) -> RedirectResponse:
@@ -170,7 +175,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 return None, None, auth.has_users(db)
             login, user = found
             # Read on every request, so that a changed role works at once.
-            return CurrentUser(user.id, user.username, user.role), login.csrf_token, True
+            current = CurrentUser(user.id, user.username, user.role, user.must_change_password)
+            return current, login.csrf_token, True
 
     # Every page needs a login, except the agreed exceptions. The middlewares defined later
     # wrap this one, so its answers also get the checks and headers below.
@@ -199,6 +205,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         elif path == "/login" and request.method == "POST":
             # Already logged in, e.g. from another tab: the old login form is not needed.
             return redirect("/")
+        elif user.must_change_password and path not in CHANGE_PASSWORD_PATHS:
+            return redirect("/account")
         request.state.user = user
         request.state.csrf_token = csrf_token
         if request.method not in SAFE_METHODS and not await form_token_ok(request, csrf_token):
@@ -269,7 +277,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             errors = auth.validate_setup(raw, app.state.setup_code)
             if errors:
                 return errors, None
-            user = auth.create_user(db, raw["username"], raw["password"], UserRole.ADMIN)
+            # The first admin chose the password, so there is nothing to change.
+            user = auth.create_user(
+                db, raw["username"], raw["password"], UserRole.ADMIN, must_change_password=False
+            )
             token = auth.start_session(db, user)
         app.state.setup_code = None
         return {}, token
@@ -365,6 +376,32 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 setattr(row, name, value)
         # Redirect after saving, so that reloading the page does not send the form again.
         return RedirectResponse("/settings?saved=1", status_code=303)
+
+    def render_account(request: Request, status_code: int = 200, **context) -> HTMLResponse:
+        context.setdefault("errors", {})
+        return render(request, "account.html", "", status_code=status_code, **context)
+
+    @app.get("/account", response_class=HTMLResponse, dependencies=[requires(Permission.VIEW)])
+    def account_page(request: Request, changed: str | None = None) -> HTMLResponse:
+        return render_account(request, changed=changed == "1")
+
+    @app.post(
+        "/account/password", response_class=HTMLResponse, dependencies=[requires(Permission.VIEW)]
+    )
+    async def change_password(request: Request) -> Response:
+        raw = await read_form(request, ("current_password", "password", "password_repeat"))
+        token = request.cookies.get(session_cookie, "")
+        errors, logged_out = await run_in_threadpool(
+            auth.change_own_password, new_session, request.state.user.id, token, raw
+        )
+        if logged_out:
+            response = redirect("/login")
+            delete_cookie(response, session_cookie)
+            return response
+        if errors:
+            # Passwords are never sent back.
+            return render_account(request, status_code=422, errors=errors)
+        return redirect("/account?changed=1")
 
     add_user_admin_routes(app, new_session, render, read_form)
 

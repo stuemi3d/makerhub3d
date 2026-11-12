@@ -92,12 +92,20 @@ READER_NAME = "leser"
 OTHER_PASSWORD = "noch-ein-test-passwort"
 
 
-def add_user(username: str, role: str, password: str = OTHER_PASSWORD) -> int:
-    """Creates a user directly in the database of the current test and returns its id."""
+def add_user(
+    username: str, role: str, password: str = OTHER_PASSWORD, must_change_password: bool = False
+) -> int:
+    """Creates a user directly in the database of the current test and returns its id.
+
+    By default without the duty to change the password, so tests can use the app at once.
+    """
     engine = make_engine(Settings.from_env().database_path)
     run_migrations(engine)
     with Session(engine) as db, db.begin():
-        return auth.create_user(db, username, password, UserRole(role)).id
+        user = auth.create_user(
+            db, username, password, UserRole(role), must_change_password=must_change_password
+        )
+        return user.id
 
 
 @contextmanager

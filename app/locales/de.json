@@ -112,5 +112,21 @@
   "user.error.last_admin": "Nicht gespeichert: Es muss mindestens ein aktiver Admin bleiben.",
   "error.no_permission": "Keine Berechtigung",
   "error.no_permission.text": "Deine Rolle erlaubt diese Seite nicht. Wende dich bei Bedarf an einen Admin.",
-  "user.error.self_password": "Nicht gespeichert: Dein eigenes Passwort kannst du hier nicht zurücksetzen."
+  "user.error.self_password": "Nicht gespeichert: Dein eigenes Passwort kannst du hier nicht zurücksetzen.",
+  "nav.account": "Mein Konto",
+  "account.title": "Mein Konto",
+  "account.password.title": "Passwort ändern",
+  "account.password.submit": "Passwort ändern",
+  "account.field.current_password": "Aktuelles Passwort",
+  "account.field.password": "Neues Passwort",
+  "account.field.password_repeat": "Neues Passwort wiederholen",
+  "account.hint.current_password": "Zur Sicherheit. Falsche Eingaben zählen wie Fehlversuche bei der Anmeldung.",
+  "account.hint.password": "Mindestens 12 Zeichen, anders als das bisherige.",
+  "account.hint.password_repeat": "Zur Sicherheit noch einmal eingeben.",
+  "account.must_change": "Du hast ein Startpasswort vom Admin. Bitte ändere es, bevor du weiterarbeitest.",
+  "account.changed": "Passwort geändert. Auf anderen Geräten bist du abgemeldet.",
+  "account.has_errors": "Nicht geändert: Bitte die markierten Felder korrigieren.",
+  "account.error.current_wrong": "Das aktuelle Passwort stimmt nicht.",
+  "account.error.same": "Das neue Passwort muss sich vom bisherigen unterscheiden.",
+  "user.status.initial_password": "Startpasswort noch nicht geändert"
 }

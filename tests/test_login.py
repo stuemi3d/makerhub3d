@@ -722,7 +722,7 @@ def test_parallel_failures_still_lock_the_account(tmp_path: Path) -> None:
     run_migrations(engine)
     new_session = sessionmaker(engine)
     with new_session() as db, db.begin():
-        auth.create_user(db, ADMIN_NAME, ADMIN_PASSWORD, UserRole.ADMIN)
+        auth.create_user(db, ADMIN_NAME, ADMIN_PASSWORD, UserRole.ADMIN, must_change_password=False)
     start = threading.Barrier(20)
 
     def attempt() -> None:

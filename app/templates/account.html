@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% from "_form_macros.html" import field_attrs, feedback %}
+{% block title %}{{ t('account.title') }} – {{ app_name }}{% endblock %}
+{% block content %}
+<h1>{{ t('account.title') }}</h1>
+<p>{{ user.username }} · {{ t('role.' ~ user.role) }}</p>
+{% if user.must_change_password %}
+<p role="alert"><mark>{{ t('account.must_change') }}</mark></p>
+{% endif %}
+{% if changed %}
+<p role="status"><ins>{{ t('account.changed') }}</ins></p>
+{% endif %}
+{% if errors %}
+<p role="alert"><mark>{{ t('account.has_errors') }}</mark></p>
+{% endif %}
+<section>
+  <h2>{{ t('account.password.title') }}</h2>
+  <form method="post" action="/account/password" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label for="current_password">{{ t('account.field.current_password') }}</label>
+    <input type="password" autocomplete="current-password" {{ field_attrs('current_password', errors) }}>
+    {{ feedback('current_password', errors, t, 'account.hint.') }}
+    <label for="password">{{ t('account.field.password') }}</label>
+    <input type="password" autocomplete="new-password" {{ field_attrs('password', errors) }}>
+    {{ feedback('password', errors, t, 'account.hint.') }}
+    <label for="password_repeat">{{ t('account.field.password_repeat') }}</label>
+    <input type="password" autocomplete="new-password" {{ field_attrs('password_repeat', errors) }}>
+    {{ feedback('password_repeat', errors, t, 'account.hint.') }}
+    <button type="submit">{{ t('account.password.submit') }}</button>
+  </form>
+</section>
+{% endblock %}

@@ -15,6 +15,7 @@
       </ul>
       {% if user %}
       <ul class="main-nav">
+        {% if not user.must_change_password %}
         {% for item in nav_items if can(item.permission) %}
         <li>
           {% if item.href %}
@@ -24,10 +25,12 @@
           {% endif %}
         </li>
         {% endfor %}
+        {% endif %}
+        <li><a href="/account" title="{{ t('nav.account') }}"{% if request.url.path == '/account' %} aria-current="page"{% endif %}>{{ user.username }}</a></li>
         <li>
           <form method="post" action="/logout" class="logout">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <button type="submit" class="secondary outline" title="{{ user.username }}">{{ t('nav.logout') }}</button>
+            <button type="submit" class="secondary outline">{{ t('nav.logout') }}</button>
           </form>
         </li>
       </ul>

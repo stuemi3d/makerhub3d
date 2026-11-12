@@ -325,3 +325,24 @@ def test_broken_references_stop_the_migration(tmp_path: Path) -> None:
 
     with pytest.raises(MigrationError):
         run_migrations(engine)
+
+
+# --- Issue #32: duty to change an initial password ------------------------------------
+
+
+def test_existing_users_get_no_duty_to_change(tmp_path: Path) -> None:
+    database = tmp_path / "duty.db"
+    engine = make_engine(database)
+    with engine.begin() as connection:
+        command.upgrade(alembic_config(connection), "0003")
+    with sqlite3.connect(database) as connection:
+        connection.execute(
+            "INSERT INTO users"
+            " (username, username_key, password_hash, role, failed_logins, created_at)"
+            " VALUES ('erfunden', 'erfunden', 'x', 'admin', 0, '2026-01-01 00:00:00')"
+        )
+
+    run_migrations(engine)
+
+    with sqlite3.connect(database) as connection:
+        assert connection.execute("SELECT must_change_password FROM users").fetchone() == (0,)

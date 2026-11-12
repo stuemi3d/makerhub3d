@@ -56,8 +56,16 @@ Unter **Einstellungen → Benutzer** (nur für Admins) legst du weitere Benutzer
 | Mitarbeiter | ansehen und bearbeiten (Artikel, Kalkulation, Produktion, Lager, Verkäufe) |
 | Nur lesen | nur ansehen |
 
-- Das Startpasswort vergibst du selbst und teilst es dem Benutzer mit; es wird keine E-Mail verschickt.
+- Das Startpasswort vergibst du selbst und teilst es dem Benutzer mit; es wird keine E-Mail verschickt. Der Benutzer muss es bei seiner ersten Anmeldung ändern. In der Benutzerliste siehst du, wer das noch nicht getan hat.
 - Benutzer werden nie gelöscht, nur **deaktiviert**. Ein deaktivierter Benutzer wird sofort abgemeldet und kann sich nicht mehr anmelden. Du kannst ihn jederzeit wieder aktivieren.
-- **Passwort zurücksetzen:** neues Startpasswort vergeben. Alle laufenden Anmeldungen des Benutzers enden, eine Sperre nach Fehlversuchen wird aufgehoben.
+- **Passwort zurücksetzen:** neues Startpasswort vergeben. Alle laufenden Anmeldungen des Benutzers enden, eine Sperre nach Fehlversuchen wird aufgehoben. Auch dieses Startpasswort muss der Benutzer bei der nächsten Anmeldung ändern.
 - Deine eigene Rolle und deinen eigenen Zustand kann nur ein anderer Admin ändern. So bleibt immer mindestens ein aktiver Admin.
 - Bei der Anmeldung spielt Groß-/Kleinschreibung des Benutzernamens keine Rolle.
+
+## Mein Konto
+
+Über deinen Benutzernamen oben rechts erreichst du „Mein Konto“. Dort änderst du dein eigenes Passwort:
+
+- Das aktuelle Passwort ist nötig. Falsche Eingaben zählen wie Fehlversuche bei der Anmeldung: Nach 5 Fehlversuchen ist das Konto 15 Minuten gesperrt und überall abgemeldet.
+- Das neue Passwort braucht mindestens 12 Zeichen und muss sich vom bisherigen unterscheiden.
+- Nach dem Ändern bleibst du auf diesem Gerät angemeldet; auf allen anderen Geräten endet deine Anmeldung.
