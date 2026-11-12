@@ -3,8 +3,11 @@
 import os
 import re
 from dataclasses import dataclass
+from pathlib import Path
 
 DEFAULT_LANGUAGE = "de"
+DEFAULT_DATA_DIR = Path("data")
+DATABASE_FILE = "makerhub3d.db"
 SUPPORTED_LANGUAGES = ("de", "en")
 
 # Scheme + host (+ optional port) only: no wildcards, paths, spaces or other characters
@@ -45,10 +48,16 @@ def parse_language(raw: str) -> str:
 class Settings:
     language: str = DEFAULT_LANGUAGE
     embed_origins: tuple[str, ...] = ()
+    data_dir: Path = DEFAULT_DATA_DIR
+
+    @property
+    def database_path(self) -> Path:
+        return self.data_dir / DATABASE_FILE
 
     @classmethod
     def from_env(cls) -> "Settings":
         return cls(
             language=parse_language(os.environ.get("MAKERHUB_LANGUAGE", "")),
             embed_origins=parse_embed_origins(os.environ.get("MAKERHUB_EMBED_ORIGINS", "")),
+            data_dir=Path(os.environ.get("MAKERHUB_DATA_DIR", "").strip() or DEFAULT_DATA_DIR),
         )
