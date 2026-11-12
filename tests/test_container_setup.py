@@ -240,3 +240,39 @@ def test_dockerfile_applies_operating_system_security_updates_in_final_image() -
 
     assert "apt-get upgrade" in final_stage
     assert "rm -rf /var/lib/apt/lists" in final_stage
+
+
+def dependabot_blocks() -> dict[str, str]:
+    """Split dependabot.yml into one text block per package ecosystem."""
+    dependabot = read(".github/dependabot.yml")
+    parts = re.split(r'(?m)^  - package-ecosystem:\s*"([^"]+)"', dependabot)
+    # parts = [header, name1, block1, name2, block2, ...]
+    return dict(zip(parts[1::2], parts[2::2], strict=True))
+
+
+def test_dependabot_docker_ignores_python_major_and_minor_updates() -> None:
+    docker = dependabot_blocks()["docker"]
+
+    ignore = re.search(
+        r'ignore:\s*\n\s*-\s*dependency-name:\s*"python"\s*\n'
+        r"\s*update-types:\s*\n"
+        r'\s*-\s*"version-update:semver-major"\s*\n'
+        r'\s*-\s*"version-update:semver-minor"',
+        docker,
+    )
+    assert ignore
+
+
+def test_dependabot_other_ecosystems_have_no_ignore_rule() -> None:
+    blocks = dependabot_blocks()
+
+    assert set(blocks) == {"uv", "github-actions", "docker"}
+    for name in ("uv", "github-actions"):
+        assert "ignore:" not in blocks[name]
+
+
+def test_dependabot_docker_stays_weekly_and_grouped() -> None:
+    docker = dependabot_blocks()["docker"]
+
+    assert re.search(r'interval:\s*"weekly"', docker)
+    assert re.search(r"groups:\s*\n\s*docker-base-image:", docker)

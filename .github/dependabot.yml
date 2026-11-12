@@ -28,6 +28,13 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    # The project is pinned to Python 3.12; moving to a newer Python is a
+    # deliberate maintainer decision, so only small updates are proposed.
+    ignore:
+      - dependency-name: "python"
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
     groups:
       docker-base-image:
         patterns:
