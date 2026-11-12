@@ -218,3 +218,13 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# MakerHub 3D: local configuration and secrets (only .env.example belongs in the repo)
+.env
+.env.*
+!.env.example
+
+# MakerHub 3D: local data and databases
+data/
+*.sqlite
+*.db
