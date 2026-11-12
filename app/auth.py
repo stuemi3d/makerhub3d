@@ -6,6 +6,8 @@ after 8 hours without activity, passwords have at least 12 characters.
 
 import hashlib
 import secrets
+import threading
+from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from functools import cache
 from urllib.parse import urlsplit
@@ -164,6 +166,8 @@ def check_login(db: Session, username: str, password: str) -> User | None:
         return None
     if user.locked_until is not None:
         if user.locked_until > now:
+            # Same effort as a real check, so the answer time does not reveal locked accounts.
+            verify_password(_dummy_hash(), password)
             return None
         user.locked_until = None
         user.failed_logins = 0
@@ -177,6 +181,19 @@ def check_login(db: Session, username: str, password: str) -> User | None:
     if PASSWORD_HASHER.check_needs_rehash(user.password_hash):
         user.password_hash = hash_password(password)
     return user
+
+
+# Login attempts run one after another, so that attempts sent at the same moment cannot
+# overwrite each other's failure count and get around the lock. The app runs as a single
+# process (one uvicorn worker), so a process-wide lock is enough.
+_login_lock = threading.Lock()
+
+
+def log_in(new_session: Callable[[], Session], username: str, password: str) -> str | None:
+    """Checks a login and starts a session; returns its cookie token or None."""
+    with _login_lock, new_session() as db, db.begin():
+        user = check_login(db, username, password)
+        return None if user is None else start_session(db, user)
 
 
 # --- Sessions --------------------------------------------------------------------------

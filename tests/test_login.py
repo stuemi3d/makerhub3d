@@ -3,6 +3,7 @@
 import json
 import re
 import sqlite3
+import threading
 from collections.abc import Iterator
 from datetime import timedelta
 from decimal import Decimal
@@ -11,11 +12,11 @@ from pathlib import Path
 import pytest
 from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from app import auth
 from app.config import DATABASE_FILE, ConfigError, Settings
-from app.db import make_engine
+from app.db import make_engine, run_migrations
 from app.main import create_app
 from app.models import AppSettings, User
 from tests.auth import (
@@ -711,3 +712,58 @@ def test_login_page_in_english(monkeypatch: pytest.MonkeyPatch) -> None:
 
     assert en["setup.title"] in html
     assert '<html lang="en"' in html
+
+
+# --- Review findings: parallel attempts, answer time, second tab -----------------------
+
+
+def test_parallel_failures_still_lock_the_account(tmp_path: Path) -> None:
+    engine = make_engine(tmp_path / "parallel.db")
+    run_migrations(engine)
+    new_session = sessionmaker(engine)
+    with new_session() as db, db.begin():
+        auth.create_admin(db, ADMIN_NAME, ADMIN_PASSWORD)
+    start = threading.Barrier(20)
+
+    def attempt() -> None:
+        start.wait()
+        auth.log_in(new_session, ADMIN_NAME, "falsches-passwort")
+
+    threads = [threading.Thread(target=attempt) for _ in range(20)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    assert auth.log_in(new_session, ADMIN_NAME, ADMIN_PASSWORD) is None
+    with new_session() as db:
+        assert db.query(User).one().locked_until is not None
+
+
+def test_locked_account_takes_the_same_effort_as_a_wrong_password(
+    visitor: AppClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fail(visitor, 5)
+    checks = []
+    real_verify = auth.verify_password
+    monkeypatch.setattr(
+        auth, "verify_password", lambda *args: checks.append(1) or real_verify(*args)
+    )
+
+    log_in(visitor)
+
+    assert len(checks) == 1
+
+
+def test_old_login_form_in_a_second_tab_leads_to_the_app(visitor: AppClient) -> None:
+    old_form = {
+        "csrf_token": csrf_from(visitor.get("/login").text),
+        "username": ADMIN_NAME,
+        "password": ADMIN_PASSWORD,
+    }
+    log_in(visitor)
+
+    response = visitor.request("POST", "/login", data=old_form, follow_redirects=False)
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/"

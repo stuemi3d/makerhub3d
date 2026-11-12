@@ -188,6 +188,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     wanted = path + (f"?{request.url.query}" if request.url.query else "")
                     target += "?" + urlencode({"next": wanted})
                 return redirect(target)
+        elif path == "/login" and request.method == "POST":
+            # Already logged in, e.g. from another tab: the old login form is not needed.
+            return redirect("/")
         request.state.user = user
         request.state.csrf_token = csrf_token
         if request.method not in SAFE_METHODS and not await form_token_ok(request, csrf_token):
@@ -276,9 +279,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return render(request, "login.html", "", username="", next_url=next, failed=False)
 
     def try_login(raw: dict[str, str]) -> str | None:
-        with new_session() as db, db.begin():
-            user = auth.check_login(db, raw.get("username", ""), raw.get("password", ""))
-            return None if user is None else auth.start_session(db, user)
+        return auth.log_in(new_session, raw.get("username", ""), raw.get("password", ""))
 
     @app.post("/login", response_class=HTMLResponse)
     async def login(request: Request) -> Response:
