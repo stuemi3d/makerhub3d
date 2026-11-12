@@ -225,6 +225,6 @@ __marimo__/
 !.env.example
 
 # MakerHub 3D: local data and databases
-data/
+/data/
 *.sqlite
 *.db

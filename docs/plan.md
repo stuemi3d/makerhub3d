@@ -11,7 +11,7 @@ Das Tool beantwortet für jeden Artikel eine Frage: *Was habe ich kalkuliert, wa
 **Drin (Version 1):**
 
 - Artikelstamm mit Vorlagen und Varianten, jede Variante mit eigener Artikelnummer (z. B. `3D-0042-RT`); Kalkulation ist immer optional
-- Kalkulation für noch nicht gedruckte Teile: Filament aus den Bambuddy-Spulen, Druckzeit und Gramm aus gesliceter 3MF oder G-Code, Strom, Maschine, Arbeitszeit, Zusatzteile, Ausschuss, Aufschlag
+- Kalkulation für noch nicht gedruckte Teile: Filament aus den Bambuddy-Spulen, Druckzeit und Gramm aus gesliceter 3MF oder G-Code, Strom, Maschine, Ausschussquote, Arbeitszeit, Zusatzteile, Gewinnaufschlag
 - Produktion: einen oder mehrere Drucke aus dem Bambuddy-Archiv einem oder mehreren Artikeln zuordnen; nicht zugeordnete (z. B. private) Drucke bleiben unberührt
 - Lager: Zugänge aus Produktionen, Abgänge vorerst von Hand
 - Auswertung pro Artikel: kalkuliert ↔ produziert ↔ verkauft, als Verlauf; Dashboard als Startseite
@@ -33,7 +33,7 @@ Das Tool beantwortet für jeden Artikel eine Frage: *Was habe ich kalkuliert, wa
 - Die Rechnungs-Software wird später über einen **austauschbaren Anbindungs-Baustein** angebunden.
 - Eigene SQLite-Datenbank für Artikel, Kalkulationen, Produktionen, Lager und Verkäufe.
 - Einbindung in Bambuddy über „Einstellungen → Allgemein → Seitenleisten-Links → Externe Links“ (iframe). Das Einbetten wird nur für konfigurierte Ursprünge erlaubt.
-- Erreichbar über einen Reverse Proxy (z. B. Caddy); der Container lauscht nur auf `127.0.0.1`.
+- Erreichbar nur über einen Reverse Proxy (z. B. Caddy): Die App lauscht im Container auf `0.0.0.0`; auf dem Server wird ihr Port nur auf `127.0.0.1` veröffentlicht, also nicht direkt von außen erreichbar.
 
 ## 3. Technik
 
@@ -68,7 +68,7 @@ Der Artikel ist der Knotenpunkt; alles andere hängt über die Artikelnummer an 
 | --- | --- | --- |
 | Artikelvorlage | Name, Beschreibung, Merkmale (z. B. Farbe, Größe), Standardwerte für Preis und Gewichtung | nur Vorlage: kein Bestand, kein Verkauf |
 | Artikel | Artikelnummer, Bezeichnung, optional Vorlage + Merkmalswerte (= Variante), Soll-Verkaufspreis, Gewichtung, Mindestbestand, aktiv | Artikelnummer = Schlüssel zur Rechnungs-Software |
-| Kalkulation (optional) | Artikel oder Vorlage, Datum, „maßgeblich“-Kennzeichen, Materialzeilen (Spule/Durchschnitt/frei, Gramm, Preis/kg), Druckzeit, Teile pro Platte, Drucker, Arbeitszeit, Zusatzteile, Ausschuss %, Aufschlag %, Ergebnis pro Stück | Spule aus Bambuddy (nur gelesen) |
+| Kalkulation (optional) | Artikel oder Vorlage, Datum, „maßgeblich“-Kennzeichen, Materialzeilen (Spule/Durchschnitt/frei, Gramm, Preis/kg), Druckzeit, Teile pro Platte, Drucker, Ausschussquote %, Rüstzeit pro Platte (Min.), Nacharbeit pro Stück (Min.), Zusatzteile pro Stück, Gewinnaufschlag %, Ergebnis pro Stück (Selbstkosten ohne/mit Arbeitszeit, Verkaufspreis-Vorschlag) | Spule aus Bambuddy (nur gelesen) |
 | Produktion | Datum, Notiz, Gesamtkosten, storniert | – |
 | Produktion – Drucke | Produktion, Material-, Strom-, Verschleißkosten als Wert, Status (erfolgreich/fehlgeschlagen) | Bambuddy-Archiv-ID |
 | Produktion – Ergebnis | Produktion, Artikel, gute Stück, Gewichtung, zugeteilte Kosten, Kennzeichen „aufgeteilt“ | – |
@@ -76,7 +76,7 @@ Der Artikel ist der Knotenpunkt; alles andere hängt über die Artikelnummer an 
 | Verkauf | Artikel, Datum, Menge, Preis pro Stück, Quelle (Hand, RechnungsFee, Haben) | Rechnungsnummer bzw. externe ID |
 | Ignoriert | Bambuddy-Archiv-ID, Datum | nicht relevante Drucke ausblenden |
 | Gerät | Typ (Drucker/Trockner), Name, Anschaffungsdatum und -wert, Nutzungsjahre, Wartungsaufschlag, Druckstunden/Jahr bzw. Leistung (W) und Trocknungsstunden/Jahr | Drucker aus Bambuddy übernehmbar |
-| Einstellungen | Strompreis (eigen oder aus Bambuddy), Arbeits-Stundensatz, Standard-Ausschuss, Standard-Aufschlag, Rundung, Spulen-Kategorie für „geschäftlich“, Abweichungsschwelle | – |
+| Einstellungen | Strompreis (eigen oder aus Bambuddy), Arbeits-Stundensatz, Standard-Ausschussquote, Standard-Gewinnaufschlag, Rundung, Spulen-Kategorie für „geschäftlich“, Abweichungsschwelle | – |
 | Benutzer, Änderungsprotokoll | siehe Sicherheit | – |
 
 **Vorlagen und Varianten:** Eine Vorlage beschreibt z. B. „Halter A“ mit dem Merkmal Farbe; jede Variante („Halter A rot“, `3D-0042-RT`) ist ein vollwertiger Artikel mit eigener Artikelnummer und eigenem Bestand. Artikel ohne Varianten brauchen keine Vorlage. Preis, Gewichtung und Kalkulation erbt die Variante von der Vorlage und kann sie überschreiben.
@@ -101,22 +101,32 @@ Der Artikel ist der Knotenpunkt; alles andere hängt über die Artikelnummer an 
 
 ## 6. Kalkulation im Detail
 
-Selbstkosten pro Stück = Summe der Bausteine ÷ Teile pro Platte. Standardwerte kommen aus den Einstellungen.
+Gerechnet wird in dieser Reihenfolge. Standardwerte (Ausschussquote, Gewinnaufschlag, Arbeits-Stundensatz, Rundung) kommen aus den Einstellungen.
 
-| Baustein | Berechnung | Werte |
-| --- | --- | --- |
-| Material | Gramm × Preis/kg, eine Zeile pro Filament/Farbe | Gramm aus 3MF/G-Code (inkl. Spülmenge); Preisquelle je Zeile: echte Bambuddy-Spule, Durchschnitt passender geschäftlicher Spulen oder frei (z. B. bestellte Spule) |
-| Strom | Druckzeit × Ø Verbrauch pro Stunde × Strompreis | Ø Verbrauch aus echten Drucken im Bambuddy-Archiv |
-| Maschine | Druckzeit × Druckerstundensatz | Stundensatz inkl. Trocknungsaufschlag |
-| Arbeitszeit (optional) | Minuten × Stundensatz | leer = 0 |
-| Zusatzteile | Menge × Preis | freie Liste; später Einkaufspreise aus der Rechnungs-Software |
-| Ausschuss | Aufschlag in % | Standard aus Einstellungen |
+1. **Druckkosten pro Platte** = Material + Strom + Maschine
+2. **Druckkosten pro Stück** = Druckkosten pro Platte ÷ Teile pro Platte
+3. **Druckkosten pro Stück inkl. Ausschuss** = Druckkosten pro Stück × (1 + Ausschussquote in %). Die Ausschussquote wirkt nur auf die Druckkosten.
+4. **Arbeitszeit pro Stück** (optional, jedes leere Feld = 0) = (Rüstzeit pro Platte in Minuten ÷ Teile pro Platte + Nacharbeit pro Stück in Minuten) ÷ 60 × Arbeits-Stundensatz
+5. **Zusatzteile pro Stück** = Summe aus Menge × Preis
+6. **Selbstkosten pro Stück** = (3) + (4) + (5); angezeigt **ohne Arbeitszeit** ((3) + (5)) und **mit Arbeitszeit**
+7. **Verkaufspreis-Vorschlag** = Selbstkosten pro Stück (mit Arbeitszeit) × (1 + Gewinnaufschlag in %), gerundet
+
+| Baustein | Bezug | Berechnung | Werte |
+| --- | --- | --- | --- |
+| Material | pro Platte | Gramm × Preis/kg, eine Zeile pro Filament/Farbe | Gramm aus 3MF/G-Code (inkl. Spülmenge); Preisquelle je Zeile: echte Bambuddy-Spule, Durchschnitt passender geschäftlicher Spulen oder frei (z. B. bestellte Spule) |
+| Strom | pro Platte | Druckzeit × Ø Verbrauch pro Stunde × Strompreis | Ø Verbrauch aus echten Drucken im Bambuddy-Archiv |
+| Maschine | pro Platte | Druckzeit × Druckerstundensatz | Stundensatz inkl. Trocknungsaufschlag |
+| Ausschussquote | auf Druckkosten | × (1 + Ausschussquote in %) | Standard aus Einstellungen |
+| Rüstzeit (optional) | pro Platte | Minuten ÷ Teile pro Platte ÷ 60 × Arbeits-Stundensatz | z. B. Platte vorbereiten, Druck starten, abnehmen; leer = 0 |
+| Nacharbeit (optional) | pro Stück | Minuten ÷ 60 × Arbeits-Stundensatz | z. B. Stützen entfernen, entgraten, verpacken; leer = 0 |
+| Zusatzteile | pro Stück | Menge × Preis | freie Liste; später Einkaufspreise aus der Rechnungs-Software |
+| Gewinnaufschlag | auf Selbstkosten | × (1 + Gewinnaufschlag in %) | Standard aus Einstellungen |
 
 Druckerstundensatz = Anschaffungswert ÷ (Nutzungsjahre × Druckstunden pro Jahr) × (1 + Wartungsaufschlag)
 
 **Trocknung pauschal:** Die Trocknerkosten pro Jahr (Gerätekosten + Trocknungsstunden × Leistung × Strompreis) aller Trockner werden auf alle Druckstunden pro Jahr verteilt und auf den Druckerstundensatz aufgeschlagen.
 
-**Verkaufspreis-Vorschlag:** Selbstkosten + Aufschlag in %, gerundet (z. B. auf ,50 oder ,90); Kleinunternehmer-tauglich (ohne Umsatzsteuer). Angezeigt werden Selbstkosten **ohne und mit Arbeitszeit**, Gewinn pro Stück und effektiver Stundenlohn.
+**Verkaufspreis-Vorschlag:** wie in Schritt 7, gerundet (z. B. auf ,50 oder ,90); Kleinunternehmer-tauglich (ohne Umsatzsteuer). Angezeigt werden Selbstkosten **ohne und mit Arbeitszeit**, Gewinn pro Stück und effektiver Stundenlohn.
 
 **Spulen:** Geschäftliche Spulen werden über das Bambuddy-Feld „Kategorie“ erkannt (Wort in den Einstellungen festlegbar); die Kalkulation zeigt standardmäßig nur diese, mit Schalter „alle Spulen“. Der verwendete Preis wird in der Kalkulation gespeichert.
 
@@ -156,7 +166,7 @@ Das Tool wird von Anfang an so gebaut, dass es als Open Source veröffentlicht *
 
 **Bambuddy:** eigener API-Key mit ausschließlich Leserechten.
 
-**Container:** läuft als normaler Benutzer, kein Docker-Socket, `cap_drop: ALL`, `no-new-privileges`, schreibgeschütztes Dateisystem außer `/data` und temporärem Ordner, Port nur auf `127.0.0.1`. Uploads mit Größenlimit, nur Metadaten auslesen, Schutz gegen manipulierte ZIP-Dateien (3MF), Datei danach löschen.
+**Container:** läuft als normaler Benutzer, kein Docker-Socket, `cap_drop: ALL`, `no-new-privileges`, schreibgeschütztes Dateisystem außer `/data` und temporärem Ordner; die App lauscht im Container auf `0.0.0.0`, der Port wird auf dem Server nur auf `127.0.0.1` veröffentlicht und ist nur über den Reverse Proxy erreichbar. Uploads mit Größenlimit, nur Metadaten auslesen, Schutz gegen manipulierte ZIP-Dateien (3MF), Datei danach löschen.
 
 **Datensicherung:** nächtliche Sicherung der Datenbank nach `/data/backups` über die SQLite-Backup-Funktion; 14 Tages- und 12 Monatssicherungen; automatische Sicherung vor jeder Migration; „Sicherung herunterladen“ für Admins; getestete Wiederherstellung mit Anleitung.
 
@@ -177,7 +187,7 @@ Das Tool wird von Anfang an so gebaut, dass es als Open Source veröffentlicht *
 | Bereich | Testart |
 | --- | --- |
 | Kostenrechnung | Unit-Tests mit festen Zahlen, auch Randfälle (0 Teile, fehlender Preis) |
-| 3MF/G-Code | Tests mit echten, anonymisierten Beispieldateien |
+| 3MF/G-Code | Tests mit Beispieldateien, die der Maintainer bereitstellt (selbst gesliced, z. B. ein Würfel); vor dem Einchecken werden Benutzernamen, Seriennummern, Pfade und ähnliche Metadaten entfernt. Alle übrigen Beispieldaten sind erfunden. |
 | Bambuddy-Anbindung | aufgezeichnete Antworten; in CI läuft kein Bambuddy |
 | Seiten und Formulare | FastAPI-Testclient |
 | Migrationen | auf leerer und gefüllter Test-Datenbank |

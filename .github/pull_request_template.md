@@ -25,6 +25,7 @@ Ausdrücklich auflisten, falls zutreffend:
 - Änderung an .github/workflows/
 - Login, Rechte oder Sicherheit
 - Datei-Uploads
+- neue 3MF-/G-Code-Testdateien (welche Metadaten entfernt wurden)
 - Zugriff auf Bambuddy oder andere externe Dienste
 Wenn nichts davon zutrifft: „Keine heiklen Änderungen.“
 -->
