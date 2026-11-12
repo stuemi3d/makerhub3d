@@ -346,3 +346,30 @@ def test_existing_users_get_no_duty_to_change(tmp_path: Path) -> None:
 
     with sqlite3.connect(database) as connection:
         assert connection.execute("SELECT must_change_password FROM users").fetchone() == (0,)
+
+
+# --- Issue #29: change log and login log ----------------------------------------------
+
+
+def test_log_tables_are_created_and_keep_users(tmp_path: Path) -> None:
+    database = tmp_path / "log.db"
+    engine = make_engine(database)
+    run_migrations(engine)
+
+    tables = inspect(engine).get_table_names()
+    assert "change_log" in tables
+    assert "login_log" in tables
+    with sqlite3.connect(database) as connection:
+        connection.execute("PRAGMA foreign_keys=ON")
+        connection.execute(
+            "INSERT INTO users"
+            " (id, username, username_key, password_hash, role, failed_logins, created_at)"
+            " VALUES (1, 'erfunden', 'erfunden', 'x', 'admin', 0, '2026-01-01 00:00:00')"
+        )
+        connection.execute(
+            "INSERT INTO change_log (created_at, user_id, action, subject, details)"
+            " VALUES ('2026-01-01 00:00:00', 1, 'settings.changed', '', '[]')"
+        )
+        # Users with log entries cannot be deleted by accident.
+        with pytest.raises(sqlite3.IntegrityError):
+            connection.execute("DELETE FROM users")

@@ -18,6 +18,7 @@ from argon2.exceptions import InvalidHashError, VerificationError
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from app import audit
 from app.models import LoginSession, User, UserRole
 
 MAX_FAILED_LOGINS = 5
@@ -220,17 +221,21 @@ def check_login(db: Session, username: str, password: str) -> User | None:
         # Same effort as for a real user, so the answer time does not reveal names
         # or deactivated users.
         verify_password(_dummy_hash(), password[:MAX_PASSWORD_LENGTH])
+        # The typed name of an unknown user is not logged: it may be a mistyped password.
+        audit.record_login(db, None if user is None else user.id, "failed")
         return None
     if user.locked_until is not None:
         if user.locked_until > now:
             # Same effort as a real check, so the answer time does not reveal locked accounts.
             verify_password(_dummy_hash(), password)
+            audit.record_login(db, user.id, "failed")
             return None
         user.locked_until = None
         user.failed_logins = 0
     if not verify_password(user.password_hash, password):
-        _count_failure(db, user)
+        audit.record_login(db, user.id, "locked" if _count_failure(db, user) else "failed")
         return None
+    audit.record_login(db, user.id, "success")
     user.failed_logins = 0
     if PASSWORD_HASHER.check_needs_rehash(user.password_hash):
         user.password_hash = hash_password(password)
@@ -280,8 +285,10 @@ def change_own_password(
         if len(current) > MAX_PASSWORD_LENGTH or not verify_password(user.password_hash, current):
             # Counts like a failed login, so nobody can try passwords on an open session.
             if _count_failure(db, user):
+                audit.record_login(db, user.id, "locked")
                 end_all_sessions(db, user.id)
                 return {"current_password": "account.error.current_wrong"}, True
+            audit.record_login(db, user.id, "wrong_current_password")
             return {"current_password": "account.error.current_wrong"}, False
         user.failed_logins = 0
         errors = password_errors(raw)
@@ -291,6 +298,7 @@ def change_own_password(
             return errors, False
         user.password_hash = hash_password(raw["password"])
         user.must_change_password = False
+        audit.record_change(db, user.id, "account.password_changed", user.username)
         db.execute(
             delete(LoginSession).where(
                 LoginSession.user_id == user.id,
