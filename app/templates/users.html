@@ -23,6 +23,7 @@
         {% if not u.active %}{{ t('user.status.inactive') }}
         {% elif u.locked_minutes %}{{ t('user.status.locked').format(minutes=u.locked_minutes) }}
         {% else %}{{ t('user.status.active') }}{% endif %}
+        {% if u.must_change_password %}<br><small>{{ t('user.status.initial_password') }}</small>{% endif %}
       </td>
     </tr>
     {% endfor %}

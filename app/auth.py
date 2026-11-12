@@ -168,7 +168,9 @@ def name_taken(db: Session, username: str) -> bool:
     return db.scalar(select(User.id).where(User.username_key == name_key(username))) is not None
 
 
-def create_user(db: Session, username: str, password: str, role: UserRole) -> User:
+def create_user(
+    db: Session, username: str, password: str, role: UserRole, *, must_change_password: bool
+) -> User:
     user = User(
         username=username.strip(),
         username_key=name_key(username),
@@ -178,6 +180,7 @@ def create_user(db: Session, username: str, password: str, role: UserRole) -> Us
         locked_until=None,
         created_at=utcnow(),
         active=True,
+        must_change_password=must_change_password,
     )
     db.add(user)
     db.flush()
@@ -185,8 +188,12 @@ def create_user(db: Session, username: str, password: str, role: UserRole) -> Us
 
 
 def reset_password(db: Session, user: User, password: str) -> None:
-    """New password set by the admin: lifts a lock and ends all logins of this user."""
+    """New password set by the admin: lifts a lock and ends all logins of this user.
+
+    The user has to change it at the next login (issue #32).
+    """
     user.password_hash = hash_password(password)
+    user.must_change_password = True
     user.failed_logins = 0
     user.locked_until = None
     end_all_sessions(db, user.id)
@@ -222,10 +229,7 @@ def check_login(db: Session, username: str, password: str) -> User | None:
         user.locked_until = None
         user.failed_logins = 0
     if not verify_password(user.password_hash, password):
-        user.failed_logins += 1
-        if user.failed_logins >= MAX_FAILED_LOGINS:
-            user.locked_until = now + LOCK_DURATION
-            user.failed_logins = 0
+        _count_failure(db, user)
         return None
     user.failed_logins = 0
     if PASSWORD_HASHER.check_needs_rehash(user.password_hash):
@@ -244,6 +248,56 @@ def log_in(new_session: Callable[[], Session], username: str, password: str) -> 
     with _login_lock, new_session() as db, db.begin():
         user = check_login(db, username, password)
         return None if user is None else start_session(db, user)
+
+
+def _count_failure(db: Session, user: User) -> bool:
+    """Counts a wrong password; returns True when this failure locks the account."""
+    user.failed_logins += 1
+    if user.failed_logins < MAX_FAILED_LOGINS:
+        return False
+    user.locked_until = utcnow() + LOCK_DURATION
+    user.failed_logins = 0
+    return True
+
+
+def change_own_password(
+    new_session: Callable[[], Session], user_id: int, session_token: str, raw: dict[str, str]
+) -> tuple[dict[str, str], bool]:
+    """Changes the password of a logged-in user (issue #32).
+
+    Returns the errors (empty when changed) and whether the user was locked and logged out
+    because the current password was wrong too often. Other logins of the user end.
+    """
+    current = raw.get("current_password", "")
+    with _login_lock, new_session() as db, db.begin():
+        user = db.get(User, user_id)
+        if user is None:
+            return {}, True
+        if user.locked_until is not None and user.locked_until > utcnow():
+            # Locked meanwhile (e.g. by failed logins elsewhere): no more guesses here either.
+            end_all_sessions(db, user.id)
+            return {}, True
+        if len(current) > MAX_PASSWORD_LENGTH or not verify_password(user.password_hash, current):
+            # Counts like a failed login, so nobody can try passwords on an open session.
+            if _count_failure(db, user):
+                end_all_sessions(db, user.id)
+                return {"current_password": "account.error.current_wrong"}, True
+            return {"current_password": "account.error.current_wrong"}, False
+        user.failed_logins = 0
+        errors = password_errors(raw)
+        if not errors and raw["password"] == current:
+            errors = {"password": "account.error.same"}
+        if errors:
+            return errors, False
+        user.password_hash = hash_password(raw["password"])
+        user.must_change_password = False
+        db.execute(
+            delete(LoginSession).where(
+                LoginSession.user_id == user.id,
+                LoginSession.id != token_fingerprint(session_token),
+            )
+        )
+        return {}, False
 
 
 # --- Sessions --------------------------------------------------------------------------

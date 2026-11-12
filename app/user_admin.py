@@ -32,6 +32,7 @@ def _user_view(user: User) -> dict:
         "role": user.role,
         "active": user.active,
         "locked_minutes": auth.minutes_locked(user),
+        "must_change_password": user.must_change_password,
     }
 
 
@@ -103,7 +104,14 @@ def add_user_admin_routes(
                 errors["username"] = "user.error.taken"
             if errors:
                 return errors
-            auth.create_user(db, raw["username"], raw["password"], UserRole(raw["role"]))
+            # The admin knows this password, so the user has to change it first (#32).
+            auth.create_user(
+                db,
+                raw["username"],
+                raw["password"],
+                UserRole(raw["role"]),
+                must_change_password=True,
+            )
         return {}
 
     @app.post("/settings/users/new", response_class=HTMLResponse, dependencies=manage)

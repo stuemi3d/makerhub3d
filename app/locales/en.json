@@ -112,5 +112,21 @@
   "user.error.last_admin": "Not saved: at least one active admin must remain.",
   "error.no_permission": "No permission",
   "error.no_permission.text": "Your role does not allow this page. Ask an admin if needed.",
-  "user.error.self_password": "Not saved: you cannot reset your own password here."
+  "user.error.self_password": "Not saved: you cannot reset your own password here.",
+  "nav.account": "My account",
+  "account.title": "My account",
+  "account.password.title": "Change password",
+  "account.password.submit": "Change password",
+  "account.field.current_password": "Current password",
+  "account.field.password": "New password",
+  "account.field.password_repeat": "Repeat new password",
+  "account.hint.current_password": "To be sure. Wrong entries count like failed logins.",
+  "account.hint.password": "At least 12 characters, different from the current one.",
+  "account.hint.password_repeat": "Enter it once more to be sure.",
+  "account.must_change": "You have an initial password from the admin. Please change it before you go on.",
+  "account.changed": "Password changed. You are logged out on other devices.",
+  "account.has_errors": "Not changed: please correct the marked fields.",
+  "account.error.current_wrong": "The current password is wrong.",
+  "account.error.same": "The new password must differ from the current one.",
+  "user.status.initial_password": "Initial password not changed yet"
 }

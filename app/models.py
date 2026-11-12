@@ -12,6 +12,7 @@ from sqlalchemy import (
     Integer,
     String,
     UniqueConstraint,
+    false,
     true,
 )
 from sqlalchemy.orm import Mapped, mapped_column
@@ -81,6 +82,8 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime)
     # Users are never deleted, only deactivated (issue #28).
     active: Mapped[bool] = mapped_column(Boolean, server_default=true())
+    # Set for initial passwords given by an admin; the user must change it first (issue #32).
+    must_change_password: Mapped[bool] = mapped_column(Boolean, server_default=false())
 
 
 class LoginSession(Base):
