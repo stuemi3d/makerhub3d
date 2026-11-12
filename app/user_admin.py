@@ -174,7 +174,8 @@ def add_user_admin_routes(
         if errors:
             values = {"role": raw.get("role", ""), "active": raw.get("active", "")}
             return render_edit(request, user, status_code=422, values=values, errors=errors)
-        return RedirectResponse(f"/settings/users/{user_id}?saved=1", status_code=303)
+        # The address is built from the stored user, not from the requested one.
+        return RedirectResponse(f"/settings/users/{int(user['id'])}?saved=1", status_code=303)
 
     def reset(user_id: int, actor_id: int, raw: dict[str, str]) -> tuple[dict, dict]:
         errors = auth.password_errors(raw)
@@ -197,4 +198,5 @@ def add_user_admin_routes(
         errors, user = await run_in_threadpool(reset, user_id, request.state.user.id, raw)
         if errors:
             return render_edit(request, user, status_code=422, errors=errors)
-        return RedirectResponse(f"/settings/users/{user_id}?password_reset=1", status_code=303)
+        target = f"/settings/users/{int(user['id'])}?password_reset=1"
+        return RedirectResponse(target, status_code=303)
