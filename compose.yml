@@ -4,7 +4,8 @@
 services:
   app:
     build: .
-    image: makerhub3d:local
+    # Default: build locally. Set MAKERHUB_IMAGE (see .env.example) to run a published version.
+    image: ${MAKERHUB_IMAGE:-makerhub3d:local}
     restart: unless-stopped
     user: "10001:10001"
     read_only: true

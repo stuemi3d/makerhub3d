@@ -107,23 +107,116 @@ def test_dockerignore_excludes_env_files_except_env_example() -> None:
     assert re.search(r"^!\.env\.example$", dockerignore, re.MULTILINE)
 
 
-def test_image_workflow_has_read_only_token_and_pinned_actions() -> None:
+def workflow_job(name: str) -> str:
+    """Return the text of one job of the image workflow."""
     workflow = read(".github/workflows/docker.yml")
+    match = re.search(
+        rf"^  {name}:\n(.*?)(?=^  \w[\w-]*:\n|\Z)", workflow, re.MULTILINE | re.DOTALL
+    )
+    assert match is not None, f"job {name} not found"
+    return match.group(1)
 
-    assert re.search(r"^permissions:\s*\n\s+contents:\s*read\s*$", workflow, re.MULTILINE)
-    assert "write" not in re.sub(r"#.*", "", workflow)
+
+def test_image_workflow_default_token_is_read_only_and_actions_are_pinned() -> None:
+    workflow = read(".github/workflows/docker.yml")
+    top_level = workflow.split("\njobs:\n")[0]
+
+    assert re.search(r"^permissions:\s*\n\s+contents:\s*read\s*$", top_level, re.MULTILINE)
+    assert "write" not in re.sub(r"#.*", "", top_level)
     uses = USES_LINE.findall(workflow)
     assert uses
     for reference in uses:
         assert re.fullmatch(r"[\w./-]+@[0-9a-f]{40}", reference), reference
 
 
-def test_image_workflow_builds_without_publishing() -> None:
-    workflow = read(".github/workflows/docker.yml")
+def test_only_the_publish_job_may_write_packages() -> None:
+    workflow = re.sub(r"#.*", "", read(".github/workflows/docker.yml"))
 
-    assert re.search(r"^\s*push:\s*false\s*$", workflow, re.MULTILINE)
-    assert "registry" not in workflow.lower()
-    assert "docker login" not in workflow
+    assert workflow.count("packages: write") == 1
+    assert "packages: write" in workflow_job("publish")
+    assert "write" not in workflow_job("image")
+    assert not re.search(r"(?i)\w+:\s*write", workflow.replace("packages: write", ""))
+
+
+def test_build_job_does_not_publish_or_log_in() -> None:
+    job = workflow_job("image")
+
+    assert re.search(r"^\s*push:\s*false\s*$", job, re.MULTILINE)
+    assert "docker/login-action" not in job
+    assert "docker push" not in job
+    assert not re.search(r"ghcr\.io", job)
+
+
+def test_publish_runs_only_for_push_to_main_never_for_pull_requests() -> None:
+    job = workflow_job("publish")
+
+    assert re.search(
+        r"^\s*if:\s*github\.event_name == 'push' && github\.ref == 'refs/heads/main'\s*$",
+        job,
+        re.MULTILINE,
+    )
+    assert "pull_request" not in job
+
+
+def test_publish_waits_for_green_build_and_trivy() -> None:
+    job = workflow_job("publish")
+
+    assert re.search(r"^\s*needs:\s*image\s*$", job, re.MULTILINE)
+    # The scan step must come before the image is handed over to the publish job.
+    image_job = workflow_job("image")
+    assert image_job.index("aquasecurity/trivy-action@") < image_job.index("upload-artifact@")
+
+
+def test_publish_uses_the_scanned_image_not_a_second_build() -> None:
+    publish = workflow_job("publish")
+    image_job = workflow_job("image")
+
+    assert "docker save" in image_job
+    assert "actions/download-artifact@" in publish
+    assert "docker load" in publish
+    assert "build-push-action" not in publish
+    assert "docker build" not in publish
+
+
+def test_publish_tags_are_latest_and_short_commit_hash_only() -> None:
+    job = workflow_job("publish")
+
+    assert re.search(r"GITHUB_REPOSITORY,,", job)  # lower-case repository name
+    assert re.search(r'IMAGE="ghcr\.io/\$\{GITHUB_REPOSITORY,,\}"', job)
+    assert re.search(r"GITHUB_SHA::7", job)
+    pushes = re.findall(r"docker push (\S+)", job)
+    assert sorted(pushes) == ['"$IMAGE:$SHORT_SHA"', '"$IMAGE:latest"']
+
+
+def test_publish_login_uses_only_the_automatic_token() -> None:
+    job = workflow_job("publish")
+
+    assert "docker/login-action@" in job
+    assert "secrets.GITHUB_TOKEN" in job
+    assert not re.search(r"secrets\.(?!GITHUB_TOKEN)\w+", job)
+
+
+def test_published_image_links_back_to_the_repository() -> None:
+    job = workflow_job("image")
+
+    assert "org.opencontainers.image.source=https://github.com/${{ github.repository }}" in job
+
+
+def test_compose_uses_published_image_when_selected_and_builds_locally_by_default() -> None:
+    compose = read("compose.yml")
+
+    assert "build: ." in compose
+    assert "${MAKERHUB_IMAGE:-makerhub3d:local}" in compose
+    assert "MAKERHUB_IMAGE" in read(".env.example")
+
+
+def test_instructions_for_starting_and_rolling_back_a_version_exist() -> None:
+    guide = read("docs/image-starten.md")
+
+    assert "MAKERHUB_IMAGE" in guide
+    assert "latest" in guide
+    assert "docker compose pull" in guide
+    assert "--no-build" in guide
 
 
 def test_trivy_fails_on_fixable_high_and_critical_findings() -> None:
