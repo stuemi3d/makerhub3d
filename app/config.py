@@ -54,7 +54,8 @@ def parse_timezone(raw: str) -> str:
     name = raw.strip() or DEFAULT_TIMEZONE
     try:
         ZoneInfo(name)
-    except (ZoneInfoNotFoundError, ValueError):
+    except (ZoneInfoNotFoundError, ValueError, OSError):
+        # OSError: a region folder like "Europe" instead of a zone like "Europe/Berlin"
         raise ConfigError(
             "MAKERHUB_TIMEZONE is invalid: expected a time zone name like Europe/Berlin."
         ) from None

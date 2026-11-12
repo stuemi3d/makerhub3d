@@ -355,7 +355,7 @@ def test_other_time_zone(monkeypatch: pytest.MonkeyPatch) -> None:
     assert Settings.from_env().timezone == "America/New_York"
 
 
-@pytest.mark.parametrize("value", ["Mars/Olympus", "../etc/passwd", "Europe/", "UTC+2"])
+@pytest.mark.parametrize("value", ["Mars/Olympus", "../etc/passwd", "Europe/", "Europe", "UTC+2"])
 def test_invalid_time_zone_stops_the_start(monkeypatch: pytest.MonkeyPatch, value: str) -> None:
     monkeypatch.setenv("MAKERHUB_TIMEZONE", value)
 
