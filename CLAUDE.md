@@ -24,7 +24,7 @@ Diese Datei gilt für jede Claude-Code-Sitzung in diesem Repository. Der vollst�
 7. Commit(s), Push des Branches, Pull Request mit der Vorlage (`.github/pull_request_template.md`), verknüpft mit dem Issue (`Closes #<nr>`).
 8. Kommentare des Maintainers im PR umsetzen, bis er zufrieden ist. **Er merged – nie du.**
 
-**Ausnahme:** Reine Doku- oder Organisationsaufgaben ohne Programmcode (z. B. Plan, Regeln, Vorlagen, Issues) brauchen keine Testfall-Freigabe – Schritt 2 entfällt dann. Unter „Testfälle“ steht im PR, dass es keinen Code und deshalb keine automatisierten Tests gibt. Das unabhängige Review (Schritt 6) findet trotzdem statt.
+**Ausnahme:** Reine Doku- oder Organisationsaufgaben ohne Programmcode (z. B. Plan, Regeln, Vorlagen, Issues) brauchen keine test-bezogenen Schritte – Schritt 2 (Testfall-Freigabe), Schritt 4 (Tests zuerst schreiben) und Schritt 5 (Testlauf) entfallen dann. Unter „Testfälle“ steht im PR, dass es keinen Code und deshalb keine automatisierten Tests gibt. Das unabhängige Review (Schritt 6) läuft immer.
 
 Halte jeden Pull Request klein. Wird eine Aufgabe größer als gedacht: stoppen, Vorschlag zur Aufteilung machen.
 
@@ -32,8 +32,11 @@ Halte jeden Pull Request klein. Wird eine Aufgabe größer als gedacht: stoppen,
 
 - Nicht mergen, keine PRs freigeben, nicht auf `main` pushen, kein Force-Push, keine Repo-Einstellungen ändern.
 - Keine Passwörter, Tokens, Keys, IP-Adressen, Hostnamen, E-Mail-Adressen oder sonstige persönliche Daten in Code, Tests, Fixtures, Commits, Issues oder PRs.
-  - **Erlaubt sind:** `127.0.0.1`, `localhost` und `0.0.0.0` (in Container- und Server-Konfiguration) sowie Beispiel-Domains nach RFC 2606 (`example.com`, `example.org`, `*.example`).
-  - **Beispieldaten sind immer erfunden.** Einzige Ausnahme: 3MF- und G-Code-Testdateien stellt der Maintainer bereit (selbst gesliced, z. B. ein Würfel). Bevor sie ins Repo kommen, entfernst du Benutzernamen, Seriennummern, Pfade und ähnliche Metadaten und weist im PR unter „Achtung“ darauf hin.
+  - **Überall erlaubt** (Code, Tests, Doku, Konfiguration): `127.0.0.1`, `localhost` und Beispiel-Domains nach RFC 2606 (`example.com`, `example.org`, `*.example`).
+  - **`0.0.0.0`** ist nur in Container- und Server-Konfiguration erlaubt.
+  - **Beispieldaten sind immer erfunden.** Es gibt genau zwei Ausnahmen; bei beiden weist du im PR unter „Achtung“ darauf hin:
+    - **3MF- und G-Code-Testdateien** stellt der Maintainer bereit (selbst gesliced, z. B. ein Würfel). Bevor sie ins Repo kommen, entfernst du Benutzernamen, Seriennummern, Pfade und ähnliche Metadaten.
+    - **Aufgezeichnete Bambuddy-Antworten** werden echt aufgezeichnet und dann bereinigt: Druckernamen, Seriennummern, Dateinamen, Benutzernamen, IP-Adressen/Hostnamen und andere persönliche Werte ersetzt du durch erfundene.
 - Keine `.env`-Dateien lesen außer `.env.example` und `.env.test`. `.env.test` bleibt lokal und kommt nie ins Repo (dort steht später der Bambuddy-Test-Key). Echte Zugangsdaten gehören nie ins Repo; im Repo liegt nur `.env.example` mit Platzhaltern.
 - Keine Dateien außerhalb dieses Repos ändern (Ausnahme: temporäre Dateien in `/tmp`).
 - Nichts deployen und keine laufende Instanz verändern. Das macht der Maintainer.
@@ -47,7 +50,7 @@ Jeder PR enthält (siehe Vorlage):
 - **Was ändert sich** – in einfachen Worten, ohne Fachjargon
 - **So testest du es** – Schritte zum Ausprobieren
 - **Testfälle** – die bestätigten Klartext-Testfälle und dass sie automatisiert geprüft werden
-- **Achtung** – ausdrücklich auflisten, falls zutreffend: neue/aktualisierte Abhängigkeit, Datenbank-Migration, Änderung an `.github/workflows/`, Login/Rechte/Sicherheit, Datei-Uploads, neue 3MF-/G-Code-Testdateien (mit entfernten Metadaten), Zugriff auf Bambuddy oder andere externe Dienste. Wenn nichts davon zutrifft: „Keine heiklen Änderungen.“
+- **Achtung** – ausdrücklich auflisten, falls zutreffend: neue/aktualisierte Abhängigkeit, Datenbank-Migration, Änderung an `.github/workflows/`, Login/Rechte/Sicherheit, Datei-Uploads, neue Testdaten aus echten Quellen (3MF/G-Code, aufgezeichnete Bambuddy-Antworten) mit entfernten bzw. ersetzten persönlichen Werten, Zugriff auf Bambuddy oder andere externe Dienste. Wenn nichts davon zutrifft: „Keine heiklen Änderungen.“
 - **Review-Ergebnis** – was der unabhängige Review-Durchlauf gefunden hat und wie es behandelt wurde
 
 ## Technik und Konventionen
@@ -59,7 +62,7 @@ Jeder PR enthält (siehe Vorlage):
 - Kosten und Preise beim Buchen als Wert speichern; Bestand immer aus Lagerbewegungen berechnen.
 - Produktionen und Lagerbewegungen nie löschen, sondern stornieren.
 - Jede Datenbankänderung über eine Alembic-Migration, mit Test.
-- Bambuddy-Zugriffe ausschließlich über einen einzigen Client-Baustein; Tests nutzen aufgezeichnete Antworten (Fixtures), nie die echte API.
+- Bambuddy-Zugriffe ausschließlich über einen einzigen Client-Baustein; Tests nutzen aufgezeichnete, bereinigte Antworten (Fixtures, siehe „Was du nie tust“), nie die echte API.
 - Konfiguration nur über Umgebungsvariablen (siehe `.env.example`).
 
 ## Sicherheits-Checkliste (für jedes Review)

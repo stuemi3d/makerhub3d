@@ -103,30 +103,37 @@ Der Artikel ist der Knotenpunkt; alles andere hängt über die Artikelnummer an 
 
 Gerechnet wird in dieser Reihenfolge. Standardwerte (Ausschussquote, Gewinnaufschlag, Arbeits-Stundensatz, Rundung) kommen aus den Einstellungen.
 
+**Einheiten:** Eingaben in Gramm, Minuten, Watt und Prozent werden immer ausdrücklich umgerechnet: Prozentwert ÷ 100, Gramm ÷ 1000 → kg, Watt ÷ 1000 → kW, Minuten ÷ 60 → Stunden. Alle Zeiten (Druckzeit, Rüstzeit, Nacharbeit) gehen in Stunden in die Formeln ein.
+
 1. **Druckkosten pro Platte** = Material + Strom + Maschine
 2. **Druckkosten pro Stück** = Druckkosten pro Platte ÷ Teile pro Platte
-3. **Druckkosten pro Stück inkl. Ausschuss** = Druckkosten pro Stück × (1 + Ausschussquote in %). Die Ausschussquote wirkt nur auf die Druckkosten.
-4. **Arbeitszeit pro Stück** (optional, jedes leere Feld = 0) = (Rüstzeit pro Platte in Minuten ÷ Teile pro Platte + Nacharbeit pro Stück in Minuten) ÷ 60 × Arbeits-Stundensatz
+3. **Druckkosten pro Stück inkl. Ausschuss** = Druckkosten pro Stück × (1 + Ausschussquote ÷ 100). Die Ausschussquote wirkt nur auf die Druckkosten.
+4. **Arbeitszeit pro Stück** (optional, jedes leere Feld = 0):
+   - in Stunden = (Rüstzeit pro Platte in Minuten ÷ Teile pro Platte + Nacharbeit pro Stück in Minuten) ÷ 60
+   - als Kosten = Arbeitszeit pro Stück in Stunden × Arbeits-Stundensatz
 5. **Zusatzteile pro Stück** = Summe aus Menge × Preis
-6. **Selbstkosten pro Stück** = (3) + (4) + (5); angezeigt **ohne Arbeitszeit** ((3) + (5)) und **mit Arbeitszeit**
-7. **Verkaufspreis-Vorschlag** = Selbstkosten pro Stück (mit Arbeitszeit) × (1 + Gewinnaufschlag in %), gerundet
+6. **Selbstkosten pro Stück** = (3) + Arbeitskosten aus (4) + (5); angezeigt **ohne Arbeitszeit** ((3) + (5)) und **mit Arbeitszeit**
+7. **Verkaufspreis-Vorschlag** = Selbstkosten pro Stück (mit Arbeitszeit) × (1 + Gewinnaufschlag ÷ 100), gerundet
+8. **Verkaufspreis** = der am Artikel hinterlegte Soll-Verkaufspreis, falls gesetzt (bei Varianten ggf. von der Vorlage geerbt, siehe Abschnitt 4); sonst der Verkaufspreis-Vorschlag
+9. **Gewinn pro Stück** = Verkaufspreis − Selbstkosten pro Stück (mit Arbeitszeit)
+10. **Effektiver Stundenlohn** = (Verkaufspreis − Selbstkosten pro Stück ohne Arbeitszeit) ÷ Arbeitszeit pro Stück in Stunden. Ist die Arbeitszeit 0, wird „–“ angezeigt (keine Division).
 
 | Baustein | Bezug | Berechnung | Werte |
 | --- | --- | --- | --- |
-| Material | pro Platte | Gramm × Preis/kg, eine Zeile pro Filament/Farbe | Gramm aus 3MF/G-Code (inkl. Spülmenge); Preisquelle je Zeile: echte Bambuddy-Spule, Durchschnitt passender geschäftlicher Spulen oder frei (z. B. bestellte Spule) |
-| Strom | pro Platte | Druckzeit × Ø Verbrauch pro Stunde × Strompreis | Ø Verbrauch aus echten Drucken im Bambuddy-Archiv |
-| Maschine | pro Platte | Druckzeit × Druckerstundensatz | Stundensatz inkl. Trocknungsaufschlag |
-| Ausschussquote | auf Druckkosten | × (1 + Ausschussquote in %) | Standard aus Einstellungen |
+| Material | pro Platte | Gramm ÷ 1000 × Preis/kg, eine Zeile pro Filament/Farbe | Gramm aus 3MF/G-Code (inkl. Spülmenge); Preisquelle je Zeile: echte Bambuddy-Spule, Durchschnitt passender geschäftlicher Spulen oder frei (z. B. bestellte Spule) |
+| Strom | pro Platte | Druckzeit in Stunden × Ø Verbrauch in kWh pro Stunde × Strompreis pro kWh | Ø Verbrauch aus echten Drucken im Bambuddy-Archiv |
+| Maschine | pro Platte | Druckzeit in Stunden × Druckerstundensatz | Stundensatz inkl. Trocknungsaufschlag |
+| Ausschussquote | auf Druckkosten | × (1 + Ausschussquote ÷ 100) | Standard aus Einstellungen |
 | Rüstzeit (optional) | pro Platte | Minuten ÷ Teile pro Platte ÷ 60 × Arbeits-Stundensatz | z. B. Platte vorbereiten, Druck starten, abnehmen; leer = 0 |
 | Nacharbeit (optional) | pro Stück | Minuten ÷ 60 × Arbeits-Stundensatz | z. B. Stützen entfernen, entgraten, verpacken; leer = 0 |
 | Zusatzteile | pro Stück | Menge × Preis | freie Liste; später Einkaufspreise aus der Rechnungs-Software |
-| Gewinnaufschlag | auf Selbstkosten | × (1 + Gewinnaufschlag in %) | Standard aus Einstellungen |
+| Gewinnaufschlag | auf Selbstkosten | × (1 + Gewinnaufschlag ÷ 100) | Standard aus Einstellungen |
 
-Druckerstundensatz = Anschaffungswert ÷ (Nutzungsjahre × Druckstunden pro Jahr) × (1 + Wartungsaufschlag)
+Druckerstundensatz = Anschaffungswert ÷ (Nutzungsjahre × Druckstunden pro Jahr) × (1 + Wartungsaufschlag in % ÷ 100)
 
-**Trocknung pauschal:** Die Trocknerkosten pro Jahr (Gerätekosten + Trocknungsstunden × Leistung × Strompreis) aller Trockner werden auf alle Druckstunden pro Jahr verteilt und auf den Druckerstundensatz aufgeschlagen.
+**Trocknung pauschal:** Die Trocknerkosten pro Jahr (Gerätekosten + Trocknungsstunden × Leistung in Watt ÷ 1000 × Strompreis pro kWh) aller Trockner werden auf alle Druckstunden pro Jahr verteilt und auf den Druckerstundensatz aufgeschlagen.
 
-**Verkaufspreis-Vorschlag:** wie in Schritt 7, gerundet (z. B. auf ,50 oder ,90); Kleinunternehmer-tauglich (ohne Umsatzsteuer). Angezeigt werden Selbstkosten **ohne und mit Arbeitszeit**, Gewinn pro Stück und effektiver Stundenlohn.
+**Verkaufspreis-Vorschlag:** wie in Schritt 7, gerundet (z. B. auf ,50 oder ,90); Kleinunternehmer-tauglich (ohne Umsatzsteuer). Angezeigt werden Selbstkosten **ohne und mit Arbeitszeit**, Verkaufspreis-Vorschlag, Gewinn pro Stück und effektiver Stundenlohn (Schritte 8–10).
 
 **Spulen:** Geschäftliche Spulen werden über das Bambuddy-Feld „Kategorie“ erkannt (Wort in den Einstellungen festlegbar); die Kalkulation zeigt standardmäßig nur diese, mit Schalter „alle Spulen“. Der verwendete Preis wird in der Kalkulation gespeichert.
 
@@ -134,7 +141,7 @@ Druckerstundensatz = Anschaffungswert ÷ (Nutzungsjahre × Druckstunden pro Jahr
 
 ## 7. Auswertung und Dashboard
 
-- **Pro Artikel:** kalkulierte vs. tatsächliche Kosten pro Stück, Ø Verkaufspreis, Gewinn pro Stück (€ und %), produziert / verkauft / Bestand, Fehldruck-Anteil; Diagramm „Kosten pro Stück über die Zeit“; Warnung bei Abweichung über X % (Standard 15 %).
+- **Pro Artikel:** kalkulierte vs. tatsächliche Kosten pro Stück, Ø Verkaufspreis, Gewinn pro Stück (€ und %) und effektiver Stundenlohn – berechnet wie in Abschnitt 6 (Schritte 9 und 10), aber mit tatsächlichen Werten: echter Verkaufspreis und tatsächliche Produktionskosten statt Kalkulation; produziert / verkauft / Bestand, Fehldruck-Anteil; Diagramm „Kosten pro Stück über die Zeit“; Warnung bei Abweichung über X % (Standard 15 %).
 - **Pro Vorlage:** alle Varianten nebeneinander.
 - **Gesamt (Zeitraum wählbar):** Umsatz, Kosten der verkauften Teile, Rohgewinn, Top/Flop, Lagerwert, Ladenhüter, Fehldruckkosten, CSV-Export.
 - **Kosten verkaufter Teile:** gleitender Durchschnitt; FIFO später umschaltbar.
@@ -162,7 +169,7 @@ Das Tool wird von Anfang an so gebaut, dass es als Open Source veröffentlicht *
 | Einstellungen, Geräte, Bambuddy-Verbindung | ja | nein | nein |
 | Benutzer, Sicherung, Änderungsprotokoll | ja | nein | nein |
 
-**Geheimnisse:** Zugangsdaten (Bambuddy-Key, Sitzungsschlüssel, später Rechnungs-Software) nur über Umgebungsvariablen bzw. eine `.env`-Datei außerhalb des Repos; im Repo nur `.env.example` mit Platzhaltern. Zwei-Faktor-Geheimnisse verschlüsselt in der Datenbank. Keys in der Oberfläche nur maskiert.
+**Geheimnisse:** Zugangsdaten (Bambuddy-Key, Sitzungsschlüssel, später Rechnungs-Software) nur über Umgebungsvariablen bzw. in einer `.env`-Datei, die nie ins Repository kommt; im Repo nur `.env.example` mit Platzhaltern. Zwei-Faktor-Geheimnisse verschlüsselt in der Datenbank. Keys in der Oberfläche nur maskiert.
 
 **Bambuddy:** eigener API-Key mit ausschließlich Leserechten.
 
@@ -178,7 +185,7 @@ Das Tool wird von Anfang an so gebaut, dass es als Open Source veröffentlicht *
 - Vor dem Programmieren werden die **Testfälle in Klartext** im Issue festgehalten und vom Maintainer bestätigt.
 - `main` ist geschützt: nur per Pull Request, Freigabe durch den Maintainer, Squash-Merge, keine Force-Pushes.
 - Automatische Prüfungen bei jedem Pull Request: Tests, ruff, gitleaks (Geheimnisse), CodeQL, Dependency Review; Trivy für das Docker-Image.
-- Vor jedem Pull Request prüft ein unabhängiger Review-Durchlauf (frischer Kontext) den Code gegen `CLAUDE.md` und die Sicherheits-Checkliste.
+- Vor jedem Pull Request prüft ein unabhängiger Review-Durchlauf (frischer Kontext) die Änderungen gegen `CLAUDE.md` und die Sicherheits-Checkliste.
 - Dependabot schlägt Updates als Pull Request vor.
 - Das Docker-Image wird von GitHub Actions gebaut; das Aktualisieren der laufenden Instanz erfolgt immer von Hand.
 
@@ -188,7 +195,7 @@ Das Tool wird von Anfang an so gebaut, dass es als Open Source veröffentlicht *
 | --- | --- |
 | Kostenrechnung | Unit-Tests mit festen Zahlen, auch Randfälle (0 Teile, fehlender Preis) |
 | 3MF/G-Code | Tests mit Beispieldateien, die der Maintainer bereitstellt (selbst gesliced, z. B. ein Würfel); vor dem Einchecken werden Benutzernamen, Seriennummern, Pfade und ähnliche Metadaten entfernt. Alle übrigen Beispieldaten sind erfunden. |
-| Bambuddy-Anbindung | aufgezeichnete Antworten; in CI läuft kein Bambuddy |
+| Bambuddy-Anbindung | echt aufgezeichnete, dann bereinigte Antworten: Druckernamen, Seriennummern, Dateinamen, Benutzernamen, IP-Adressen/Hostnamen und andere persönliche Werte werden durch erfundene ersetzt; in CI läuft kein Bambuddy |
 | Seiten und Formulare | FastAPI-Testclient |
 | Migrationen | auf leerer und gefüllter Test-Datenbank |
 | Sicherung | Sicherung erstellen und wiederherstellen |

@@ -150,7 +150,6 @@ activemq-data/
 *.sage.py
 
 # Environments
-.env
 .envrc
 .venv
 env/
@@ -227,4 +226,8 @@ __marimo__/
 # MakerHub 3D: local data and databases
 /data/
 *.sqlite
+*.sqlite3
 *.db
+*.db-wal
+*.db-shm
+*.db-journal
