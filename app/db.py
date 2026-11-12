@@ -61,7 +61,27 @@ def alembic_config(connection: Connection) -> Config:
     return config
 
 
+class MigrationError(RuntimeError):
+    """Raised when a migration leaves references between tables broken."""
+
+
 def run_migrations(engine: Engine) -> None:
-    """Brings the database to the newest version. Safe to call on every start."""
-    with engine.begin() as connection:
-        command.upgrade(alembic_config(connection), "head")
+    """Brings the database to the newest version. Safe to call on every start.
+
+    Foreign keys are switched off meanwhile: SQLite changes a table by copying and dropping
+    it, and the drop would otherwise delete dependent rows (ON DELETE CASCADE). Afterwards
+    all references are checked.
+    """
+    with engine.connect() as connection:
+        # Only effective outside a transaction, hence the commit before the migration.
+        connection.exec_driver_sql("PRAGMA foreign_keys=OFF")
+        connection.commit()
+        try:
+            with connection.begin():
+                command.upgrade(alembic_config(connection), "head")
+                broken = connection.exec_driver_sql("PRAGMA foreign_key_check").fetchall()
+                if broken:
+                    raise MigrationError("Migration left broken references between tables.")
+        finally:
+            connection.exec_driver_sql("PRAGMA foreign_keys=ON")
+            connection.commit()

@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% from "_form_macros.html" import field_attrs, feedback %}
+{% block title %}{{ t('user.new.title') }} – {{ app_name }}{% endblock %}
+{% block content %}
+{% set settings_tab = 'users' %}
+{% include "_settings_tabs.html" %}
+<h1>{{ t('user.new.title') }}</h1>
+{% if errors %}
+<p role="alert"><mark>{{ t('user.has_errors') }}</mark></p>
+{% endif %}
+<form method="post" action="/settings/users/new" novalidate>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label for="username">{{ t('user.field.username') }}</label>
+  <input type="text" maxlength="50" autocomplete="off" autocapitalize="none" {{ field_attrs('username', errors) }} value="{{ values.get('username', '') }}">
+  {{ feedback('username', errors, t, 'user.hint.') }}
+  <label for="role">{{ t('user.field.role') }}</label>
+  <select {{ field_attrs('role', errors) }}>
+    {% for role in roles %}
+    <option value="{{ role }}"{% if values.get('role') == role %} selected{% endif %}>{{ t('role.' ~ role) }}</option>
+    {% endfor %}
+  </select>
+  {{ feedback('role', errors, t, 'user.hint.') }}
+  <label for="password">{{ t('user.field.password') }}</label>
+  <input type="password" autocomplete="new-password" {{ field_attrs('password', errors) }}>
+  {{ feedback('password', errors, t, 'user.hint.') }}
+  <label for="password_repeat">{{ t('user.field.password_repeat') }}</label>
+  <input type="password" autocomplete="new-password" {{ field_attrs('password_repeat', errors) }}>
+  {{ feedback('password_repeat', errors, t, 'user.hint.') }}
+  <button type="submit">{{ t('user.create') }}</button>
+</form>
+<p><a href="/settings/users">{{ t('users.back') }}</a></p>
+{% endblock %}

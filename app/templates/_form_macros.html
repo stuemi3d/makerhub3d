@@ -1,0 +1,9 @@
+{# Shared helpers for form fields: error message or hint below each field. #}
+{% macro field_attrs(name, errors) -%}
+id="{{ name }}" name="{{ name }}"{% if errors.get(name) %} aria-invalid="true" aria-describedby="{{ name }}-error"{% else %} aria-describedby="{{ name }}-hint"{% endif %}
+{%- endmacro %}
+{% macro feedback(name, errors, t, hint_prefix) -%}
+{% if errors.get(name) %}<small id="{{ name }}-error">{{ t(errors[name]) }}</small>
+{% else %}<small id="{{ name }}-hint">{{ t(hint_prefix ~ name) }}</small>
+{% endif %}
+{%- endmacro %}

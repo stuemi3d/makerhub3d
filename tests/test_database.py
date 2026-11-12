@@ -13,7 +13,14 @@ from sqlalchemy import inspect
 from sqlalchemy.orm import Session
 
 from app.config import Settings
-from app.db import DATABASE_FILE, Base, alembic_config, make_engine, run_migrations
+from app.db import (
+    DATABASE_FILE,
+    Base,
+    MigrationError,
+    alembic_config,
+    make_engine,
+    run_migrations,
+)
 from app.main import create_app
 from app.models import AppSettings, Rounding
 from tests.auth import signed_in_client
@@ -204,8 +211,9 @@ def test_deleting_a_user_also_deletes_their_sessions(tmp_path: Path) -> None:
     with sqlite3.connect(database) as connection:
         connection.execute("PRAGMA foreign_keys=ON")
         connection.execute(
-            "INSERT INTO users (id, username, password_hash, role, failed_logins, created_at)"
-            " VALUES (1, 'erfunden', 'x', 'admin', 0, '2026-01-01 00:00:00')"
+            "INSERT INTO users"
+            " (id, username, username_key, password_hash, role, failed_logins, created_at)"
+            " VALUES (1, 'erfunden', 'erfunden', 'x', 'admin', 0, '2026-01-01 00:00:00')"
         )
         connection.execute(
             "INSERT INTO login_sessions (id, user_id, csrf_token, created_at, last_seen_at)"
@@ -220,6 +228,100 @@ def test_unknown_role_is_refused(tmp_path: Path) -> None:
     run_migrations(make_engine(database))
     with sqlite3.connect(database) as connection, pytest.raises(sqlite3.IntegrityError):
         connection.execute(
-            "INSERT INTO users (username, password_hash, role, failed_logins, created_at)"
-            " VALUES ('erfunden', 'x', 'chef', 0, '2026-01-01 00:00:00')"
+            "INSERT INTO users"
+            " (username, username_key, password_hash, role, failed_logins, created_at)"
+            " VALUES ('erfunden', 'erfunden', 'x', 'chef', 0, '2026-01-01 00:00:00')"
         )
+
+
+# --- Issue #28: active flag and case-insensitive names --------------------------------
+
+
+def test_existing_users_stay_active_and_get_a_name_key(tmp_path: Path) -> None:
+    database = tmp_path / "users.db"
+    engine = make_engine(database)
+    with engine.begin() as connection:
+        command.upgrade(alembic_config(connection), "0002")
+    with sqlite3.connect(database) as connection:
+        connection.execute(
+            "INSERT INTO users (username, password_hash, role, failed_logins, created_at)"
+            " VALUES ('Jörg-Erfunden', 'x', 'admin', 0, '2026-01-01 00:00:00')"
+        )
+
+    run_migrations(engine)
+
+    with sqlite3.connect(database) as connection:
+        row = connection.execute("SELECT username, username_key, active FROM users").fetchone()
+    assert row == ("Jörg-Erfunden", "jörg-erfunden", 1)
+
+
+def test_names_differing_only_in_case_are_refused(tmp_path: Path) -> None:
+    database = tmp_path / "unique.db"
+    run_migrations(make_engine(database))
+    insert = (
+        "INSERT INTO users"
+        " (username, username_key, password_hash, role, failed_logins, created_at)"
+        " VALUES (?, ?, 'x', 'admin', 0, '2026-01-01 00:00:00')"
+    )
+    with sqlite3.connect(database) as connection:
+        connection.execute(insert, ("Anna", "anna"))
+        with pytest.raises(sqlite3.IntegrityError):
+            connection.execute(insert, ("ANNA", "anna"))
+
+
+def test_user_migration_can_be_undone(tmp_path: Path) -> None:
+    engine = make_engine(tmp_path / "undo.db")
+    run_migrations(engine)
+
+    with engine.begin() as connection:
+        command.downgrade(alembic_config(connection), "0002")
+        columns = {column["name"] for column in inspect(connection).get_columns("users")}
+
+    assert "active" not in columns
+    assert "username_key" not in columns
+
+
+def test_migrations_keep_rows_of_dependent_tables(tmp_path: Path) -> None:
+    # SQLite rebuilds a changed table; that must not delete rows that point to it.
+    database = tmp_path / "children.db"
+    engine = make_engine(database)
+    with engine.begin() as connection:
+        command.upgrade(alembic_config(connection), "0002")
+    with sqlite3.connect(database) as connection:
+        connection.execute(
+            "INSERT INTO users (id, username, password_hash, role, failed_logins, created_at)"
+            " VALUES (1, 'erfunden', 'x', 'admin', 0, '2026-01-01 00:00:00')"
+        )
+        connection.execute(
+            "INSERT INTO login_sessions (id, user_id, csrf_token, created_at, last_seen_at)"
+            " VALUES ('abc', 1, 't', '2026-01-01 00:00:00', '2026-01-01 00:00:00')"
+        )
+
+    run_migrations(engine)
+
+    with sqlite3.connect(database) as connection:
+        assert connection.execute("SELECT count(*) FROM login_sessions").fetchone() == (1,)
+
+
+def test_foreign_keys_are_on_again_after_migrating(tmp_path: Path) -> None:
+    engine = make_engine(tmp_path / "pragma.db")
+    run_migrations(engine)
+
+    with engine.connect() as connection:
+        assert connection.exec_driver_sql("PRAGMA foreign_keys").scalar() == 1
+
+
+def test_broken_references_stop_the_migration(tmp_path: Path) -> None:
+    database = tmp_path / "broken.db"
+    engine = make_engine(database)
+    with engine.begin() as connection:
+        command.upgrade(alembic_config(connection), "0002")
+    with sqlite3.connect(database) as connection:
+        # Foreign keys are off in a plain sqlite3 connection, so this orphan gets in.
+        connection.execute(
+            "INSERT INTO login_sessions (id, user_id, csrf_token, created_at, last_seen_at)"
+            " VALUES ('abc', 99, 't', '2026-01-01 00:00:00', '2026-01-01 00:00:00')"
+        )
+
+    with pytest.raises(MigrationError):
+        run_migrations(engine)

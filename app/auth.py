@@ -7,6 +7,7 @@ after 8 hours without activity, passwords have at least 12 characters.
 import hashlib
 import secrets
 import threading
+import unicodedata
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from functools import cache
@@ -119,38 +120,86 @@ def validate_setup(raw: dict[str, str], expected_code: str | None) -> dict[str, 
     errors = {}
     if not setup_code_matches(expected_code, raw.get("setup_code", "")):
         errors["setup_code"] = "setup.error.code"
-    username = raw.get("username", "").strip()
+    if error := username_error(raw.get("username", "")):
+        errors["username"] = error
+    errors.update(password_errors(raw))
+    return errors
+
+
+# --- Users -----------------------------------------------------------------------------
+
+
+def name_key(username: str) -> str:
+    """Names are unique regardless of case: "Anna" and "anna" are the same user.
+
+    NFKC first, so that the same letter typed in different ways (e.g. "ö" as one character
+    or as "o" plus dots) counts as the same name.
+    """
+    return unicodedata.normalize("NFKC", username.strip()).casefold()
+
+
+def username_error(username: str) -> str | None:
+    username = username.strip()
     if not username:
-        errors["username"] = "setup.error.required"
-    elif len(username) > MAX_USERNAME_LENGTH:
-        errors["username"] = "setup.error.username_too_long"
-    # The values below are translation keys, not passwords (hence the S105 exceptions).
+        return "user.error.required"
+    if len(username) > MAX_USERNAME_LENGTH:
+        return "user.error.username_too_long"
+    return None
+
+
+def password_errors(raw: dict[str, str]) -> dict[str, str]:
+    """Checks the fields password and password_repeat of a form."""
+    # The values are translation keys, not passwords (hence the S105 exceptions).
     password = raw.get("password", "")
     if len(password) < MIN_PASSWORD_LENGTH:
-        errors["password"] = "setup.error.password_too_short"  # noqa: S105
-    elif len(password) > MAX_PASSWORD_LENGTH:
-        errors["password"] = "setup.error.password_too_long"  # noqa: S105
-    elif raw.get("password_repeat", "") != password:
-        errors["password_repeat"] = "setup.error.password_mismatch"  # noqa: S105
-    return errors
+        return {"password": "user.error.password_too_short"}
+    if len(password) > MAX_PASSWORD_LENGTH:
+        return {"password": "user.error.password_too_long"}
+    if raw.get("password_repeat", "") != password:
+        return {"password_repeat": "user.error.password_mismatch"}
+    return {}
 
 
 def has_users(db: Session) -> bool:
     return db.scalar(select(User.id).limit(1)) is not None
 
 
-def create_admin(db: Session, username: str, password: str) -> User:
+def name_taken(db: Session, username: str) -> bool:
+    return db.scalar(select(User.id).where(User.username_key == name_key(username))) is not None
+
+
+def create_user(db: Session, username: str, password: str, role: UserRole) -> User:
     user = User(
         username=username.strip(),
+        username_key=name_key(username),
         password_hash=hash_password(password),
-        role=UserRole.ADMIN,
+        role=role,
         failed_logins=0,
         locked_until=None,
         created_at=utcnow(),
+        active=True,
     )
     db.add(user)
     db.flush()
     return user
+
+
+def reset_password(db: Session, user: User, password: str) -> None:
+    """New password set by the admin: lifts a lock and ends all logins of this user."""
+    user.password_hash = hash_password(password)
+    user.failed_logins = 0
+    user.locked_until = None
+    end_all_sessions(db, user.id)
+
+
+def minutes_locked(user: User) -> int | None:
+    """Remaining minutes of a lock after failed logins (rounded up), or None."""
+    if user.locked_until is None:
+        return None
+    remaining = user.locked_until - utcnow()
+    if remaining <= timedelta(0):
+        return None
+    return -(-remaining // timedelta(minutes=1))
 
 
 # --- Login and lockout -----------------------------------------------------------------
@@ -159,9 +208,10 @@ def create_admin(db: Session, username: str, password: str) -> User:
 def check_login(db: Session, username: str, password: str) -> User | None:
     """Returns the user for a correct login, otherwise None. Counts failures and locks."""
     now = utcnow()
-    user = db.scalar(select(User).where(User.username == username.strip()))
-    if user is None or len(password) > MAX_PASSWORD_LENGTH:
-        # Same effort as for a real user, so the answer time does not reveal names.
+    user = db.scalar(select(User).where(User.username_key == name_key(username)))
+    if user is None or not user.active or len(password) > MAX_PASSWORD_LENGTH:
+        # Same effort as for a real user, so the answer time does not reveal names
+        # or deactivated users.
         verify_password(_dummy_hash(), password[:MAX_PASSWORD_LENGTH])
         return None
     if user.locked_until is not None:
@@ -231,9 +281,14 @@ def find_session(db: Session, token: str | None) -> tuple[LoginSession, User] | 
     if now - login.last_seen_at >= TOUCH_INTERVAL:
         login.last_seen_at = now
     user = db.get(User, login.user_id)
-    if user is None:
+    if user is None or not user.active:
+        db.delete(login)
         return None
     return login, user
+
+
+def end_all_sessions(db: Session, user_id: int) -> None:
+    db.execute(delete(LoginSession).where(LoginSession.user_id == user_id))
 
 
 def end_session(db: Session, token: str | None) -> None:

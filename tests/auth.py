@@ -7,8 +7,13 @@ from typing import Any
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
 
+from app import auth
+from app.config import Settings
+from app.db import make_engine, run_migrations
 from app.main import create_app
+from app.models import UserRole
 
 ADMIN_NAME = "werkstatt"
 ADMIN_PASSWORD = "ein-langes-test-passwort"
@@ -79,4 +84,29 @@ def sign_in(client: AppClient) -> None:
 def signed_in_client(app: FastAPI | None = None, **kwargs: Any) -> Iterator[AppClient]:
     with AppClient(app or create_app(), **kwargs) as client:
         sign_in(client)
+        yield client
+
+
+EMPLOYEE_NAME = "mitarbeiterin"
+READER_NAME = "leser"
+OTHER_PASSWORD = "noch-ein-test-passwort"
+
+
+def add_user(username: str, role: str, password: str = OTHER_PASSWORD) -> int:
+    """Creates a user directly in the database of the current test and returns its id."""
+    engine = make_engine(Settings.from_env().database_path)
+    run_migrations(engine)
+    with Session(engine) as db, db.begin():
+        return auth.create_user(db, username, password, UserRole(role)).id
+
+
+@contextmanager
+def client_as(
+    username: str, password: str = OTHER_PASSWORD, app: FastAPI | None = None
+) -> Iterator[AppClient]:
+    """A client logged in as an existing user."""
+    with AppClient(app or create_app()) as client:
+        response = log_in(client, username, password)
+        assert response.status_code == 200, response.text
+        client.csrf_token = csrf_from(client.get("/").text)
         yield client

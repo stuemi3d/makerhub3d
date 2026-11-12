@@ -45,3 +45,19 @@ MakerHub 3D läuft immer auch für sich allein im Browser. Eingebettet in die Ba
 - Bambuddy und MakerHub 3D unter **derselben Hauptadresse** laufen, z. B. `bambuddy.example.com` und `makerhub.example.com`.
 
 Bei ganz verschiedenen Adressen schicken Browser das Anmelde-Cookie im eingebetteten Rahmen nicht mit. MakerHub 3D funktioniert dann nur in einem eigenen Browser-Tab.
+
+## Weitere Benutzer
+
+Unter **Einstellungen → Benutzer** (nur für Admins) legst du weitere Benutzer an. Jeder bekommt eine feste Rolle:
+
+| Rolle | Darf |
+| --- | --- |
+| Admin | alles, auch Einstellungen und Benutzer |
+| Mitarbeiter | ansehen und bearbeiten (Artikel, Kalkulation, Produktion, Lager, Verkäufe) |
+| Nur lesen | nur ansehen |
+
+- Das Startpasswort vergibst du selbst und teilst es dem Benutzer mit; es wird keine E-Mail verschickt.
+- Benutzer werden nie gelöscht, nur **deaktiviert**. Ein deaktivierter Benutzer wird sofort abgemeldet und kann sich nicht mehr anmelden. Du kannst ihn jederzeit wieder aktivieren.
+- **Passwort zurücksetzen:** neues Startpasswort vergeben. Alle laufenden Anmeldungen des Benutzers enden, eine Sperre nach Fehlversuchen wird aufgehoben.
+- Deine eigene Rolle und deinen eigenen Zustand kann nur ein anderer Admin ändern. So bleibt immer mindestens ein aktiver Admin.
+- Bei der Anmeldung spielt Groß-/Kleinschreibung des Benutzernamens keine Rolle.

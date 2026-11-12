@@ -4,7 +4,16 @@ from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    UniqueConstraint,
+    true,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base, DecimalText
@@ -43,7 +52,7 @@ class AppSettings(Base):
 
 
 class UserRole(StrEnum):
-    """Fixed roles from the plan (section 8). Until issue #28 only the first admin exists."""
+    """Fixed roles from the plan (section 8); their rights are in app/permissions.py."""
 
     ADMIN = "admin"
     EMPLOYEE = "employee"
@@ -53,12 +62,15 @@ class UserRole(StrEnum):
 class User(Base):
     __tablename__ = "users"
     __table_args__ = (
-        UniqueConstraint("username", name="uq_users_username"),
+        UniqueConstraint("username_key", name="uq_users_username_key"),
         CheckConstraint("role IN ('admin', 'employee', 'read_only')", name="ck_users_role"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    # Shown as entered
     username: Mapped[str] = mapped_column(String(50))
+    # Lower-case form (casefold) for unique names and login regardless of case
+    username_key: Mapped[str] = mapped_column(String(50))
     # Argon2id hash; the password itself is never stored.
     password_hash: Mapped[str] = mapped_column(String(255))
     role: Mapped[UserRole] = mapped_column(String(20))
@@ -67,6 +79,8 @@ class User(Base):
     # All times are UTC without time zone.
     locked_until: Mapped[datetime | None] = mapped_column(DateTime)
     created_at: Mapped[datetime] = mapped_column(DateTime)
+    # Users are never deleted, only deactivated (issue #28).
+    active: Mapped[bool] = mapped_column(Boolean, server_default=true())
 
 
 class LoginSession(Base):
