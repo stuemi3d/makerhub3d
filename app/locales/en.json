@@ -1,0 +1,12 @@
+{
+  "nav.dashboard": "Dashboard",
+  "nav.articles": "Articles",
+  "nav.calculation": "Costing",
+  "nav.production": "Production",
+  "nav.stock": "Stock",
+  "nav.analysis": "Analysis",
+  "nav.settings": "Settings",
+  "nav.label": "Main navigation",
+  "nav.not_available": "Not available yet",
+  "page.dashboard.intro": "Welcome. Key figures will follow in a later version."
+}

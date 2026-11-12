@@ -1,0 +1,12 @@
+{
+  "nav.dashboard": "Dashboard",
+  "nav.articles": "Artikel",
+  "nav.calculation": "Kalkulation",
+  "nav.production": "Produktion",
+  "nav.stock": "Lager",
+  "nav.analysis": "Auswertung",
+  "nav.settings": "Einstellungen",
+  "nav.label": "Hauptnavigation",
+  "nav.not_available": "Noch nicht verfügbar",
+  "page.dashboard.intro": "Willkommen. Die Kennzahlen folgen in einer späteren Version."
+}
