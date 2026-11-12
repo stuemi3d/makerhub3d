@@ -273,6 +273,10 @@ def change_own_password(
         user = db.get(User, user_id)
         if user is None:
             return {}, True
+        if user.locked_until is not None and user.locked_until > utcnow():
+            # Locked meanwhile (e.g. by failed logins elsewhere): no more guesses here either.
+            end_all_sessions(db, user.id)
+            return {}, True
         if len(current) > MAX_PASSWORD_LENGTH or not verify_password(user.password_hash, current):
             # Counts like a failed login, so nobody can try passwords on an open session.
             if _count_failure(db, user):

@@ -2,6 +2,7 @@
 
 import json
 import re
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
@@ -10,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.config import Settings
 from app.db import make_engine
 from app.main import create_app
-from app.models import LoginSession, User
+from app.models import AppSettings, LoginSession, User
 from tests.auth import (
     ADMIN_NAME,
     ADMIN_PASSWORD,
@@ -23,6 +24,7 @@ from tests.auth import (
     csrf_from,
     log_in,
 )
+from tests.forms import valid_form
 
 APP_DIR = Path(__file__).resolve().parent.parent / "app"
 DE = json.loads((APP_DIR / "locales" / "de.json").read_text(encoding="utf-8"))
@@ -173,6 +175,33 @@ def test_wrong_current_password_counts_as_failed_login(client: AppClient) -> Non
     assert user_named(ADMIN_NAME).locked_until is not None
 
 
+def test_failures_on_form_and_login_page_together_log_out(client: AppClient) -> None:
+    for _ in range(4):
+        client.post("/account/password", data=change_form(current="falsches-passwort"))
+    with AppClient(client.app) as stranger:
+        log_in(stranger, ADMIN_NAME, "falsches-passwort")
+
+    response = client.post("/account/password", data=change_form(), follow_redirects=False)
+
+    assert response.headers["location"] == "/login"
+    assert session_count(ADMIN_NAME) == 0
+    assert can_log_in(ADMIN_NAME, ADMIN_PASSWORD) is False
+
+
+def test_no_guesses_while_locked(client: AppClient) -> None:
+    old_hash = user_named(ADMIN_NAME).password_hash
+    with AppClient(client.app) as stranger:
+        for _ in range(5):
+            log_in(stranger, ADMIN_NAME, "falsches-passwort")
+
+    response = client.post("/account/password", data=change_form(), follow_redirects=False)
+
+    assert response.headers["location"] == "/login"
+    assert client.get("/", follow_redirects=False).status_code == 303
+    # Even the right current password did not help: the password is unchanged.
+    assert user_named(ADMIN_NAME).password_hash == old_hash
+
+
 def test_correct_current_password_resets_the_count(client: AppClient) -> None:
     for _ in range(4):
         client.post("/account/password", data=change_form(current="falsches-passwort"))
@@ -234,9 +263,32 @@ def test_page_explains_the_duty_and_hides_the_menu(newcomer: AppClient) -> None:
     assert re.search(r'<form\b[^>]*method="post"[^>]*action="/logout"', html)
 
 
-def test_new_user_cannot_send_other_forms(newcomer: AppClient) -> None:
+def test_new_user_can_log_out(newcomer: AppClient) -> None:
     response = newcomer.post("/logout", data={}, follow_redirects=False)
+
     assert response.headers["location"] == "/login"
+
+
+def test_new_admin_cannot_send_other_forms_before_changing(client: AppClient) -> None:
+    client.post(
+        "/settings/users/new",
+        data={
+            "username": "neue-chefin",
+            "role": "admin",
+            "password": OTHER_PASSWORD,
+            "password_repeat": OTHER_PASSWORD,
+        },
+    )
+    with AppClient(create_app()) as newcomer:
+        log_in(newcomer, "neue-chefin", OTHER_PASSWORD)
+        newcomer.csrf_token = csrf_from(newcomer.get("/account").text)
+
+        response = newcomer.post("/settings", data=valid_form(markup="99"), follow_redirects=False)
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/account"
+    with Session(make_engine(Settings.from_env().database_path)) as session:
+        assert session.get(AppSettings, 1).markup == Decimal("30")
 
 
 def test_duty_also_applies_after_reset_by_admin(client: AppClient) -> None:
