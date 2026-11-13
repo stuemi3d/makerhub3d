@@ -19,12 +19,15 @@ from app.settings_form import DECIMAL_FIELDS, format_decimal
 PAGE_SIZE = 50
 _DECIMAL_NAMES = {field.name for field in DECIMAL_FIELDS} | {"selling_price", "weight"}
 _ARTICLE_FIELDS = {"number", "name", "selling_price", "weight", "min_stock"}
+_STOCK_FIELDS = {"quantity", "reason", "date", "cancels"}
 _TIME_FORMATS = {"de": "%d.%m.%Y %H:%M", "en": "%Y-%m-%d %H:%M"}
 
 
 def _label(field: str, language: str) -> str:
     if field in _ARTICLE_FIELDS:
         return translate(language, f"article.field.{field}")
+    if field in _STOCK_FIELDS:
+        return translate(language, f"stock.field.{field}")
     key = "user.field.role" if field == "role" else f"settings.field.{field}"
     return translate(language, key)
 

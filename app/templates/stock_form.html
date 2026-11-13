@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% from "_form_macros.html" import field_attrs, feedback %}
+{% block title %}{{ t('stock.new') }} – {{ app_name }}{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb">
+  <ul>
+    <li><a href="/stock">{{ t('stock.title') }}</a></li>
+    <li>{{ t('stock.new') }}</li>
+  </ul>
+</nav>
+<h1>{{ t('stock.new') }}</h1>
+{% if errors %}
+<p role="alert"><mark>{{ t('stock.has_errors') }}</mark></p>
+{% endif %}
+<form method="post" action="/stock/new" novalidate>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label for="article_id">{{ t('stock.field.article_id') }}</label>
+  <select {{ field_attrs('article_id', errors) }}>
+    <option value="">{{ t('stock.choose') }}</option>
+    {% for a in articles %}
+    <option value="{{ a.id }}"{% if values.get('article_id') == a.id|string %} selected{% endif %}>{{ a.number }} · {{ a.name }}</option>
+    {% endfor %}
+  </select>
+  {{ feedback('article_id', errors, t, 'stock.hint.') }}
+  <label for="type">{{ t('stock.field.type') }}</label>
+  <select {{ field_attrs('type', errors) }}>
+    {% for kind in ('withdrawal', 'correction') %}
+    <option value="{{ kind }}"{% if values.get('type', 'withdrawal') == kind %} selected{% endif %}>{{ t('stock.type.' ~ kind) }}</option>
+    {% endfor %}
+  </select>
+  {{ feedback('type', errors, t, 'stock.hint.') }}
+  <label for="quantity">{{ t('stock.field.quantity') }}</label>
+  <input type="text" inputmode="numeric" autocomplete="off" {{ field_attrs('quantity', errors) }} value="{{ values.get('quantity', '') }}">
+  {{ feedback('quantity', errors, t, 'stock.hint.') }}
+  <label for="reason">{{ t('stock.field.reason') }}</label>
+  <input type="text" maxlength="200" autocomplete="off" {{ field_attrs('reason', errors) }} value="{{ values.get('reason', '') }}">
+  {{ feedback('reason', errors, t, 'stock.hint.') }}
+  <label for="date">{{ t('stock.field.date') }}</label>
+  <input type="date" max="{{ today }}" {{ field_attrs('date', errors) }} value="{{ values.get('date', '') }}">
+  {{ feedback('date', errors, t, 'stock.hint.') }}
+  <button type="submit">{{ t('stock.book') }}</button>
+</form>
+<p><a href="/stock">{{ t('article.cancel') }}</a></p>
+{% endblock %}

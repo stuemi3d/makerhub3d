@@ -1,0 +1,37 @@
+{# The table of stock movements; `rows` come from app.stock.movement_rows. #}
+<div class="overflow-auto">
+<table>
+  <thead>
+    <tr>
+      <th scope="col">{{ t('stock.col.date') }}</th>
+      <th scope="col">{{ t('stock.col.article') }}</th>
+      <th scope="col">{{ t('stock.col.quantity') }}</th>
+      <th scope="col">{{ t('stock.col.kind') }}</th>
+      <th scope="col">{{ t('stock.col.reason') }}</th>
+      <th scope="col">{{ t('stock.col.user') }}</th>
+      <th scope="col"></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in rows %}
+    <tr>
+      <td>{{ r.date }}</td>
+      <td><a href="/articles/{{ r.article_id }}">{{ r.article_number }}</a></td>
+      <td>{{ r.quantity }}</td>
+      <td>{{ t('stock.kind.' ~ r.kind) }}</td>
+      <td>{% if r.cancels_id %}{{ t('stock.reference') }} #{{ r.cancels_id }}{% else %}{{ r.reason }}{% endif %}</td>
+      <td>{{ r.user }}</td>
+      <td>
+        {% if r.is_cancelled %}<span class="badge badge-inactive">{{ t('stock.cancelled') }}</span>
+        {% elif r.cancellable and can('edit') %}
+        <form method="post" action="/stock/movements/{{ r.id }}/cancel">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button type="submit" class="secondary outline">{{ t('stock.cancel') }}</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>

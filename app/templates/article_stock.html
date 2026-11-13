@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% set title = t('article.tile.stock') %}
+{% block title %}{{ title }} – {{ article.number }} – {{ app_name }}{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb">
+  <ul>
+    <li><a href="/articles">{{ t('articles.title') }}</a></li>
+    <li><a href="/articles/{{ article.id }}">{{ article.number }}</a></li>
+    <li>{{ title }}</li>
+  </ul>
+</nav>
+<div class="page-head">
+  <h1>{{ title }}</h1>
+  {% if can('edit') and article.active %}
+  <div class="page-actions"><a href="/stock/new?article={{ article.id }}" role="button">{{ t('stock.new') }}</a></div>
+  {% endif %}
+</div>
+<p>{{ article.number }} · {{ article.name }} · {{ t('stock.col.stock') }}: {{ current_stock }}</p>
+{% if rows %}
+{% include "_movements_table.html" %}
+{% else %}
+<p>{{ t('article.section.empty') }}</p>
+{% endif %}
+{% endblock %}

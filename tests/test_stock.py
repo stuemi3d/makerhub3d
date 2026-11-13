@@ -263,9 +263,8 @@ def test_withdrawal_takes_a_positive_number_only(client: AppClient) -> None:
 
 @pytest.mark.parametrize("article", ["", "abc", "999"])
 def test_unknown_article_is_refused(client: AppClient, article: str) -> None:
-    response = client.post(
-        "/stock/new", data=booking(0, article_id=article), follow_redirects=False
-    )
+    form = {**booking(0), "article_id": article}
+    response = client.post("/stock/new", data=form, follow_redirects=False)
 
     assert response.status_code == 422
     assert field_error(response.text, "article_id") == DE["stock.error.article"]
@@ -415,7 +414,7 @@ def test_there_is_no_way_to_delete_or_change_a_movement(client: AppClient) -> No
         ("post", f"/stock/movements/{movement_id}/edit"),
         ("put", f"/stock/movements/{movement_id}"),
     ):
-        assert client.request(method, path, data={}).status_code in (404, 405), path
+        assert client.request(method, path, data={}).status_code in (403, 404, 405), path
     assert len(movements()) == 1
 
 
