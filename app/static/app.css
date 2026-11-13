@@ -31,6 +31,8 @@
 
 .settings-tabs ul {
   padding-left: 0;
+  /* Four tabs do not fit next to each other on a phone. */
+  flex-wrap: wrap;
 }
 
 .qr-code img {
