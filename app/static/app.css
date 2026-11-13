@@ -32,3 +32,20 @@
 .settings-tabs ul {
   padding-left: 0;
 }
+
+.qr-code img {
+  display: block;
+  width: 100%;
+  max-width: 16rem;
+  height: auto;
+}
+
+.secret {
+  overflow-wrap: anywhere;
+}
+
+.recovery-codes {
+  padding-left: 0;
+  list-style: none;
+  columns: 2 10rem;
+}

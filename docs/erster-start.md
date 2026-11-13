@@ -78,3 +78,51 @@ Unter **Einstellungen → Protokoll** (nur für Admins) gibt es zwei Listen:
 - **Anmeldungen:** erfolgreiche und fehlgeschlagene Anmeldungen, Sperren und Abmeldungen. Bei unbekannten Benutzernamen wird der eingetippte Text nicht gespeichert. Einträge werden nach 365 Tagen automatisch gelöscht.
 
 IP-Adressen werden nicht gespeichert. Die Zeiten erscheinen in der Zeitzone aus `MAKERHUB_TIMEZONE` (Standard: `Europe/Berlin`).
+
+## Zwei-Faktor-Anmeldung
+
+Mit Zwei-Faktor-Anmeldung braucht man zusätzlich zum Passwort einen 6-stelligen Code aus einer App auf dem Handy (z. B. Google Authenticator, Aegis oder 2FAS). Das funktioniert ohne Internet und ohne fremden Dienst – es wird keine SMS und keine E-Mail verschickt. Jeder Benutzer entscheidet selbst, ob er sie nutzt.
+
+### Schlüssel einrichten (einmalig, Admin)
+
+Die Zwei-Faktor-Geheimnisse werden verschlüsselt gespeichert. Den Schlüssel dafür erzeugst du einmal auf dem Server:
+
+```
+openssl rand -hex 32
+```
+
+Die Ausgabe (64 Zeichen) trägst du in die `.env` ein und startest die App neu:
+
+```
+MAKERHUB_2FA_KEY=<die Ausgabe von oben>
+```
+
+Bewahre eine Kopie des Schlüssels sicher auf (z. B. im Passwort-Manager), getrennt von der Datensicherung. Ohne Schlüssel bietet „Mein Konto“ das Einrichten nicht an.
+
+### Einrichten (jeder Benutzer selbst)
+
+1. **Mein Konto** → „Zwei-Faktor einrichten“, aktuelles Passwort eingeben.
+2. Den QR-Code mit der App scannen (oder den angezeigten Schlüssel abtippen).
+3. Den Code aus der App eingeben. Erst jetzt ist die Zwei-Faktor-Anmeldung eingeschaltet.
+4. Die **10 Notfall-Codes** abschreiben oder ausdrucken. Sie werden nur dieses eine Mal angezeigt. Jeder funktioniert genau einmal, z. B. wenn das Handy nicht zur Hand ist. In „Mein Konto“ kannst du jederzeit neue erzeugen; die alten gelten dann nicht mehr.
+
+Ausschalten geht ebenfalls in „Mein Konto“, mit Passwort und Code.
+
+### Anmelden
+
+Nach dem Passwort fragt MakerHub 3D nach dem Code. Dafür hast du 5 Minuten. Falsche Codes zählen wie falsche Passwörter: nach 5 Fehlversuchen ist das Konto 15 Minuten gesperrt. Jeder Code funktioniert nur einmal.
+
+**Die Uhr des Servers muss stimmen.** Die Codes hängen von der Uhrzeit ab; eine Abweichung von etwa 30 Sekunden wird toleriert. Läuft die Server-Uhr falsch, werden alle Codes abgelehnt. Auf üblichen Linux-Servern stellt sich die Uhr automatisch über das Internet (NTP); prüfen kannst du sie mit `timedatectl`.
+
+### Schlüssel verloren oder falsch eingetragen
+
+Fehlt der Schlüssel oder passt er nicht zu den gespeicherten Einrichtungen, **startet die App nicht** und nennt im Container-Protokoll (`docker compose logs app`) zwei Auswege:
+
+- den bisherigen Schlüssel wieder in die `.env` eintragen, oder
+- wenn er verloren ist: die Zwei-Faktor-Anmeldung **aller** Benutzer löschen:
+
+  ```
+  docker compose run --rm app python -m app.cli reset-2fa
+  ```
+
+  Danach startet die App mit dem neuen Schlüssel. Jeder meldet sich wieder nur mit dem Passwort an und kann die Zwei-Faktor-Anmeldung neu einrichten. Sonst geht nichts verloren. Der Befehl steht im Änderungsprotokoll („Befehl auf dem Server“).

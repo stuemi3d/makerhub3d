@@ -2,6 +2,8 @@
 
 Agreed in issue #8: 5 failed logins in a row lock an account for 15 minutes, a login ends
 after 8 hours without activity, passwords have at least 12 characters.
+Issue #30: users with two-factor login enter a code after the password; wrong codes count
+like wrong passwords.
 """
 
 import hashlib
@@ -9,6 +11,7 @@ import secrets
 import threading
 import unicodedata
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from functools import cache
 from urllib.parse import urlsplit
@@ -18,8 +21,9 @@ from argon2.exceptions import InvalidHashError, VerificationError
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from app import audit
-from app.models import LoginSession, User, UserRole
+from app import audit, two_factor
+from app.models import LoginSession, PendingLogin, RecoveryCode, User, UserRole
+from app.two_factor import Cipher
 
 MAX_FAILED_LOGINS = 5
 LOCK_DURATION = timedelta(minutes=15)
@@ -235,10 +239,14 @@ def check_login(db: Session, username: str, password: str) -> User | None:
     if not verify_password(user.password_hash, password):
         audit.record_login(db, user.id, "locked" if _count_failure(db, user) else "failed")
         return None
-    audit.record_login(db, user.id, "success")
-    user.failed_logins = 0
     if PASSWORD_HASHER.check_needs_rehash(user.password_hash):
         user.password_hash = hash_password(password)
+    if user.totp_secret is not None:
+        # The login is not complete yet. The failure count stays, so that the right password
+        # cannot be used to get more attempts at guessing the code.
+        return user
+    audit.record_login(db, user.id, "success")
+    user.failed_logins = 0
     return user
 
 
@@ -248,11 +256,45 @@ def check_login(db: Session, username: str, password: str) -> User | None:
 _login_lock = threading.Lock()
 
 
-def log_in(new_session: Callable[[], Session], username: str, password: str) -> str | None:
-    """Checks a login and starts a session; returns its cookie token or None."""
+@dataclass(frozen=True)
+class LoginStep:
+    """Result of a right password: a session token, or for two-factor users the token of
+    a pending login that still needs the code."""
+
+    token: str
+    needs_code: bool
+
+
+def log_in(new_session: Callable[[], Session], username: str, password: str) -> LoginStep | None:
+    """Checks a login; returns None for a failed login."""
     with _login_lock, new_session() as db, db.begin():
         user = check_login(db, username, password)
-        return None if user is None else start_session(db, user)
+        if user is None:
+            return None
+        if user.totp_secret is not None:
+            return LoginStep(start_pending_login(db, user), needs_code=True)
+        return LoginStep(start_session(db, user), needs_code=False)
+
+
+def _is_locked(user: User) -> bool:
+    return user.locked_until is not None and user.locked_until > utcnow()
+
+
+def _reject(db: Session, user: User, event: str) -> bool:
+    """Counts a wrong password or code of a logged-in user (my account).
+
+    Returns True when this failure locks the account; all logins of the user then end.
+    """
+    if _count_failure(db, user):
+        audit.record_login(db, user.id, "locked")
+        end_all_sessions(db, user.id)
+        return True
+    audit.record_login(db, user.id, event)
+    return False
+
+
+def _password_ok(user: User, password: str) -> bool:
+    return len(password) <= MAX_PASSWORD_LENGTH and verify_password(user.password_hash, password)
 
 
 def _count_failure(db: Session, user: User) -> bool:
@@ -278,18 +320,14 @@ def change_own_password(
         user = db.get(User, user_id)
         if user is None:
             return {}, True
-        if user.locked_until is not None and user.locked_until > utcnow():
+        if _is_locked(user):
             # Locked meanwhile (e.g. by failed logins elsewhere): no more guesses here either.
             end_all_sessions(db, user.id)
             return {}, True
-        if len(current) > MAX_PASSWORD_LENGTH or not verify_password(user.password_hash, current):
+        if not _password_ok(user, current):
             # Counts like a failed login, so nobody can try passwords on an open session.
-            if _count_failure(db, user):
-                audit.record_login(db, user.id, "locked")
-                end_all_sessions(db, user.id)
-                return {"current_password": "account.error.current_wrong"}, True
-            audit.record_login(db, user.id, "wrong_current_password")
-            return {"current_password": "account.error.current_wrong"}, False
+            locked = _reject(db, user, "wrong_current_password")
+            return {"current_password": "account.error.current_wrong"}, locked
         user.failed_logins = 0
         errors = password_errors(raw)
         if not errors and raw["password"] == current:
@@ -351,8 +389,237 @@ def find_session(db: Session, token: str | None) -> tuple[LoginSession, User] | 
 
 def end_all_sessions(db: Session, user_id: int) -> None:
     db.execute(delete(LoginSession).where(LoginSession.user_id == user_id))
+    db.execute(delete(PendingLogin).where(PendingLogin.user_id == user_id))
 
 
 def end_session(db: Session, token: str | None) -> None:
     if token:
         db.execute(delete(LoginSession).where(LoginSession.id == token_fingerprint(token)))
+
+
+# --- Two-factor login (issue #30) ------------------------------------------------------
+
+
+def start_pending_login(db: Session, user: User) -> str:
+    """Right password of a two-factor user; returns the token for the code step."""
+    token = new_token()
+    now = utcnow()
+    db.execute(
+        delete(PendingLogin).where(PendingLogin.created_at < now - two_factor.PENDING_LOGIN_TIMEOUT)
+    )
+    db.add(PendingLogin(id=token_fingerprint(token), user_id=user.id, created_at=now))
+    return token
+
+
+def _find_pending_login(db: Session, token: str | None) -> PendingLogin | None:
+    if not token:
+        return None
+    pending = db.get(PendingLogin, token_fingerprint(token))
+    if pending is None:
+        return None
+    if utcnow() - pending.created_at > two_factor.PENDING_LOGIN_TIMEOUT:
+        db.delete(pending)
+        return None
+    return pending
+
+
+def pending_login_exists(new_session: Callable[[], Session], token: str | None) -> bool:
+    with new_session() as db, db.begin():
+        return _find_pending_login(db, token) is not None
+
+
+def _use_second_factor(db: Session, cipher: Cipher | None, user: User, code: str) -> str | None:
+    """Checks an app code or a recovery code and uses it up, so it works only once.
+
+    Returns "app" or "recovery", or None for a wrong code.
+    """
+    if user.totp_secret is None or len(code) > two_factor.MAX_CODE_LENGTH:
+        return None
+    if two_factor.is_app_code(code):
+        secret = None if cipher is None else cipher.decrypt(user.totp_secret)
+        if secret is None:
+            return None
+        step = two_factor.matching_step(secret, code, utcnow(), user.totp_last_step)
+        if step is None:
+            return None
+        user.totp_last_step = step
+        return "app"
+    row = db.scalar(
+        select(RecoveryCode).where(
+            RecoveryCode.user_id == user.id,
+            RecoveryCode.code_hash == two_factor.recovery_code_hash(code),
+        )
+    )
+    if row is None:
+        return None
+    db.delete(row)
+    return "recovery"
+
+
+def confirm_login_code(
+    new_session: Callable[[], Session], cipher: Cipher | None, token: str | None, code: str
+) -> tuple[str | None, bool]:
+    """Second step of a two-factor login.
+
+    Returns the session token (None when the code is wrong) and whether the login has to
+    start again with the password (expired, locked or no pending login).
+    """
+    with _login_lock, new_session() as db, db.begin():
+        pending = _find_pending_login(db, token)
+        if pending is None:
+            return None, True
+        user = db.get(User, pending.user_id)
+        if user is None or not user.active or user.totp_secret is None:
+            db.delete(pending)
+            return None, True
+        if _is_locked(user):
+            db.delete(pending)
+            audit.record_login(db, user.id, "failed")
+            return None, True
+        kind = _use_second_factor(db, cipher, user, code)
+        if kind is None:
+            if _count_failure(db, user):
+                audit.record_login(db, user.id, "locked")
+                end_all_sessions(db, user.id)
+                return None, True
+            audit.record_login(db, user.id, "wrong_code")
+            return None, False
+        user.failed_logins = 0
+        db.delete(pending)
+        audit.record_login(db, user.id, "success" if kind == "app" else "recovery_code_used")
+        return start_session(db, user), False
+
+
+def recovery_codes_left(db: Session, user_id: int) -> int:
+    return len(db.scalars(select(RecoveryCode.id).where(RecoveryCode.user_id == user_id)).all())
+
+
+def _replace_recovery_codes(db: Session, user: User) -> list[str]:
+    db.execute(delete(RecoveryCode).where(RecoveryCode.user_id == user.id))
+    codes = two_factor.new_recovery_codes()
+    db.add_all(
+        RecoveryCode(user_id=user.id, code_hash=two_factor.recovery_code_hash(code))
+        for code in codes
+    )
+    return codes
+
+
+def start_two_factor_setup(
+    new_session: Callable[[], Session], cipher: Cipher, user_id: int, password: str
+) -> tuple[dict[str, str], bool]:
+    """Checks the password and creates a new secret to show; returns errors, logged out."""
+    with _login_lock, new_session() as db, db.begin():
+        user = db.get(User, user_id)
+        if user is None or _is_locked(user):
+            end_all_sessions(db, user_id)
+            return {}, True
+        if user.totp_secret is not None:
+            return {}, False
+        if not _password_ok(user, password):
+            locked = _reject(db, user, "wrong_current_password")
+            return {"tfa_password": "account.error.current_wrong"}, locked
+        user.failed_logins = 0
+        user.totp_pending_secret = cipher.encrypt(two_factor.new_secret())
+        return {}, False
+
+
+def pending_setup_secret(
+    new_session: Callable[[], Session], cipher: Cipher, user_id: int
+) -> str | None:
+    with new_session() as db:
+        user = db.get(User, user_id)
+        if user is None or user.totp_secret is not None or user.totp_pending_secret is None:
+            return None
+        return cipher.decrypt(user.totp_pending_secret)
+
+
+def confirm_two_factor_setup(
+    new_session: Callable[[], Session], cipher: Cipher, user_id: int, code: str
+) -> list[str] | None:
+    """Turns two-factor login on with the first code; returns the new recovery codes.
+
+    A wrong code here does not count as a failure: the secret is new and not in use yet.
+    """
+    with _login_lock, new_session() as db, db.begin():
+        user = db.get(User, user_id)
+        if user is None or user.totp_secret is not None or user.totp_pending_secret is None:
+            return None
+        secret = cipher.decrypt(user.totp_pending_secret)
+        if secret is None or len(code) > two_factor.MAX_CODE_LENGTH:
+            return None
+        step = two_factor.matching_step(secret, code, utcnow(), None)
+        if step is None:
+            return None
+        user.totp_secret = user.totp_pending_secret
+        user.totp_pending_secret = None
+        user.totp_last_step = step
+        audit.record_change(db, user.id, "account.2fa_enabled", user.username)
+        return _replace_recovery_codes(db, user)
+
+
+def disable_two_factor(
+    new_session: Callable[[], Session], cipher: Cipher | None, user_id: int, raw: dict[str, str]
+) -> tuple[dict[str, str], bool]:
+    """Turns two-factor login off with password and code; returns errors, logged out."""
+    with _login_lock, new_session() as db, db.begin():
+        user = db.get(User, user_id)
+        if user is None or _is_locked(user):
+            end_all_sessions(db, user_id)
+            return {}, True
+        if user.totp_secret is None:
+            return {}, False
+        if not _password_ok(user, raw.get("off_password", "")):
+            locked = _reject(db, user, "wrong_current_password")
+            return {"off_password": "account.error.current_wrong"}, locked
+        if _use_second_factor(db, cipher, user, raw.get("off_code", "")) is None:
+            locked = _reject(db, user, "wrong_code")
+            return {"off_code": "account.error.code_wrong"}, locked
+        user.failed_logins = 0
+        user.totp_secret = None
+        user.totp_pending_secret = None
+        user.totp_last_step = None
+        db.execute(delete(RecoveryCode).where(RecoveryCode.user_id == user.id))
+        audit.record_change(db, user.id, "account.2fa_disabled", user.username)
+        return {}, False
+
+
+def renew_recovery_codes(
+    new_session: Callable[[], Session], cipher: Cipher | None, user_id: int, code: str
+) -> tuple[list[str] | None, dict[str, str], bool]:
+    """New recovery codes after a valid code; returns codes, errors, logged out."""
+    with _login_lock, new_session() as db, db.begin():
+        user = db.get(User, user_id)
+        if user is None or _is_locked(user):
+            end_all_sessions(db, user_id)
+            return None, {}, True
+        if user.totp_secret is None:
+            return None, {}, False
+        if _use_second_factor(db, cipher, user, code) is None:
+            locked = _reject(db, user, "wrong_code")
+            return None, {"renew_code": "account.error.code_wrong"}, locked
+        user.failed_logins = 0
+        audit.record_change(db, user.id, "account.2fa_codes_renewed", user.username)
+        return _replace_recovery_codes(db, user), {}, False
+
+
+def two_factor_key_matches(db: Session, cipher: Cipher | None) -> bool:
+    """True when every switched-on two-factor secret can be read with the current key.
+
+    Pending (not yet confirmed) secrets do not matter: they are simply created again.
+    """
+    secrets_in_use = db.scalars(select(User.totp_secret).where(User.totp_secret.is_not(None)))
+    return all(cipher is not None and cipher.decrypt(value) is not None for value in secrets_in_use)
+
+
+def reset_all_two_factor(db: Session) -> int:
+    """Turns two-factor login off for everybody (lost key); returns the number of users."""
+    switched_on = 0
+    for user in db.scalars(select(User)):
+        switched_on += user.totp_secret is not None
+        user.totp_secret = None
+        user.totp_pending_secret = None
+        user.totp_last_step = None
+    db.execute(delete(RecoveryCode))
+    db.execute(delete(PendingLogin))
+    audit.record_change(db, None, "system.2fa_reset_all")
+    return switched_on

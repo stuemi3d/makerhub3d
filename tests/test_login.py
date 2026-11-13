@@ -33,7 +33,8 @@ from tests.forms import valid_form
 
 APP_DIR = Path(__file__).resolve().parent.parent / "app"
 DE = json.loads((APP_DIR / "locales" / "de.json").read_text(encoding="utf-8"))
-PUBLIC_PATHS = {"/login", "/setup", "/healthz"}
+# The code step of a two-factor login (issue #30) is part of the login, like /login.
+PUBLIC_PATHS = {"/login", "/login/code", "/setup", "/healthz"}
 
 
 def users() -> list[User]:

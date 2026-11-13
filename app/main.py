@@ -15,12 +15,13 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import sessionmaker
 
-from app import APP_NAME, audit, auth
+from app import APP_NAME, audit, auth, two_factor
+from app.account_two_factor import add_two_factor_routes
 from app.config import Settings
 from app.db import make_engine, run_migrations
 from app.i18n import translate
 from app.log_pages import add_log_routes
-from app.models import AppSettings, Rounding, UserRole
+from app.models import AppSettings, Rounding, User, UserRole
 from app.permissions import Permission, PermissionDenied, has_permission, requires
 from app.settings_form import FIELD_NAMES, form_values, validate
 from app.user_admin import add_user_admin_routes
@@ -49,7 +50,7 @@ SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 PUBLIC_PATHS = frozenset({"/healthz"})
 PUBLIC_PREFIX = "/static/"
 # Reachable without login, but still with form token: login and setup of the first admin.
-LOGIN_PATHS = frozenset({"/login", "/setup"})
+LOGIN_PATHS = frozenset({"/login", "/login/code", "/setup"})
 FORM_CONTENT_TYPES = ("application/x-www-form-urlencoded", "multipart/form-data")
 
 
@@ -116,6 +117,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     new_session = sessionmaker(engine)
     secure_cookies = not settings.insecure_cookies
     session_cookie, csrf_cookie = auth.cookie_names(secure_cookies)
+    # Cookie of a pending two-factor login (right password, code not yet entered).
+    pending_cookie = ("__Host-" if secure_cookies else "") + "makerhub_2fa"
+    cipher = two_factor.Cipher(settings.two_factor_key) if settings.two_factor_key else None
     # Only one first admin, even if two setup forms arrive at the same moment.
     setup_lock = threading.Lock()
 
@@ -125,6 +129,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         run_migrations(engine)
         with new_session() as db:
             users_exist = auth.has_users(db)
+            key_matches = auth.two_factor_key_matches(db, cipher)
+        if not key_matches:
+            # Running on would lock out every two-factor user, or (without a check) turn
+            # their second factor off unnoticed. The message names no secret values.
+            print(translate(language, "two_factor.key_mismatch"), file=sys.stderr, flush=True)
+            engine.dispose()
+            raise RuntimeError("MAKERHUB_2FA_KEY does not match the stored two-factor secrets")
         # A new code on every start while nobody is set up; it goes to the container log.
         app.state.setup_code = None if users_exist else auth.new_setup_code()
         if app.state.setup_code:
@@ -303,14 +314,26 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             return redirect("/")
         return render(request, "login.html", "", username="", next_url=next, failed=False)
 
-    def try_login(raw: dict[str, str]) -> str | None:
+    def try_login(raw: dict[str, str]) -> auth.LoginStep | None:
         return auth.log_in(new_session, raw.get("username", ""), raw.get("password", ""))
+
+    def with_next(path: str, next_url: str) -> str:
+        return path + ("?" + urlencode({"next": next_url}) if next_url else "")
+
+    async def finish_login(request: Request, token: str, next_url: str) -> Response:
+        # An earlier login in this browser ends; the new one gets a fresh token.
+        old_token = request.cookies.get(session_cookie)
+        if old_token:
+            await run_in_threadpool(end_login, old_token)
+        response = logged_in(redirect(auth.safe_next(next_url)), token)
+        delete_cookie(response, pending_cookie)
+        return response
 
     @app.post("/login", response_class=HTMLResponse)
     async def login(request: Request) -> Response:
         raw = await read_form(request, ("username", "password", "next"))
-        token = await run_in_threadpool(try_login, raw)
-        if token is None:
+        step = await run_in_threadpool(try_login, raw)
+        if step is None:
             return render(
                 request,
                 "login.html",
@@ -320,11 +343,48 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 next_url=raw.get("next", ""),
                 failed=True,
             )
-        # An earlier login in this browser ends; the new one gets a fresh token.
-        old_token = request.cookies.get(session_cookie)
-        if old_token:
-            await run_in_threadpool(end_login, old_token)
-        return logged_in(redirect(auth.safe_next(raw.get("next"))), token)
+        next_url = raw.get("next", "")
+        if step.needs_code:
+            response = redirect(with_next("/login/code", next_url))
+            set_cookie(response, pending_cookie, step.token)
+            return response
+        return await finish_login(request, step.token, next_url)
+
+    def back_to_login() -> Response:
+        response = redirect("/login")
+        delete_cookie(response, pending_cookie)
+        return response
+
+    @app.get("/login/code", response_class=HTMLResponse)
+    async def login_code_page(request: Request, next: str = "") -> Response:
+        if request.state.user is not None:
+            return redirect("/")
+        token = request.cookies.get(pending_cookie)
+        if not await run_in_threadpool(auth.pending_login_exists, new_session, token):
+            return back_to_login()
+        return render(request, "login_code.html", "", next_url=next, failed=False)
+
+    @app.post("/login/code", response_class=HTMLResponse)
+    async def login_code(request: Request) -> Response:
+        if request.state.user is not None:
+            return redirect("/")
+        raw = await read_form(request, ("code", "next"))
+        token, restart = await run_in_threadpool(
+            auth.confirm_login_code,
+            new_session,
+            cipher,
+            request.cookies.get(pending_cookie),
+            raw.get("code", ""),
+        )
+        if restart:
+            return back_to_login()
+        if token is None:
+            # The typed code is never sent back.
+            next_url = raw.get("next", "")
+            return render(
+                request, "login_code.html", "", status_code=401, next_url=next_url, failed=True
+            )
+        return await finish_login(request, token, raw.get("next", ""))
 
     def end_login(token: str) -> None:
         with new_session() as db, db.begin():
@@ -390,13 +450,32 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         # Redirect after saving, so that reloading the page does not send the form again.
         return RedirectResponse("/settings?saved=1", status_code=303)
 
+    def two_factor_status(user_id: int) -> dict:
+        with new_session() as db:
+            user = db.get(User, user_id)
+            enabled = user is not None and user.totp_secret is not None
+            return {
+                "available": cipher is not None,
+                "enabled": enabled,
+                "codes_left": auth.recovery_codes_left(db, user_id) if enabled else 0,
+            }
+
     def render_account(request: Request, status_code: int = 200, **context) -> HTMLResponse:
         context.setdefault("errors", {})
-        return render(request, "account.html", "", status_code=status_code, **context)
+        status = two_factor_status(request.state.user.id)
+        return render(
+            request, "account.html", "", status_code=status_code, two_factor=status, **context
+        )
+
+    def logged_out_response() -> Response:
+        response = redirect("/login")
+        delete_cookie(response, session_cookie)
+        return response
 
     @app.get("/account", response_class=HTMLResponse, dependencies=[requires(Permission.VIEW)])
     def account_page(request: Request, changed: str | None = None) -> HTMLResponse:
-        return render_account(request, changed=changed == "1")
+        # "changed" names what was saved: 1 = password, others come from two-factor pages.
+        return render_account(request, changed=changed)
 
     @app.post(
         "/account/password", response_class=HTMLResponse, dependencies=[requires(Permission.VIEW)]
@@ -408,14 +487,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             auth.change_own_password, new_session, request.state.user.id, token, raw
         )
         if logged_out:
-            response = redirect("/login")
-            delete_cookie(response, session_cookie)
-            return response
+            return logged_out_response()
         if errors:
             # Passwords are never sent back.
             return render_account(request, status_code=422, errors=errors)
         return redirect("/account?changed=1")
 
+    add_two_factor_routes(
+        app, new_session, cipher, render, render_account, read_form, logged_out_response
+    )
     add_user_admin_routes(app, new_session, render, read_form)
     add_log_routes(app, new_session, render, language, settings.timezone)
 

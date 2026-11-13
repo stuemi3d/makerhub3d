@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}{{ t('two_factor.setup.title') }} – {{ app_name }}{% endblock %}
+{% block content %}
+<h1>{{ t('two_factor.setup.title') }}</h1>
+{% if failed %}
+<p role="alert"><mark>{{ t('two_factor.setup.failed') }}</mark></p>
+{% endif %}
+<ol>
+  <li>{{ t('two_factor.setup.step_scan') }}</li>
+  <li>{{ t('two_factor.setup.step_code') }}</li>
+</ol>
+<figure class="qr-code">
+  <img src="{{ qr_code }}" alt="{{ t('two_factor.setup.qr_alt') }}">
+</figure>
+<p>{{ t('two_factor.setup.manual') }}</p>
+<p><code class="secret">{{ secret }}</code></p>
+<form method="post" action="/account/2fa/confirm" novalidate>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label for="code">{{ t('two_factor.field.code') }}</label>
+  <input type="text" id="code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="100" aria-describedby="code-hint" required>
+  <small id="code-hint">{{ t('two_factor.setup.code_hint') }}</small>
+  <button type="submit">{{ t('two_factor.setup.submit') }}</button>
+</form>
+<p><a href="/account">{{ t('two_factor.setup.cancel') }}</a></p>
+{% endblock %}

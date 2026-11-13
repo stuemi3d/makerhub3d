@@ -30,6 +30,8 @@ LOCALE_FILE = REPO_DIR / "app" / "locales" / "de.json"
 HOST = "127.0.0.1"
 ADMIN_NAME = "werkstatt"
 ADMIN_PASSWORD = "ein-langes-test-passwort"
+# Invented key for the two-factor secrets of the test app (issue #30).
+TWO_FACTOR_KEY = "erfundener-browser-test-schluessel-0123456789"
 # Desktop and a narrow phone; every browser test runs in both.
 VIEWPORTS = {
     "desktop": {"width": 1280, "height": 800},
@@ -96,7 +98,11 @@ def live_server(tmp_path_factory: pytest.TempPathFactory) -> Iterator[LiveServer
     url = f"http://{HOST}:{port}"
     # Only what the app needs; no settings from the developer's own environment.
     env = {k: v for k, v in os.environ.items() if not k.startswith("MAKERHUB_")}
-    env.update(MAKERHUB_DATA_DIR=str(data_dir), MAKERHUB_INSECURE_COOKIES="true")
+    env.update(
+        MAKERHUB_DATA_DIR=str(data_dir),
+        MAKERHUB_INSECURE_COOKIES="true",
+        MAKERHUB_2FA_KEY=TWO_FACTOR_KEY,
+    )
     log_file = data_dir.parent / "app.log"
     with log_file.open("w", encoding="utf-8") as log:
         process = subprocess.Popen(  # noqa: S603 (fixed arguments, no user input)

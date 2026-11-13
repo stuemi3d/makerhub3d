@@ -2,7 +2,7 @@
 
 import os
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -62,6 +62,24 @@ def parse_timezone(raw: str) -> str:
     return name
 
 
+MIN_TWO_FACTOR_KEY_LENGTH = 32
+
+
+def parse_two_factor_key(raw: str) -> str | None:
+    """The key for the two-factor secrets (issue #30); None when not set."""
+    key = raw.strip()
+    if not key:
+        return None
+    usable = key.isascii() and all(char.isprintable() and not char.isspace() for char in key)
+    if len(key) < MIN_TWO_FACTOR_KEY_LENGTH or not usable:
+        # The message never contains the value itself.
+        raise ConfigError(
+            "MAKERHUB_2FA_KEY is invalid: expected at least 32 characters without spaces, "
+            "e.g. the output of: openssl rand -hex 32"
+        )
+    return key
+
+
 def parse_language(raw: str) -> str:
     language = raw.strip().lower()
     return language if language in SUPPORTED_LANGUAGES else DEFAULT_LANGUAGE
@@ -76,6 +94,9 @@ class Settings:
     insecure_cookies: bool = False
     # Time zone for showing times; times are stored in UTC.
     timezone: str = DEFAULT_TIMEZONE
+    # Key for the two-factor secrets; None = two-factor login cannot be set up.
+    # Not part of repr(), so it never shows up in error messages or logs.
+    two_factor_key: str | None = field(default=None, repr=False)
 
     @property
     def database_path(self) -> Path:
@@ -91,4 +112,5 @@ class Settings:
                 os.environ.get("MAKERHUB_INSECURE_COOKIES", "")
             ),
             timezone=parse_timezone(os.environ.get("MAKERHUB_TIMEZONE", "")),
+            two_factor_key=parse_two_factor_key(os.environ.get("MAKERHUB_2FA_KEY", "")),
         )
