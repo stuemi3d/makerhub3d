@@ -238,6 +238,14 @@ Jeder Meilenstein ist für sich nutzbar; danach wird das Tool eine Weile im Allt
 - Lagerbewegungen, Bestand, Abgang und Korrektur von Hand, Storno
 - Dashboard (erste Fassung) mit Mindestbestand
 
+**M1b – Oberfläche Stufe 2**
+
+Startet erst, nachdem M1 eine Weile im Alltag genutzt wurde. Vorher sammelt der Maintainer Beispiel-Screenshots und nennt die 3–5 Stellen, die am meisten stören. Eine Aufgabe nach der anderen, in dieser Reihenfolge:
+
+- Gesamtlayout nach dem Vorbild von Bambuddy: Seitenleiste, Kennzahlen-Kacheln, Tabellen mit Suche und Filtern, dunkel
+- Artikel-Dashboard nach dem Vorbild von ERPNext: Von der Übersicht springt man in die jeweilige Liste (Preise, Lagerbuchungen …)
+- Feinschliff: Farben, Logo, Diagramm-Optik, echte Ein/Aus-Schalter, Vorlagen-Detail als Karte
+
 **M2 – Bambuddy-Anbindung und Produktion**
 
 - Bambuddy-Client: Archiv-Liste, Archiv-Detail, Spulen, Drucker, Strompreis
