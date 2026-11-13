@@ -18,6 +18,9 @@
     </form>
     {% if tpl.active and tpl.attributes %}
     <a href="/templates/{{ tpl.id }}/variants/new" role="button">{{ t('variant.new') }}</a>
+    {% if tpl.attributes | rejectattr("value_labels") | list | length == 0 %}
+    <a href="/templates/{{ tpl.id }}/variants/all" role="button" class="secondary">{{ t('variant.bulk.open') }}</a>
+    {% endif %}
     {% endif %}
   </div>
   {% endif %}

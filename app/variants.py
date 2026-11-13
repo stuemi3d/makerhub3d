@@ -189,3 +189,14 @@ def variants_of(db: Session, template_id: int) -> list[Article]:
             select(Article).where(Article.template_id == template_id).order_by(Article.number_key)
         )
     )
+
+
+def existing_combo_keys(db: Session, template_id: int) -> list[str]:
+    """The combination keys of all variants of a template."""
+    return list(
+        db.scalars(
+            select(Article.combo_key).where(
+                Article.template_id == template_id, Article.combo_key.is_not(None)
+            )
+        )
+    )
