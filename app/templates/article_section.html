@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% set title = t('article.tile.' ~ section) %}
+{% block title %}{{ title }} – {{ article.number }} – {{ app_name }}{% endblock %}
+{% block content %}
+<h1>{{ title }}</h1>
+<p>{{ article.number }} · {{ article.name }}</p>
+<p>{{ t('article.section.empty') }}</p>
+<p><a href="/articles/{{ article.id }}">{{ t('article.back') }}</a></p>
+{% endblock %}
