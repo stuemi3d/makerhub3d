@@ -16,6 +16,9 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <button type="submit" class="secondary outline">{{ t('article.deactivate' if article.active else 'article.activate') }}</button>
     </form>
+    {% if can_purge and can('manage') %}
+    <a href="/articles/{{ article.id }}/purge" role="button" class="secondary outline">{{ t('article.purge.button') }}</a>
+    {% endif %}
   </div>
   {% endif %}
 </div>

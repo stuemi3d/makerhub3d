@@ -1,6 +1,7 @@
 """Articles (issue #10): list, create, edit, deactivate and the detail page with tiles.
 
-Articles are never deleted, only deactivated, like users. Calculations, productions and
+Articles are only deactivated; the one way to delete one is the admin's "delete for good"
+(issue #47, app/article_purge.py). Calculations, productions and
 sales do not exist yet; their tiles show 0 and open empty pages that later milestones fill.
 The stock tile counts the stock movements (issue #11).
 """
@@ -15,7 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app import audit, auth, stock
+from app import article_purge, audit, auth, stock
 from app.article_form import FIELD_NAMES, form_values, number_key, validate
 from app.models import Article
 from app.permissions import Permission, requires
@@ -43,6 +44,7 @@ def add_article_routes(
 ) -> None:
     view = [requires(Permission.VIEW)]
     edit = [requires(Permission.EDIT)]
+    manage = [requires(Permission.MANAGE)]
 
     def shown(value: Decimal | None) -> str | None:
         return None if value is None else format_decimal(value.quantize(Decimal("0.01")), language)
@@ -66,7 +68,9 @@ def add_article_routes(
             return article_view(article)
 
     @app.get("/articles", response_class=HTMLResponse, dependencies=view)
-    def article_list(request: Request, inactive: str | None = None) -> HTMLResponse:
+    def article_list(
+        request: Request, inactive: str | None = None, purged: str | None = None
+    ) -> HTMLResponse:
         show_inactive = inactive == "1"
         with new_session() as db:
             query = select(Article).order_by(Article.number_key)
@@ -74,7 +78,12 @@ def add_article_routes(
                 query = query.where(Article.active.is_(True))
             items = [article_view(article) for article in db.scalars(query)]
         return render(
-            request, "articles.html", "nav.articles", articles=items, show_inactive=show_inactive
+            request,
+            "articles.html",
+            "nav.articles",
+            articles=items,
+            show_inactive=show_inactive,
+            purged=purged == "1",
         )
 
     @app.get("/articles/new", response_class=HTMLResponse, dependencies=edit)
@@ -131,6 +140,7 @@ def add_article_routes(
         counts = {section: 0 for section in SECTIONS}
         with new_session() as db:
             counts["stock"] = stock.count_movements(db, article_id)
+            can_purge = article_purge.has_dependents(db, article_id)
         return render(
             request,
             "article_detail.html",
@@ -139,6 +149,7 @@ def add_article_routes(
             sections=SECTIONS,
             counts=counts,
             saved=saved == "1",
+            can_purge=can_purge,
         )
 
     @app.get("/articles/{article_id}/edit", response_class=HTMLResponse, dependencies=edit)
@@ -218,6 +229,52 @@ def add_article_routes(
     async def activate_article(request: Request, article_id: int) -> Response:
         stored_id = await run_in_threadpool(set_active, article_id, request.state.user.id, True)
         return RedirectResponse(f"/articles/{int(stored_id)}", status_code=303)
+
+    def purge_view(article_id: int) -> tuple[dict, dict[str, int]]:
+        """The article and its counts; 404 when it is gone or nothing hangs on it."""
+        with new_session() as db:
+            article = db.get(Article, article_id)
+            if article is None or not article_purge.has_dependents(db, article_id):
+                raise HTTPException(status_code=404)
+            return article_view(article), article_purge.counts(db, article_id)
+
+    def purge_page(request: Request, article_id: int, status_code: int = 200, error: bool = False):
+        article, found = purge_view(article_id)
+        return render(
+            request,
+            "article_purge.html",
+            "nav.articles",
+            status_code=status_code,
+            article=article,
+            counts=found,
+            count_keys=article_purge.COUNT_KEYS,
+            error=error,
+        )
+
+    @app.get("/articles/{article_id}/purge", response_class=HTMLResponse, dependencies=manage)
+    def purge_article_page(request: Request, article_id: int) -> HTMLResponse:
+        return purge_page(request, article_id)
+
+    def do_purge(article_id: int, actor_id: int, typed: str) -> bool:
+        """True when deleted, False when the typed number does not match."""
+        with new_session() as db, db.begin():
+            article = db.get(Article, article_id)
+            if article is None or not article_purge.has_dependents(db, article_id):
+                raise HTTPException(status_code=404)
+            if typed != article.number:
+                return False
+            article_purge.purge(db, actor_id, article)
+            return True
+
+    @app.post("/articles/{article_id}/purge", dependencies=manage)
+    async def purge_article(request: Request, article_id: int) -> Response:
+        raw = await read_form(request, ("number",))
+        done = await run_in_threadpool(
+            do_purge, article_id, request.state.user.id, raw.get("number", "")
+        )
+        if done:
+            return RedirectResponse("/articles?purged=1", status_code=303)
+        return await run_in_threadpool(purge_page, request, article_id, 422, True)
 
     @app.get("/articles/{article_id}/{section}", response_class=HTMLResponse, dependencies=view)
     def article_section(request: Request, article_id: int, section: str) -> HTMLResponse:
