@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}{{ t('article.delete') }} – {{ app_name }}{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb">
+  <ul>
+    <li><a href="/articles">{{ t('articles.title') }}</a></li>
+    <li><a href="/articles/{{ article.id }}">{{ article.number }}</a></li>
+    <li>{{ t('article.delete') }}</li>
+  </ul>
+</nav>
+<h1>{{ t('article.delete') }}</h1>
+<p><strong>{{ article.number }} · {{ article.name }}</strong></p>
+<article class="detail-card">
+  <p>{{ t('article.delete.confirm') }}</p>
+  {% if counts['calculations'] %}
+  <p>{{ t('article.delete.with_calculations') }}</p>
+  <ul>
+    <li>{{ t('article.purge.count.calculations') }}: {{ counts['calculations'] }}</li>
+  </ul>
+  <p>{{ t('article.delete.advice') }}</p>
+  {% endif %}
+</article>
+<form method="post" action="/articles/{{ article.id }}/delete">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <button type="submit" class="secondary">{{ t('article.delete.button') }}</button>
+</form>
+<p><a href="/articles/{{ article.id }}">{{ t('article.cancel') }}</a></p>
+{% endblock %}

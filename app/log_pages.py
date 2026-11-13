@@ -18,7 +18,15 @@ from app.settings_form import DECIMAL_FIELDS, format_decimal
 
 PAGE_SIZE = 50
 _DECIMAL_NAMES = {field.name for field in DECIMAL_FIELDS} | {"selling_price", "weight"}
-_ARTICLE_FIELDS = {"number", "name", "selling_price", "weight", "min_stock"}
+_ARTICLE_FIELDS = {
+    "number",
+    "name",
+    "selling_price",
+    "weight",
+    "min_stock",
+    "template",
+    "attribute_value",
+}
 _STOCK_FIELDS = {"quantity", "reason", "date", "cancels"}
 _PURGE_FIELDS = {"calculations", "productions", "stock_movements", "sales"}
 _TIME_FORMATS = {"de": "%d.%m.%Y %H:%M", "en": "%Y-%m-%d %H:%M"}

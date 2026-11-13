@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app import stock
+from app import stock, variants
 from app.models import Article
 from app.permissions import Permission, requires
 
@@ -37,15 +37,16 @@ def add_stock_routes(
                 query = query.where(Article.active.is_(True))
             articles = list(db.scalars(query))
             stock_by_id = stock.stock_levels(db, [article.id for article in articles])
+            minimums = {a.id: variants.effective(a, "min_stock") for a in articles}
             return [
                 {
                     "id": article.id,
                     "number": article.number,
                     "name": article.name,
                     "stock": stock_by_id[article.id],
-                    "min_stock": article.min_stock,
-                    "low": article.min_stock is not None
-                    and stock_by_id[article.id] < article.min_stock,
+                    "min_stock": minimums[article.id],
+                    "low": minimums[article.id] is not None
+                    and stock_by_id[article.id] < minimums[article.id],
                     "active": article.active,
                 }
                 for article in articles

@@ -194,3 +194,21 @@
     grid-template-columns: repeat(3, 1fr);
   }
 }
+
+/* Marks where a variant's value comes from (own value or inherited from the template). */
+.source-note {
+  margin-left: 0.5rem;
+  color: var(--pico-muted-color);
+}
+
+.reset-form {
+  display: inline-block;
+  margin: 0 0 0 0.5rem;
+}
+
+.reset-form button {
+  width: auto;
+  margin: 0;
+  padding: 0.1rem 0.5rem;
+  font-size: 0.75rem;
+}

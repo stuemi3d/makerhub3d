@@ -31,6 +31,7 @@ from app.settings_form import FIELD_NAMES, form_values, validate
 from app.stock_pages import add_stock_routes
 from app.template_pages import add_template_routes
 from app.user_admin import add_user_admin_routes
+from app.variant_pages import add_variant_routes
 
 APP_DIR = Path(__file__).parent
 TEMPLATES_DIR = APP_DIR / "templates"
@@ -514,6 +515,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     add_backup_routes(app, new_session, render, settings)
     add_article_routes(app, new_session, render, read_form, language)
     add_template_routes(app, new_session, render, read_form, language)
+    add_variant_routes(app, new_session, render, read_form)
     add_stock_routes(app, new_session, render, read_form, language)
 
     # Deliberately without login: the container health check calls it. Returns no details.

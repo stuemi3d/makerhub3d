@@ -16,6 +16,9 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <button type="submit" class="secondary outline">{{ t('article.deactivate' if tpl.active else 'article.activate') }}</button>
     </form>
+    {% if tpl.active and tpl.attributes %}
+    <a href="/templates/{{ tpl.id }}/variants/new" role="button">{{ t('variant.new') }}</a>
+    {% endif %}
   </div>
   {% endif %}
 </div>
@@ -45,7 +48,40 @@
   <dt>{{ t('article.col.status') }}</dt>
   <dd>{{ t('article.status.active' if tpl.active else 'article.status.inactive') }}</dd>
 </dl>
+<h2>{{ t('variant.title') }}</h2>
+{% if variants %}
+<div class="overflow-auto">
+<table>
+  <thead>
+    <tr>
+      <th scope="col">{{ t('article.field.number') }}</th>
+      <th scope="col">{{ t('article.field.name') }}</th>
+      {% for a in tpl.attributes %}<th scope="col">{{ a.name }}</th>{% endfor %}
+      <th scope="col">{{ t('article.col.status') }}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for v in variants %}
+    <tr>
+      <td><a href="/articles/{{ v.id }}">{{ v.number }}</a></td>
+      <td>{{ v.name }}</td>
+      {% for a in v.attributes %}
+      <td>{% if a.value %}{{ a.value }}{% else %}<mark>{{ t('variant.missing') }}</mark>{% endif %}</td>
+      {% endfor %}
+      <td>{{ t('article.status.active' if v.active else 'article.status.inactive') }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p>{{ t('variant.none') }}</p>
+{% endif %}
 {% if can('edit') %}
+{% if variants %}
+<p><small>{{ t('template.delete.blocked') }}</small></p>
+{% else %}
 <p><a href="/templates/{{ tpl.id }}/delete">{{ t('template.delete') }}</a></p>
+{% endif %}
 {% endif %}
 {% endblock %}

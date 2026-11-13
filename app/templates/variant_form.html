@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% from "_form_macros.html" import field_attrs, feedback %}
+{% block title %}{{ t('variant.new.title') }} – {{ app_name }}{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb">
+  <ul>
+    <li><a href="/templates">{{ t('templates.title') }}</a></li>
+    <li><a href="/templates/{{ tpl.id }}">{{ tpl.name }}</a></li>
+    <li>{{ t('variant.new.title') }}</li>
+  </ul>
+</nav>
+<h1>{{ t('variant.new.title') }}</h1>
+<p>{{ t('variant.template') }}: <strong>{{ tpl.name }}</strong></p>
+{% if errors %}
+<p role="alert"><mark>{{ t('article.has_errors') }}</mark></p>
+{% endif %}
+<form method="post" action="/templates/{{ tpl.id }}/variants/new" novalidate>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label for="number">{{ t('article.field.number') }}</label>
+  <input type="text" maxlength="50" autocomplete="off" {{ field_attrs('number', errors) }} value="{{ values.get('number', '') }}">
+  {{ feedback('number', errors, t, 'article.hint.') }}
+  <label for="name">{{ t('article.field.name') }}</label>
+  <input type="text" maxlength="100" autocomplete="off" {{ field_attrs('name', errors) }} value="{{ values.get('name', '') }}">
+  {{ feedback('name', errors, t, 'article.hint.') }}
+  {% include "_variant_fields.html" %}
+  <p><small>{{ t('variant.hint.inherit') }}</small></p>
+  <label for="selling_price">{{ t('article.field.selling_price') }}</label>
+  <input type="text" inputmode="decimal" autocomplete="off" {{ field_attrs('selling_price', errors) }} value="{{ values.get('selling_price', '') }}">
+  {{ feedback('selling_price', errors, t, 'article.hint.') }}
+  <label for="weight">{{ t('article.field.weight') }}</label>
+  <input type="text" inputmode="decimal" autocomplete="off" {{ field_attrs('weight', errors) }} value="{{ values.get('weight', '') }}">
+  {{ feedback('weight', errors, t, 'article.hint.') }}
+  <label for="min_stock">{{ t('article.field.min_stock') }}</label>
+  <input type="text" inputmode="numeric" autocomplete="off" {{ field_attrs('min_stock', errors) }} value="{{ values.get('min_stock', '') }}">
+  {{ feedback('min_stock', errors, t, 'article.hint.') }}
+  <button type="submit">{{ t('article.create') }}</button>
+</form>
+<p><a href="/templates/{{ tpl.id }}">{{ t('article.cancel') }}</a></p>
+{% endblock %}

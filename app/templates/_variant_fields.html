@@ -1,0 +1,15 @@
+{# Selection field per attribute of the template (new variant and editing a variant). #}
+{% if errors.get('combination') %}
+<p role="alert"><mark>{{ t(errors['combination']) }}</mark></p>
+{% endif %}
+{% for f in attr_fields %}
+{% set name = 'attr_' ~ f.id %}
+<label for="{{ name }}">{{ f.name }}</label>
+<select id="{{ name }}" name="{{ name }}"{% if errors.get(name) %} aria-invalid="true" aria-describedby="{{ name }}-error"{% endif %}>
+  <option value="">{{ t('variant.value.choose') }}</option>
+  {% for v in f.options %}
+  <option value="{{ v.id }}"{% if values.get(name) == v.id | string %} selected{% endif %}>{{ v.value }}</option>
+  {% endfor %}
+</select>
+{% if errors.get(name) %}<small id="{{ name }}-error">{{ t(errors[name]) }}</small>{% endif %}
+{% endfor %}

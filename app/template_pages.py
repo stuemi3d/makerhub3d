@@ -2,9 +2,10 @@
 
 An attribute is a feature such as colour with its values; several templates can use it.
 A template describes a family of articles: name, description, default values and attributes.
-It is not an article: it has no stock and no sales. Variants come with a later part of #44.
-Both can be deleted after a confirmation as long as nothing hangs on them; templates can
-also be deactivated (plan, section 4).
+It is not an article: it has no stock and no sales. Variants (issue #49) are articles that
+point to a template (see app/variant_pages.py).
+Both can be deleted after a confirmation as long as nothing hangs on them (a template
+only once all its variants are gone); templates can also be deactivated (plan, section 4).
 """
 
 from collections.abc import Awaitable, Callable
@@ -17,9 +18,16 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app import audit, auth
+from app import audit, auth, variants
 from app.article_form import NAME_MAX_LENGTH, form_values, validate_defaults
-from app.models import ArticleTemplate, Attribute, AttributeValue, TemplateAttribute
+from app.models import (
+    Article,
+    ArticleAttributeValue,
+    ArticleTemplate,
+    Attribute,
+    AttributeValue,
+    TemplateAttribute,
+)
 from app.permissions import Permission, requires
 from app.settings_form import format_decimal
 
@@ -374,9 +382,25 @@ def add_template_routes(
         request: Request, template_id: int, saved: str | None = None
     ) -> HTMLResponse:
         with new_session() as db:
-            template = template_view(db, template_or_404(db, template_id))
+            stored = template_or_404(db, template_id)
+            template = template_view(db, stored)
+            rows = [
+                {
+                    "id": variant.id,
+                    "number": variant.number,
+                    "name": variant.name,
+                    "active": variant.active,
+                    "attributes": variants.attribute_rows(db, variant),
+                }
+                for variant in variants.variants_of(db, template_id)
+            ]
         return render(
-            request, "template_detail.html", "nav.articles", tpl=template, saved=saved == "1"
+            request,
+            "template_detail.html",
+            "nav.articles",
+            tpl=template,
+            variants=rows,
+            saved=saved == "1",
         )
 
     @app.get("/templates/{template_id}/edit", response_class=HTMLResponse, dependencies=edit)
@@ -393,6 +417,21 @@ def add_template_routes(
             current = template_view(db, template)
         return form_page(request, current, values, {})
 
+    def attributes_in_use(db: Session, template_id: int, attribute_ids: set[int]) -> bool:
+        """True when a variant of the template has a value for one of these attributes."""
+        return (
+            db.scalar(
+                select(ArticleAttributeValue.article_id)
+                .join(Article, Article.id == ArticleAttributeValue.article_id)
+                .where(
+                    Article.template_id == template_id,
+                    ArticleAttributeValue.attribute_id.in_(attribute_ids),
+                )
+                .limit(1)
+            )
+            is not None
+        )
+
     def change_template(template_id: int, actor_id: int, raw: dict[str, str], known: list[dict]):
         values, errors = validate_template(raw)
         with new_session() as db, db.begin():
@@ -404,6 +443,9 @@ def add_template_routes(
             old = {name: getattr(template, name) for name in TEMPLATE_FIELDS}
             existing = set(db.scalars(select(Attribute.id)))
             ids = [i for i in chosen_ids(raw, known) if i in existing]
+            removed = {item["id"] for item in current["attributes"]} - set(ids)
+            if removed and attributes_in_use(db, template.id, removed):
+                return {"attributes": "template.error.attribute_in_use"}, current
             db.query(TemplateAttribute).filter_by(template_id=template.id).delete()
             attach(db, template.id, ids)
             for name, value in values.items():
@@ -448,15 +490,27 @@ def add_template_routes(
         stored_id = await run_in_threadpool(set_active, template_id, request.state.user.id, True)
         return RedirectResponse(f"/templates/{int(stored_id)}", status_code=303)
 
+    def has_variants(db: Session, template_id: int) -> bool:
+        return (
+            db.scalar(select(Article.id).where(Article.template_id == template_id).limit(1))
+            is not None
+        )
+
     @app.get("/templates/{template_id}/delete", response_class=HTMLResponse, dependencies=edit)
     def delete_template_page(request: Request, template_id: int) -> HTMLResponse:
         with new_session() as db:
-            template = template_view(db, template_or_404(db, template_id))
+            stored = template_or_404(db, template_id)
+            if has_variants(db, template_id):
+                # Only once all variants are deleted (plan, section 4).
+                raise HTTPException(status_code=409)
+            template = template_view(db, stored)
         return render(request, "template_delete.html", "nav.articles", tpl=template)
 
     def delete_template(template_id: int, actor_id: int) -> None:
         with new_session() as db, db.begin():
             template = template_or_404(db, template_id)
+            if has_variants(db, template_id):
+                raise HTTPException(status_code=409)
             name = template.name
             db.delete(template)
             audit.record_change(db, actor_id, "template.deleted", name)
