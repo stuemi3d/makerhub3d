@@ -12,6 +12,7 @@
       <th scope="col">{{ t('users.col.name') }}</th>
       <th scope="col">{{ t('users.col.role') }}</th>
       <th scope="col">{{ t('users.col.status') }}</th>
+      <th scope="col">{{ t('users.col.two_factor') }}</th>
     </tr>
   </thead>
   <tbody>
@@ -25,6 +26,7 @@
         {% else %}{{ t('user.status.active') }}{% endif %}
         {% if u.must_change_password %}<br><small>{{ t('user.status.initial_password') }}</small>{% endif %}
       </td>
+      <td>{{ t('user.two_factor.on' if u.two_factor else 'user.two_factor.off') }}</td>
     </tr>
     {% endfor %}
   </tbody>

@@ -11,6 +11,9 @@
 {% if password_reset %}
 <p role="status"><ins>{{ t('user.reset.done') }}</ins></p>
 {% endif %}
+{% if tfa_reset %}
+<p role="status"><ins>{{ t('user.two_factor.reset.done') }}</ins></p>
+{% endif %}
 {% if errors.get('form') %}
 <p role="alert"><mark>{{ t(errors['form']) }}</mark></p>
 {% elif errors %}
@@ -63,5 +66,18 @@
   </form>
 </section>
 {% endif %}
+<section>
+  <h2>{{ t('user.two_factor.title') }}</h2>
+  <p>{{ t('user.two_factor.status.on' if target.two_factor else 'user.two_factor.status.off') }}</p>
+  {% if is_self %}
+  <p><small>{{ t('user.two_factor.self') }}</small></p>
+  {% elif target.two_factor %}
+  <p>{{ t('user.two_factor.reset.intro') }}</p>
+  <form method="post" action="/settings/users/{{ target.id }}/2fa-reset" data-confirm="{{ t('user.two_factor.reset.confirm') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="secondary">{{ t('user.two_factor.reset.submit') }}</button>
+  </form>
+  {% endif %}
+</section>
 <p><a href="/settings/users">{{ t('users.back') }}</a></p>
 {% endblock %}

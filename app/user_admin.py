@@ -1,5 +1,7 @@
 """User management for admins (issue #28): list, create, change role and state, reset password.
 
+Issue #39: the admin can also reset the two-factor login of another user (lost phone).
+
 Users are never deleted, only deactivated, so that the change log (#29) keeps its names.
 """
 
@@ -33,6 +35,7 @@ def _user_view(user: User) -> dict:
         "active": user.active,
         "locked_minutes": auth.minutes_locked(user),
         "must_change_password": user.must_change_password,
+        "two_factor": user.totp_secret is not None,
     }
 
 
@@ -136,13 +139,18 @@ def add_user_admin_routes(
 
     @app.get("/settings/users/{user_id}", response_class=HTMLResponse, dependencies=manage)
     def edit_user_page(
-        request: Request, user_id: int, saved: str | None = None, password_reset: str | None = None
+        request: Request,
+        user_id: int,
+        saved: str | None = None,
+        password_reset: str | None = None,
+        tfa_reset: str | None = None,
     ) -> HTMLResponse:
         return render_edit(
             request,
             load_user(user_id),
             saved=saved == "1",
             password_reset=password_reset == "1",  # noqa: S105 (a flag, not a password)
+            tfa_reset=tfa_reset == "1",
         )
 
     def change(user_id: int, actor_id: int, raw: dict[str, str]) -> tuple[dict, dict]:
@@ -217,3 +225,21 @@ def add_user_admin_routes(
             return render_edit(request, user, status_code=422, errors=errors)
         target = f"/settings/users/{int(user['id'])}?password_reset=1"
         return RedirectResponse(target, status_code=303)
+
+    @app.post(
+        "/settings/users/{user_id}/2fa-reset", response_class=HTMLResponse, dependencies=manage
+    )
+    async def reset_two_factor(request: Request, user_id: int) -> Response:
+        # The form has no fields; its form token (CSRF) is checked for every form in main.py.
+        actor_id = request.state.user.id
+        error, stored_id = await run_in_threadpool(
+            auth.admin_reset_two_factor, new_session, actor_id, user_id
+        )
+        if stored_id is None:
+            raise HTTPException(status_code=404)
+        if error:
+            return render_edit(
+                request, load_user(stored_id), status_code=422, errors={"form": error}
+            )
+        # The address is built from the stored user, not from the requested one.
+        return RedirectResponse(f"/settings/users/{int(stored_id)}?tfa_reset=1", status_code=303)
