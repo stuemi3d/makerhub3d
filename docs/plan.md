@@ -10,7 +10,7 @@ Das Tool beantwortet für jeden Artikel eine Frage: *Was habe ich kalkuliert, wa
 
 **Drin (Version 1):**
 
-- Artikelstamm mit Vorlagen und Varianten, jede Variante mit eigener Artikelnummer (z. B. `3D-0042-RT`); Kalkulation ist immer optional
+- Artikelstamm mit Vorlagen und Varianten, jede Variante mit eigener Artikelnummer (z. B. `123456-rt`, automatisch aus Vorlagennummer und Kürzeln der Merkmalswerte zusammengesetzt); Kalkulation ist immer optional
 - Kalkulation für noch nicht gedruckte Teile: Filament aus den Bambuddy-Spulen, Druckzeit und Gramm aus gesliceter 3MF oder G-Code, Strom, Maschine, Ausschussquote, Arbeitszeit, Zusatzteile, Gewinnaufschlag
 - Produktion: einen oder mehrere Drucke aus dem Bambuddy-Archiv einem oder mehreren Artikeln zuordnen; nicht zugeordnete (z. B. private) Drucke bleiben unberührt
 - Lager: Zugänge aus Produktionen, Abgänge vorerst von Hand
@@ -66,7 +66,7 @@ Der Artikel ist der Knotenpunkt; alles andere hängt über die Artikelnummer an 
 
 | Tabelle | Wichtigste Felder | Verknüpfung nach außen |
 | --- | --- | --- |
-| Artikelvorlage | Name, Beschreibung, Merkmale (z. B. Farbe, Größe), Standardwerte für Preis, Gewichtung und Mindestbestand, aktiv | nur Vorlage: kein Bestand, kein Verkauf |
+| Artikelvorlage | Vorlagennummer, Name, Beschreibung, Merkmale (z. B. Farbe, Größe; jeder Merkmalswert mit Kürzel), Standardwerte für Preis, Gewichtung und Mindestbestand, aktiv | nur Vorlage: kein Bestand, kein Verkauf |
 | Artikel | Artikelnummer, Bezeichnung, optional Vorlage + Merkmalswerte (= Variante), Soll-Verkaufspreis, Gewichtung, Mindestbestand, aktiv | Artikelnummer = Schlüssel zur Rechnungs-Software |
 | Kalkulation (optional) | Artikel oder Vorlage, Datum, „maßgeblich“-Kennzeichen, Materialzeilen (Spule/Durchschnitt/frei, Gramm, Preis/kg), Druckzeit, Teile pro Platte, Drucker, Ausschussquote %, Rüstzeit pro Platte (Min.), Nacharbeit pro Stück (Min.), Zusatzteile pro Stück, Gewinnaufschlag %, Ergebnis pro Stück (Selbstkosten ohne/mit Arbeitszeit, Verkaufspreis-Vorschlag) | Spule aus Bambuddy (nur gelesen) |
 | Produktion | Datum, Notiz, Gesamtkosten, storniert | – |
@@ -79,7 +79,9 @@ Der Artikel ist der Knotenpunkt; alles andere hängt über die Artikelnummer an 
 | Einstellungen | Strompreis (eigen oder aus Bambuddy), Arbeits-Stundensatz, Standard-Ausschussquote, Standard-Gewinnaufschlag, Rundung, Spulen-Kategorie für „geschäftlich“, Abweichungsschwelle | – |
 | Benutzer, Änderungsprotokoll | siehe Sicherheit | – |
 
-**Vorlagen und Varianten:** Eine Vorlage beschreibt z. B. „Halter A“ mit dem Merkmal Farbe; jede Variante („Halter A rot“, `3D-0042-RT`) ist ein vollwertiger Artikel mit eigener Artikelnummer und eigenem Bestand. Artikel ohne Varianten brauchen keine Vorlage. Preis, Gewichtung, Mindestbestand und Kalkulation erbt die Variante von der Vorlage und kann sie überschreiben.
+**Vorlagen und Varianten:** Eine Vorlage beschreibt z. B. „Halter A“ mit dem Merkmal Farbe; jede Variante („Halter A rot“, `123456-rt`) ist ein vollwertiger Artikel mit eigener Artikelnummer und eigenem Bestand. Artikel ohne Varianten brauchen keine Vorlage. Preis, Gewichtung, Mindestbestand und Kalkulation erbt die Variante von der Vorlage und kann sie überschreiben.
+
+**Nummernschema:** Die Vorlage hat eine Vorlagennummer (z. B. `123456`), jeder Merkmalswert ein Kürzel (z. B. blau = `bl`, rot = `rt`, mittel = `m`). Beim Anlegen einer Variante wird die Artikelnummer automatisch zusammengesetzt: Vorlagennummer + Kürzel der gewählten Werte, in der Reihenfolge der Merkmale der Vorlage, getrennt durch `-` (z. B. `123456-bl-m`). Im Formular ist der Vorschlag vor dem Speichern änderbar; die Eindeutigkeit der Artikelnummer wird weiterhin geprüft. Artikel ohne Vorlage bekommen ihre Nummer wie bisher von Hand.
 
 **Löschen von Artikeln und Vorlagen:** Normalfall ist „Deaktivieren“ (der Artikel verschwindet aus den Listen und kann wieder aktiviert werden). Löschen gibt es in vier Stufen:
 
