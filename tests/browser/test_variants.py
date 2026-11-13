@@ -68,3 +68,36 @@ def test_variant_inherits_shows_it_and_can_be_deleted_on_every_screen(
     assert fits_screen_width(admin_page)
     admin_page.get_by_role("button", name=t("article.delete.button")).click()
     expect(admin_page.get_by_role("link", name=number, exact=True)).to_have_count(0)
+
+
+def test_all_combinations_preview_and_create_on_every_screen(
+    admin_page: Page, viewport_name: str
+) -> None:
+    attribute = f"Farbe-{viewport_name}-all"
+    template = f"Halter-{viewport_name}-all"
+    prefix = f"B-A-{viewport_name}"
+
+    admin_page.goto("/attributes/new")
+    admin_page.fill("#name", attribute)
+    admin_page.fill("#values", "rot = rt\nblau = bl")
+    submit(admin_page, "article.create")
+    admin_page.goto("/templates/new")
+    admin_page.fill("#number", prefix)
+    admin_page.fill("#name", template)
+    admin_page.get_by_label(attribute).check()
+    submit(admin_page, "article.create")
+
+    admin_page.get_by_role("button", name=t("variant.bulk.open"), exact=True).click()
+    assert fits_screen_width(admin_page)
+    expect(admin_page.locator("input[name^=number_]")).to_have_count(2)
+    expect(admin_page.locator("#number_0")).to_have_value(f"{prefix}-rt")
+    admin_page.fill("#number_1", f"{prefix}-blau")
+    submit(admin_page, "variant.bulk.create")
+
+    expect(admin_page.get_by_role("link", name=f"{prefix}-rt", exact=True)).to_be_visible()
+    expect(admin_page.get_by_role("link", name=f"{prefix}-blau", exact=True)).to_be_visible()
+    assert fits_screen_width(admin_page)
+
+    admin_page.get_by_role("button", name=t("variant.bulk.open"), exact=True).click()
+    expect(admin_page.get_by_text(t("variant.bulk.exists"), exact=True)).to_have_count(2)
+    expect(admin_page.get_by_text(t("variant.bulk.nothing_new"))).to_be_visible()
