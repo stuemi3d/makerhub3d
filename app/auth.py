@@ -613,14 +613,57 @@ def two_factor_key_matches(db: Session, cipher: Cipher | None) -> bool:
     return all(cipher is not None and cipher.decrypt(value) is not None for value in secrets_in_use)
 
 
+def _clear_two_factor(user: User) -> None:
+    user.totp_secret = None
+    user.totp_pending_secret = None
+    user.totp_last_step = None
+
+
+def reset_two_factor(db: Session, user: User, actor_id: int | None) -> bool:
+    """Turns two-factor login of one user off (lost phone, issue #39).
+
+    Done by an admin (actor_id) or by the command on the server (actor_id None). The user is
+    logged out everywhere. Returns False, changing nothing, when it was not switched on.
+    """
+    if user.totp_secret is None:
+        return False
+    _clear_two_factor(user)
+    db.execute(delete(RecoveryCode).where(RecoveryCode.user_id == user.id))
+    end_all_sessions(db, user.id)
+    audit.record_change(db, actor_id, "user.2fa_reset", user.username)
+    return True
+
+
+def admin_reset_two_factor(
+    new_session: Callable[[], Session], actor_id: int, user_id: int
+) -> tuple[str | None, str | None]:
+    """An admin resets the two-factor login of another user; returns error key and name.
+
+    The name is None for an unknown user.
+    """
+    # The same lock as the login, so a code step cannot run at the same moment.
+    with _login_lock, new_session() as db, db.begin():
+        user = db.get(User, user_id)
+        if user is None:
+            return None, None
+        if user.id == actor_id:
+            # The own two-factor login is turned off under "Mein Konto", with password and code.
+            return "user.error.self_2fa", user.username
+        reset_two_factor(db, user, actor_id)
+        return None, user.username
+
+
+def find_user(db: Session, username: str) -> User | None:
+    """The user with this name; case does not matter, as at the login."""
+    return db.scalar(select(User).where(User.username_key == name_key(username)))
+
+
 def reset_all_two_factor(db: Session) -> int:
     """Turns two-factor login off for everybody (lost key); returns the number of users."""
     switched_on = 0
     for user in db.scalars(select(User)):
         switched_on += user.totp_secret is not None
-        user.totp_secret = None
-        user.totp_pending_secret = None
-        user.totp_last_step = None
+        _clear_two_factor(user)
     db.execute(delete(RecoveryCode))
     db.execute(delete(PendingLogin))
     audit.record_change(db, None, "system.2fa_reset_all")

@@ -114,6 +114,20 @@ Nach dem Passwort fragt MakerHub 3D nach dem Code. Dafür hast du 5 Minuten. Fal
 
 **Die Uhr des Servers muss stimmen.** Die Codes hängen von der Uhrzeit ab; eine Abweichung von etwa 30 Sekunden wird toleriert. Läuft die Server-Uhr falsch, werden alle Codes abgelehnt. Auf üblichen Linux-Servern stellt sich die Uhr automatisch über das Internet (NTP); prüfen kannst du sie mit `timedatectl`.
 
+### Handy verloren
+
+1. **Notfall-Code:** Wer noch einen Notfall-Code hat, meldet sich damit an und schaltet die Zwei-Faktor-Anmeldung in „Mein Konto“ aus (oder richtet sie mit dem neuen Handy neu ein).
+2. **Ein Admin hilft:** Unter **Einstellungen → Benutzer** den Namen anklicken und „Zwei-Faktor zurücksetzen“ wählen. Die Zwei-Faktor-Einrichtung und die Notfall-Codes dieses Benutzers werden gelöscht und er wird überall abgemeldet. Danach meldet er sich nur mit dem Passwort an und kann die Zwei-Faktor-Anmeldung neu einrichten. Die Benutzerliste zeigt in der Spalte „Zwei-Faktor“, wer sie nutzt. Die eigene Zwei-Faktor-Anmeldung kann ein Admin dort nicht zurücksetzen.
+3. **Der einzige Admin ist betroffen:** Auf dem Server diesen Befehl ausführen (Groß-/Kleinschreibung des Namens ist egal):
+
+   ```
+   docker compose run --rm app python -m app.cli reset-2fa <Benutzername>
+   ```
+
+   Das betrifft nur diesen einen Benutzer; alle anderen behalten ihre Zwei-Faktor-Anmeldung. Er wird überall abgemeldet und meldet sich danach nur mit dem Passwort an.
+
+Beides steht im Änderungsprotokoll („Zwei-Faktor-Anmeldung zurückgesetzt“, beim Befehl mit „Befehl auf dem Server“).
+
 ### Schlüssel verloren oder falsch eingetragen
 
 Fehlt der Schlüssel oder passt er nicht zu den gespeicherten Einrichtungen, **startet die App nicht** und nennt im Container-Protokoll (`docker compose logs app`) zwei Auswege:
