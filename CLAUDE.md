@@ -22,14 +22,23 @@ Diese Datei gilt für jede Claude-Code-Sitzung in diesem Repository. Der vollst�
 2. **Testfälle in Klartext** als Kommentar ins Issue schreiben (z. B. „Wenn ich einen Druck mit 10 guten Teilen anbuche, steigt der Bestand um 10“). Dann **auf die Bestätigung des Maintainers warten**, bevor du programmierst.
 3. Branch anlegen: `aufgabe/<issue-nr>-<kurzname>` (von aktuellem `main`).
 4. Zuerst die Tests schreiben, dann den Code.
-5. Lokal muss alles grün sein: `uv run pytest`, `uv run ruff check`, `uv run ruff format --check`.
-6. **Unabhängiges Review:** Starte einen Subagenten mit frischem Kontext, der den Diff gegen diese Datei und die Sicherheits-Checkliste unten prüft. Behebe, was er findet, oder begründe, warum nicht.
+5. Lokal muss alles grün sein: `uv run pytest`, `uv run ruff check`, `uv run ruff format --check`. Hat sich eine Seite oder Oberfläche geändert, zusätzlich die Browser-Tests (siehe „Browser-Tests“).
+6. **Unabhängiges Review:** Starte einen Subagenten mit frischem Kontext, der den Diff gegen diese Datei und die Sicherheits-Checkliste unten prüft. Der Subagent läuft mit dem Modell **Sonnet** (spart Nutzungslimit). Behebe, was er findet, oder begründe, warum nicht.
 7. Commit(s), Push des Branches, Pull Request mit der Vorlage (`.github/pull_request_template.md`), verknüpft mit dem Issue (`Closes #<nr>`).
 8. Kommentare des Maintainers im PR umsetzen, bis er zufrieden ist. **Er merged – nie du.**
 
 **Ausnahme:** Reine Doku- oder Organisationsaufgaben ohne Programmcode (z. B. Plan, Regeln, Vorlagen, Issues) brauchen keine test-bezogenen Schritte – Schritt 2 (Testfall-Freigabe), Schritt 4 (Tests zuerst schreiben) und Schritt 5 (Testlauf) entfallen dann. Unter „Testfälle“ steht im PR, dass es keinen Code und deshalb keine automatisierten Tests gibt. Das unabhängige Review (Schritt 6) läuft immer.
 
 Halte jeden Pull Request klein. Wird eine Aufgabe größer als gedacht: stoppen, Vorschlag zur Aufteilung machen.
+
+## Browser-Tests (Playwright)
+
+- Browser-Tests liegen in `tests/browser/` und laufen getrennt vom normalen Testlauf: `uv run pytest -m browser`. Jeder Test läuft in Desktop- und Handy-Ansicht (390 px breit).
+- Der Test-Browser ruft nur die lokale Testversion auf (`127.0.0.1`, eigene leere Datenbank in einem temporären Ordner). Jede Anfrage an eine andere Adresse wird blockiert und lässt den Test fehlschlagen.
+- Chromium wird einmalig im Home-Ordner installiert, ohne `sudo`: `uv run playwright install chromium`. Fehlen Systembibliotheken, nenne dem Maintainer den genauen `sudo`-Befehl und erkläre in einfachen Worten, was er installiert.
+- Bei einem fehlgeschlagenen Browser-Test liegt ein Screenshot in `test-results/` (nicht im Git).
+- **Sparsam mit dem Nutzungslimit:** Schau dir Screenshots nur an, wenn sich die Oberfläche geändert hat oder ein Browser-Test fehlschlägt – nicht routinemäßig.
+- Neue oder geänderte Seiten bekommen einen Browser-Test, wenn Layout oder Bedienung (z. B. Handy-Ansicht) davon abhängen. In GitHub Actions läuft die Prüfung „Browser-Tests“ bei jedem Pull Request.
 
 ## Was du nie tust
 
@@ -43,7 +52,7 @@ Halte jeden Pull Request klein. Wird eine Aufgabe größer als gedacht: stoppen,
 - Keine `.env`-Dateien lesen außer `.env.example` und `.env.test`. `.env.test` bleibt lokal und kommt nie ins Repo (dort steht später der Bambuddy-Test-Key). Echte Zugangsdaten gehören nie ins Repo; im Repo liegt nur `.env.example` mit Platzhaltern.
 - Keine Dateien außerhalb dieses Repos ändern (Ausnahme: temporäre Dateien in `/tmp`).
 - Nichts deployen und keine laufende Instanz verändern. Das macht der Maintainer.
-- Keine Netzwerkzugriffe außer Paketquellen, GitHub und – nur wenn eine Aufgabe es verlangt – der Bambuddy-Test-API.
+- Keine Netzwerkzugriffe außer Paketquellen, GitHub, dem einmaligen Chromium-Download von Playwright und – nur wenn eine Aufgabe es verlangt – der Bambuddy-Test-API.
 - Keine Abhängigkeit hinzufügen, ohne sie in der PR-Beschreibung unter „Achtung“ zu nennen und zu begründen.
 
 ## Pull-Request-Beschreibung

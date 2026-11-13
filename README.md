@@ -20,7 +20,9 @@ Voraussetzung: [uv](https://docs.astral.sh/uv/). uv installiert Python 3.12 und 
 uv sync                                  # Abhängigkeiten installieren
 uv run uvicorn app.main:app --reload     # App starten, dann http://127.0.0.1:8000 öffnen
                                          # (Einrichtungscode für den ersten Admin steht in der Ausgabe)
-uv run pytest                            # Tests
+uv run pytest                            # Tests (ohne Browser-Tests)
+uv run playwright install chromium       # einmalig: Browser für die Browser-Tests
+uv run pytest -m browser                 # Browser-Tests (Desktop und Handy)
 uv run ruff check                        # Codestil prüfen
 uv run ruff format --check               # Formatierung prüfen
 ```
