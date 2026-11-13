@@ -20,6 +20,7 @@ dependencies = [
 dev = [
     "httpx2==2.16.0",
     "pytest==9.2.0",
+    "pytest-playwright==0.10.0",
     "ruff==0.17.4",
 ]
 
@@ -29,7 +30,9 @@ package = false
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
-addopts = "-ra --strict-markers"
+# Browser tests are slower and need Chromium: `uv run pytest -m browser` runs only them.
+addopts = "-ra --strict-markers -m 'not browser' --screenshot only-on-failure --full-page-screenshot --output test-results"
+markers = ["browser: tests that drive a real browser against a local test app"]
 
 [tool.ruff]
 target-version = "py312"
