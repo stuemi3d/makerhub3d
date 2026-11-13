@@ -3,6 +3,7 @@
 {% set heading = article.number if article else t('article.new.title') %}
 {% block title %}{{ heading }} – {{ app_name }}{% endblock %}
 {% block content %}
+{% set inherited = article.inherited if article else {} %}
 <h1>{{ t('article.edit.title') if article else t('article.new.title') }}</h1>
 {% if errors %}
 <p role="alert"><mark>{{ t('article.has_errors') }}</mark></p>
@@ -21,13 +22,13 @@
   <p><small>{{ t('variant.hint.inherit') }}</small></p>
   {% endif %}
   <label for="selling_price">{{ t('article.field.selling_price') }}</label>
-  <input type="text" inputmode="decimal" autocomplete="off" {{ field_attrs('selling_price', errors) }} value="{{ values.get('selling_price', '') }}">
+  <input type="text" inputmode="decimal" autocomplete="off" {{ field_attrs('selling_price', errors) }}{% if inherited.get('selling_price') %} placeholder="{{ t('variant.placeholder').format(value=inherited['selling_price']) }}"{% endif %} value="{{ values.get('selling_price', '') }}">
   {{ feedback('selling_price', errors, t, 'article.hint.') }}
   <label for="weight">{{ t('article.field.weight') }}</label>
-  <input type="text" inputmode="decimal" autocomplete="off" {{ field_attrs('weight', errors) }} value="{{ values.get('weight', '') }}">
+  <input type="text" inputmode="decimal" autocomplete="off" {{ field_attrs('weight', errors) }}{% if inherited.get('weight') %} placeholder="{{ t('variant.placeholder').format(value=inherited['weight']) }}"{% endif %} value="{{ values.get('weight', '') }}">
   {{ feedback('weight', errors, t, 'article.hint.') }}
   <label for="min_stock">{{ t('article.field.min_stock') }}</label>
-  <input type="text" inputmode="numeric" autocomplete="off" {{ field_attrs('min_stock', errors) }} value="{{ values.get('min_stock', '') }}">
+  <input type="text" inputmode="numeric" autocomplete="off" {{ field_attrs('min_stock', errors) }}{% if inherited.get('min_stock') %} placeholder="{{ t('variant.placeholder').format(value=inherited['min_stock']) }}"{% endif %} value="{{ values.get('min_stock', '') }}">
   {{ feedback('min_stock', errors, t, 'article.hint.') }}
   <button type="submit">{{ t('article.save' if article else 'article.create') }}</button>
 </form>

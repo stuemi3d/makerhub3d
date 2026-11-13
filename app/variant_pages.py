@@ -25,6 +25,7 @@ def add_variant_routes(
     new_session: Callable[[], Session],
     render: Callable[..., HTMLResponse],
     read_form: Callable[[Request, tuple[str, ...]], Awaitable[dict[str, str]]],
+    language: str,
 ) -> None:
     edit = [requires(Permission.EDIT)]
 
@@ -46,6 +47,7 @@ def add_variant_routes(
                 "id": template.id,
                 "name": template.name,
                 "number": template.number,
+                "inherited": variants.inherited_texts(template, language),
             }, fields
 
     def form_page(request: Request, template: dict, fields, values, errors, status_code=200):

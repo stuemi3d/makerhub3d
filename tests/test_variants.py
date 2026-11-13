@@ -4,6 +4,7 @@ Test case numbers refer to the confirmed list in issues #44 and #49.
 """
 
 import json
+import re
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
@@ -1060,3 +1061,73 @@ def test_pages_escape_text(client: AppClient, setup: Setup) -> None:
     html = client.get(f"/templates/{setup.template_id}").text
 
     assert "<b>fett</b>" not in html
+
+
+# --- Issue #68: inherited values as grey placeholders -----------------------------------------
+
+
+def placeholder_of(html: str, field: str) -> str | None:
+    match = re.search(rf'<input[^>]*id="{field}"[^>]*>', html)
+    assert match, field
+    found = re.search(r'placeholder="([^"]*)"', match.group(0))
+    return found.group(1) if found else None
+
+
+def value_of(html: str, field: str) -> str:
+    match = re.search(rf'<input[^>]*id="{field}"[^>]*>', html)
+    return re.search(r'value="([^"]*)"', match.group(0)).group(1)
+
+
+def test_new_variant_form_shows_template_values_as_placeholders(
+    client: AppClient, setup: Setup
+) -> None:
+    html = client.get(f"/templates/{setup.template_id}/variants/new").text
+
+    assert placeholder_of(html, "selling_price") == "10,00 (von Vorlage)"
+    assert placeholder_of(html, "weight") == "2,00 (von Vorlage)"
+    assert placeholder_of(html, "min_stock") == "5 (von Vorlage)"
+    # Only a hint: the fields stay empty and so keep inheriting.
+    assert [value_of(html, f) for f in ("selling_price", "weight", "min_stock")] == ["", "", ""]
+
+
+def test_saving_without_input_still_inherits_and_own_input_wins(
+    client: AppClient, setup: Setup
+) -> None:
+    make_variant(client, setup)
+    make_variant(client, setup, colour="blau", number="3D-0042-BL", selling_price="15,00")
+
+    assert article_by_number("3D-0042-RT").selling_price is None
+    assert str(article_by_number("3D-0042-BL").selling_price) == "15.00"
+
+
+def test_no_placeholder_for_a_field_the_template_has_no_value_for(client: AppClient) -> None:
+    setup = make_setup(client, selling_price="", weight="", min_stock="")
+
+    html = client.get(f"/templates/{setup.template_id}/variants/new").text
+
+    assert [placeholder_of(html, f) for f in ("selling_price", "weight", "min_stock")] == [None] * 3
+
+
+def test_edit_form_of_a_variant_shows_placeholders_only_for_empty_fields(
+    client: AppClient, setup: Setup
+) -> None:
+    make_variant(client, setup, selling_price="15,00")
+    article_id = article_by_number("3D-0042-RT").id
+
+    html = client.get(f"/articles/{article_id}/edit").text
+
+    assert value_of(html, "selling_price") == "15,00"
+    assert placeholder_of(html, "weight") == "2,00 (von Vorlage)"
+    assert placeholder_of(html, "min_stock") == "5 (von Vorlage)"
+
+
+def test_normal_article_forms_have_no_placeholders(client: AppClient) -> None:
+    article_id = plain_article()
+
+    for path in ("/articles/new", f"/articles/{article_id}/edit"):
+        html = client.get(path).text
+        assert placeholder_of(html, "selling_price") is None, path
+
+
+def test_placeholder_text_exists_in_both_languages() -> None:
+    assert "{value}" in DE["variant.placeholder"] and "{value}" in EN["variant.placeholder"]
