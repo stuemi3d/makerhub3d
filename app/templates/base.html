@@ -39,6 +39,9 @@
     </nav>
   </header>
   <main class="container">
+    {% set path = request.url.path %}
+    {% set area = 'articles' if path == '/articles' or path.startswith('/articles/') else 'templates' if path == '/templates' or path.startswith('/templates/') else 'attributes' if path == '/attributes' or path.startswith('/attributes/') else none %}
+    {% if user and area %}{% include "_area_tabs.html" %}{% endif %}
     {% block content %}{% endblock %}
   </main>
 </body>

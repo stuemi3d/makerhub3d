@@ -73,3 +73,95 @@
   font-size: 2rem;
   line-height: 1.2;
 }
+
+/* Tabs for the area Articles / Templates / Attributes. */
+.area-tabs ul {
+  padding-left: 0;
+  flex-wrap: wrap;
+}
+
+/* Heading row: title on the left, small buttons on the right. */
+.page-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.page-head h1 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.page-actions form {
+  margin: 0;
+}
+
+/* Compact buttons in heading rows and hint boxes. */
+.page-actions [role="button"],
+.page-actions button,
+.empty-hint [role="button"] {
+  width: auto;
+  margin: 0;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+.empty-hint {
+  text-align: center;
+}
+
+/* Detail card: two columns on wide screens, one on the phone. */
+.details {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem 2rem;
+  margin: 0;
+}
+
+@media (min-width: 768px) {
+  .details {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.details dt {
+  font-size: 0.875rem;
+  color: var(--pico-muted-color);
+}
+
+.details dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.1rem 0.6rem;
+  border-radius: 1rem;
+  font-size: 0.8rem;
+}
+
+.badge-active {
+  background: rgba(46, 160, 67, 0.2);
+  color: #56d364;
+}
+
+.badge-inactive {
+  background: rgba(139, 148, 158, 0.2);
+  color: var(--pico-muted-color);
+}
+
+.area-tabs a[aria-current="page"] {
+  border-bottom: 2px solid currentColor;
+  font-weight: bold;
+}

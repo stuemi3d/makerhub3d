@@ -1,11 +1,15 @@
 {% extends "base.html" %}
 {% block title %}{{ t('attributes.title') }} – {{ app_name }}{% endblock %}
 {% block content %}
-<h1>{{ t('attributes.title') }}</h1>
+<div class="page-head">
+  <h1>{{ t('attributes.title') }}</h1>
+  {% if can('edit') %}
+  <div class="page-actions">
+    <a href="/attributes/new" role="button">{{ t('attributes.new') }}</a>
+  </div>
+  {% endif %}
+</div>
 <p>{{ t('attributes.intro') }}</p>
-{% if can('edit') %}
-<p><a href="/attributes/new" role="button">{{ t('attributes.new') }}</a></p>
-{% endif %}
 {% for a in attributes %}
 <article>
   <header><strong>{{ a.name }}</strong></header>
@@ -22,7 +26,9 @@
   {% endif %}
 </article>
 {% else %}
-<p>{{ t('attributes.empty') }}</p>
+<article class="empty-hint">
+  <p>{{ t('attributes.empty') }}</p>
+  {% if can('edit') %}<a href="/attributes/new" role="button">{{ t('attributes.empty.create') }}</a>{% endif %}
+</article>
 {% endfor %}
-<p><a href="/articles">{{ t('article.back_to_list') }}</a></p>
 {% endblock %}

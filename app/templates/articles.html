@@ -1,15 +1,14 @@
 {% extends "base.html" %}
 {% block title %}{{ t('articles.title') }} – {{ app_name }}{% endblock %}
 {% block content %}
-<h1>{{ t('articles.title') }}</h1>
-{% if can('edit') %}
-<p><a href="/articles/new" role="button">{{ t('articles.new') }}</a></p>
-{% endif %}
-<p><a href="/templates">{{ t('templates.title') }}</a> · <a href="/attributes">{{ t('attributes.title') }}</a></p>
-<p>
-  {% if show_inactive %}<a href="/articles">{{ t('articles.hide_inactive') }}</a>
-  {% else %}<a href="/articles?inactive=1">{{ t('articles.show_inactive') }}</a>{% endif %}
-</p>
+<div class="page-head">
+  <h1>{{ t('articles.title') }}</h1>
+  <div class="page-actions">
+    {% if show_inactive %}<a href="/articles" role="button" class="secondary outline">{{ t('articles.hide_inactive') }}</a>
+    {% else %}<a href="/articles?inactive=1" role="button" class="secondary outline">{{ t('articles.show_inactive') }}</a>{% endif %}
+    {% if can('edit') %}<a href="/articles/new" role="button">{{ t('articles.new') }}</a>{% endif %}
+  </div>
+</div>
 {% if articles %}
 <div class="overflow-auto">
 <table>
@@ -34,6 +33,9 @@
 </table>
 </div>
 {% else %}
-<p>{{ t('articles.empty') }}</p>
+<article class="empty-hint">
+  <p>{{ t('articles.empty') }}</p>
+  {% if can('edit') %}<a href="/articles/new" role="button">{{ t('articles.empty.create') }}</a>{% endif %}
+</article>
 {% endif %}
 {% endblock %}

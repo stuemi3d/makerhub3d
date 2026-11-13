@@ -1,7 +1,24 @@
 {% extends "base.html" %}
 {% block title %}{{ tpl.name }} – {{ app_name }}{% endblock %}
 {% block content %}
-<h1>{{ tpl.name }}</h1>
+<nav aria-label="breadcrumb">
+  <ul>
+    <li><a href="/templates">{{ t('templates.title') }}</a></li>
+    <li>{{ tpl.name }}</li>
+  </ul>
+</nav>
+<div class="page-head">
+  <h1>{{ tpl.name }}</h1>
+  {% if can('edit') %}
+  <div class="page-actions">
+    <a href="/templates/{{ tpl.id }}/edit" role="button" class="secondary">{{ t('article.edit') }}</a>
+    <form method="post" action="/templates/{{ tpl.id }}/{{ 'deactivate' if tpl.active else 'activate' }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit" class="secondary outline">{{ t('article.deactivate' if tpl.active else 'article.activate') }}</button>
+    </form>
+  </div>
+  {% endif %}
+</div>
 {% if saved %}
 <p role="status"><ins>{{ t('article.saved') }}</ins></p>
 {% endif %}
@@ -29,12 +46,6 @@
   <dd>{{ t('article.status.active' if tpl.active else 'article.status.inactive') }}</dd>
 </dl>
 {% if can('edit') %}
-<p><a href="/templates/{{ tpl.id }}/edit" role="button" class="secondary">{{ t('article.edit') }}</a></p>
-<form method="post" action="/templates/{{ tpl.id }}/{{ 'deactivate' if tpl.active else 'activate' }}">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-  <button type="submit" class="secondary outline">{{ t('article.deactivate' if tpl.active else 'article.activate') }}</button>
-</form>
 <p><a href="/templates/{{ tpl.id }}/delete">{{ t('template.delete') }}</a></p>
 {% endif %}
-<p><a href="/templates">{{ t('template.back_to_list') }}</a></p>
 {% endblock %}
