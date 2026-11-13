@@ -69,6 +69,7 @@ def add_article_routes(
             "min_stock": variants.effective(article, "min_stock"),
             "active": article.active,
             "template": None if template is None else {"id": template.id, "name": template.name},
+            "inherited": variants.inherited_texts(template, language) if template else {},
             "sources": {name: variants.source(article, name) for name in variants.INHERITED_FIELDS}
             if template
             else {},

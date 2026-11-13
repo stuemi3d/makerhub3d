@@ -437,6 +437,7 @@
   "variant.inherited": "inherited from template",
   "variant.own": "own value",
   "variant.reset": "Back to template value",
+  "variant.placeholder": "{value} (from template)",
   "variant.hint.inherit": "Price, weight and minimum stock: leave empty to use the template's value.",
   "variant.error.value_required": "Please choose a value.",
   "variant.error.value_invalid": "This value does not belong to this attribute.",

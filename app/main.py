@@ -516,7 +516,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     add_backup_routes(app, new_session, render, settings)
     add_article_routes(app, new_session, render, read_form, language)
     add_template_routes(app, new_session, render, read_form, language)
-    add_variant_routes(app, new_session, render, read_form)
+    add_variant_routes(app, new_session, render, read_form, language)
     add_variant_bulk_routes(app, new_session, render, read_form)
     add_stock_routes(app, new_session, render, read_form, language)
 

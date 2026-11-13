@@ -5,6 +5,8 @@ empty on the variant are taken from the template; an own value wins. Nothing her
 specific to a page, so pages for creating and editing variants share it.
 """
 
+from decimal import Decimal
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -16,6 +18,7 @@ from app.models import (
     AttributeValue,
     TemplateAttribute,
 )
+from app.settings_form import format_decimal
 
 
 def template_number_taken(db: Session, number_key: str) -> bool:
@@ -200,3 +203,17 @@ def existing_combo_keys(db: Session, template_id: int) -> list[str]:
             )
         )
     )
+
+
+def inherited_texts(template: ArticleTemplate, language: str) -> dict[str, str]:
+    """The template's values as grey placeholder texts for the variant forms; a field
+    without a template value has no entry."""
+    texts: dict[str, str] = {}
+    for field in INHERITED_FIELDS:
+        value = getattr(template, field)
+        if value is None:
+            continue
+        if isinstance(value, Decimal):
+            value = format_decimal(value.quantize(Decimal("0.01")), language)
+        texts[field] = str(value)
+    return texts

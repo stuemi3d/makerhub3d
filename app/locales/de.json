@@ -437,6 +437,7 @@
   "variant.inherited": "geerbt von Vorlage",
   "variant.own": "eigener Wert",
   "variant.reset": "Zurück auf Vorlagenwert",
+  "variant.placeholder": "{value} (von Vorlage)",
   "variant.hint.inherit": "Preis, Gewichtung und Mindestbestand: leer lassen, um den Wert der Vorlage zu übernehmen.",
   "variant.error.value_required": "Bitte einen Wert wählen.",
   "variant.error.value_invalid": "Dieser Wert gehört nicht zu diesem Merkmal.",

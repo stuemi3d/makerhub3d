@@ -31,6 +31,11 @@ def test_variant_inherits_shows_it_and_can_be_deleted_on_every_screen(
 
     admin_page.get_by_role("button", name=t("variant.new"), exact=True).click()
     assert fits_screen_width(admin_page)
+    # The template's price is shown grey as a hint; the field itself stays empty.
+    expect(admin_page.locator("#selling_price")).to_have_attribute(
+        "placeholder", "12,90 (von Vorlage)"
+    )
+    expect(admin_page.locator("#selling_price")).to_have_value("")
     # The number is suggested from the template number and the abbreviation of the value ...
     expect(admin_page.locator("#number")).to_have_value("")
     admin_page.locator("select[name^=attr_]").select_option(label="rot")
