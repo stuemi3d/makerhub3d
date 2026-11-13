@@ -164,7 +164,7 @@
   "two_factor.status.on": "On: after the password, MakerHub 3D asks for a code from your app.",
   "two_factor.status.off": "Off.",
   "two_factor.explain": "With two-factor login you need a 6-digit code from an app on your phone (e.g. Google Authenticator, Aegis or 2FAS) in addition to your password. Somebody who only knows your password cannot get in.",
-  "two_factor.no_key": "Two-factor login cannot be set up yet: the admin has to add a key to the .env file first (see the guide).",
+  "two_factor.unavailable": "Two-factor login cannot be set up yet: the admin has to add a key to the .env file first (see the guide).",
   "two_factor.codes_left": "Recovery codes left: {count}",
   "two_factor.renew.title": "New recovery codes",
   "two_factor.renew.submit": "Create new recovery codes",

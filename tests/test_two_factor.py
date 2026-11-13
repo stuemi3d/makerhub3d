@@ -264,7 +264,8 @@ def test_turning_off_needs_password_and_code(
         "/account/2fa/disable", data={"off_password": ADMIN_PASSWORD, "off_code": "000000"}
     )
 
-    assert wrong_password.status_code == wrong_code.status_code == 422
+    assert wrong_password.status_code == 422
+    assert wrong_code.status_code == 422
     assert field_error(wrong_password.text, "off_password") == DE["account.error.current_wrong"]
     assert field_error(wrong_code.text, "off_code") == DE["account.error.code_wrong"]
     assert user_named().totp_secret is not None
@@ -333,7 +334,7 @@ def test_without_key_setup_is_not_possible(monkeypatch: pytest.MonkeyPatch, clie
             "/account/2fa/start", data={"tfa_password": ADMIN_PASSWORD}, follow_redirects=False
         )
 
-    assert DE["two_factor.no_key"] in page.text
+    assert DE["two_factor.unavailable"] in page.text
     assert 'action="/account/2fa/start"' not in page.text
     assert start.headers["location"] == "/account"
     assert user_named().totp_pending_secret is None

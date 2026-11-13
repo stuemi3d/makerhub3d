@@ -164,7 +164,7 @@
   "two_factor.status.on": "Eingeschaltet: Bei der Anmeldung fragt MakerHub 3D nach dem Passwort einen Code aus deiner App ab.",
   "two_factor.status.off": "Ausgeschaltet.",
   "two_factor.explain": "Mit Zwei-Faktor-Anmeldung brauchst du zusätzlich zum Passwort einen 6-stelligen Code aus einer App auf deinem Handy (z. B. Google Authenticator, Aegis oder 2FAS). Wer nur dein Passwort kennt, kommt dann nicht hinein.",
-  "two_factor.no_key": "Zwei-Faktor-Anmeldung kann noch nicht eingerichtet werden: Der Admin muss dafür einen Schlüssel in der .env-Datei eintragen (siehe Anleitung).",
+  "two_factor.unavailable": "Zwei-Faktor-Anmeldung kann noch nicht eingerichtet werden: Der Admin muss dafür einen Schlüssel in der .env-Datei eintragen (siehe Anleitung).",
   "two_factor.codes_left": "Verbleibende Notfall-Codes: {count}",
   "two_factor.renew.title": "Neue Notfall-Codes",
   "two_factor.renew.submit": "Neue Notfall-Codes erzeugen",

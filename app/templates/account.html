@@ -57,7 +57,7 @@
   </form>
   {% elif not two_factor.available %}
   <p>{{ t('two_factor.status.off') }}</p>
-  <p role="note"><mark>{{ t('two_factor.no_key') }}</mark></p>
+  <p role="note"><mark>{{ t('two_factor.unavailable') }}</mark></p>
   {% else %}
   <p>{{ t('two_factor.status.off') }} {{ t('two_factor.explain') }}</p>
   <form method="post" action="/account/2fa/start" novalidate>

@@ -544,13 +544,15 @@ def confirm_two_factor_setup(
         user = db.get(User, user_id)
         if user is None or user.totp_secret is not None or user.totp_pending_secret is None:
             return None
-        secret = cipher.decrypt(user.totp_pending_secret)
+        encrypted = user.totp_pending_secret
+        secret = cipher.decrypt(encrypted)
         if secret is None or len(code) > two_factor.MAX_CODE_LENGTH:
             return None
         step = two_factor.matching_step(secret, code, utcnow(), None)
         if step is None:
             return None
-        user.totp_secret = user.totp_pending_secret
+        # Moved over as it is (still encrypted).
+        user.totp_secret = encrypted
         user.totp_pending_secret = None
         user.totp_last_step = step
         audit.record_change(db, user.id, "account.2fa_enabled", user.username)
