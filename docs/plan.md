@@ -108,6 +108,12 @@ Der Artikel ist der Knotenpunkt; alles andere hängt über die Artikelnummer an 
 | Auswertung | pro Artikel, pro Vorlage und gesamt |
 | Einstellungen | Werte, Geräte, Bambuddy-Verbindung (mit Verbindungstest), Benutzer (nur Admin) |
 
+**Oberfläche und Bedienung** (in zwei Stufen):
+
+- **Stufe 1 (laufend, Bedienung und Orientierung):** Reiter-Leiste für zusammengehörige Bereiche (Artikel · Vorlagen · Merkmale), Pfad („Artikel › A-1001“) statt „Zurück“-Links, Detailseiten als Karte, kompakte Buttons, hilfreiche Hinweise bei leeren Listen. Links zu anderen Seiten bleiben zunächst normale Textlinks.
+- **Stufe 2 (später, nachdem ein Meilenstein im Alltag genutzt wurde):** Gesamtlayout nach dem Vorbild von Bambuddy (Seitenleiste, Kennzahlen-Kacheln, Tabellen mit Filtern, dunkel). Das Artikel-Detail bekommt ein Dashboard nach dem Vorbild von ERPNext: Von dort springt man in die jeweilige Liste (z. B. Preise, Lagerbuchungen). Das wird erst sinnvoll, wenn Lagerbewegungen und Preise existieren (ab M1).
+- Optik-Feinschliff (Farben, Logo, Diagramm-Look) erst in Stufe 2.
+
 ## 6. Kalkulation im Detail
 
 Gerechnet wird in dieser Reihenfolge. Standardwerte (Ausschussquote, Gewinnaufschlag, Arbeits-Stundensatz, Rundung) kommen aus den Einstellungen.

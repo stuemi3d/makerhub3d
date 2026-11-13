@@ -1,0 +1,8 @@
+{# Tabs for the three list areas; shown on all pages below their paths. #}
+<nav aria-label="{{ t('area.tabs') }}" class="area-tabs">
+  <ul>
+    <li><a href="/articles"{% if area == 'articles' %} aria-current="page"{% endif %}>{{ t('articles.title') }}</a></li>
+    <li><a href="/templates"{% if area == 'templates' %} aria-current="page"{% endif %}>{{ t('templates.title') }}</a></li>
+    <li><a href="/attributes"{% if area == 'attributes' %} aria-current="page"{% endif %}>{{ t('attributes.title') }}</a></li>
+  </ul>
+</nav>

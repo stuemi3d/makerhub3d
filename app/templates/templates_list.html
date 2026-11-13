@@ -1,15 +1,15 @@
 {% extends "base.html" %}
 {% block title %}{{ t('templates.title') }} – {{ app_name }}{% endblock %}
 {% block content %}
-<h1>{{ t('templates.title') }}</h1>
+<div class="page-head">
+  <h1>{{ t('templates.title') }}</h1>
+  <div class="page-actions">
+    {% if show_inactive %}<a href="/templates" role="button" class="secondary outline">{{ t('articles.hide_inactive') }}</a>
+    {% else %}<a href="/templates?inactive=1" role="button" class="secondary outline">{{ t('articles.show_inactive') }}</a>{% endif %}
+    {% if can('edit') %}<a href="/templates/new" role="button">{{ t('templates.new') }}</a>{% endif %}
+  </div>
+</div>
 <p>{{ t('templates.intro') }}</p>
-{% if can('edit') %}
-<p><a href="/templates/new" role="button">{{ t('templates.new') }}</a></p>
-{% endif %}
-<p>
-  {% if show_inactive %}<a href="/templates">{{ t('articles.hide_inactive') }}</a>
-  {% else %}<a href="/templates?inactive=1">{{ t('articles.show_inactive') }}</a>{% endif %}
-</p>
 {% if templates %}
 <div class="overflow-auto">
 <table>
@@ -34,7 +34,9 @@
 </table>
 </div>
 {% else %}
-<p>{{ t('templates.empty') }}</p>
+<article class="empty-hint">
+  <p>{{ t('templates.empty') }}</p>
+  {% if can('edit') %}<a href="/templates/new" role="button">{{ t('templates.empty.create') }}</a>{% endif %}
+</article>
 {% endif %}
-<p><a href="/articles">{{ t('article.back_to_list') }}</a></p>
 {% endblock %}

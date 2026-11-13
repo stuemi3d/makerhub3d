@@ -1,24 +1,57 @@
 {% extends "base.html" %}
 {% block title %}{{ article.number }} – {{ app_name }}{% endblock %}
 {% block content %}
-<h1>{{ article.number }} · {{ article.name }}</h1>
+<nav aria-label="breadcrumb">
+  <ul>
+    <li><a href="/articles">{{ t('articles.title') }}</a></li>
+    <li>{{ article.number }}</li>
+  </ul>
+</nav>
+<div class="page-head">
+  <h1>{{ article.number }} · {{ article.name }}</h1>
+  {% if can('edit') %}
+  <div class="page-actions">
+    <a href="/articles/{{ article.id }}/edit" role="button" class="secondary">{{ t('article.edit') }}</a>
+    <form method="post" action="/articles/{{ article.id }}/{{ 'deactivate' if article.active else 'activate' }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit" class="secondary outline">{{ t('article.deactivate' if article.active else 'article.activate') }}</button>
+    </form>
+  </div>
+  {% endif %}
+</div>
 {% if saved %}
 <p role="status"><ins>{{ t('article.saved') }}</ins></p>
 {% endif %}
-<dl>
-  <dt>{{ t('article.field.number') }}</dt>
-  <dd>{{ article.number }}</dd>
-  <dt>{{ t('article.field.name') }}</dt>
-  <dd>{{ article.name }}</dd>
-  <dt>{{ t('article.field.selling_price') }}</dt>
-  <dd>{{ article.selling_price if article.selling_price else t('article.value.none') }}</dd>
-  <dt>{{ t('article.field.weight') }}</dt>
-  <dd>{{ article.weight if article.weight else t('article.value.none') }}</dd>
-  <dt>{{ t('article.field.min_stock') }}</dt>
-  <dd>{{ article.min_stock if article.min_stock is not none else t('article.value.none') }}</dd>
-  <dt>{{ t('article.col.status') }}</dt>
-  <dd>{{ t('article.status.active' if article.active else 'article.status.inactive') }}</dd>
-</dl>
+<article class="detail-card">
+  <dl class="details">
+    <div>
+      <dt>{{ t('article.field.number') }}</dt>
+      <dd>{{ article.number }}</dd>
+    </div>
+    <div>
+      <dt>{{ t('article.field.name') }}</dt>
+      <dd>{{ article.name }}</dd>
+    </div>
+    <div>
+      <dt>{{ t('article.field.selling_price') }}</dt>
+      <dd>{{ article.selling_price if article.selling_price else t('article.value.none') }}</dd>
+    </div>
+    <div>
+      <dt>{{ t('article.field.weight') }}</dt>
+      <dd>{{ article.weight if article.weight else t('article.value.none') }}</dd>
+    </div>
+    <div>
+      <dt>{{ t('article.field.min_stock') }}</dt>
+      <dd>{{ article.min_stock if article.min_stock is not none else t('article.value.none') }}</dd>
+    </div>
+    <div>
+      <dt>{{ t('article.col.status') }}</dt>
+      <dd><span class="badge {{ 'badge-active' if article.active else 'badge-inactive' }}">
+        {{ t('article.status.active' if article.active else 'article.status.inactive') }}
+      </span></dd>
+    </div>
+  </dl>
+</article>
 <div class="tiles">
   {% for section in sections %}
   <a href="/articles/{{ article.id }}/{{ section }}" class="tile">
@@ -27,12 +60,4 @@
   </a>
   {% endfor %}
 </div>
-{% if can('edit') %}
-<p><a href="/articles/{{ article.id }}/edit" role="button" class="secondary">{{ t('article.edit') }}</a></p>
-<form method="post" action="/articles/{{ article.id }}/{{ 'deactivate' if article.active else 'activate' }}">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-  <button type="submit" class="secondary outline">{{ t('article.deactivate' if article.active else 'article.activate') }}</button>
-</form>
-{% endif %}
-<p><a href="/articles">{{ t('article.back_to_list') }}</a></p>
 {% endblock %}

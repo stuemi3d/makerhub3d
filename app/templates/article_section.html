@@ -2,8 +2,14 @@
 {% set title = t('article.tile.' ~ section) %}
 {% block title %}{{ title }} – {{ article.number }} – {{ app_name }}{% endblock %}
 {% block content %}
+<nav aria-label="breadcrumb">
+  <ul>
+    <li><a href="/articles">{{ t('articles.title') }}</a></li>
+    <li><a href="/articles/{{ article.id }}">{{ article.number }}</a></li>
+    <li>{{ title }}</li>
+  </ul>
+</nav>
 <h1>{{ title }}</h1>
 <p>{{ article.number }} · {{ article.name }}</p>
 <p>{{ t('article.section.empty') }}</p>
-<p><a href="/articles/{{ article.id }}">{{ t('article.back') }}</a></p>
 {% endblock %}
