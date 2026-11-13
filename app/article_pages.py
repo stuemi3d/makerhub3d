@@ -1,7 +1,8 @@
 """Articles (issue #10): list, create, edit, deactivate and the detail page with tiles.
 
-Articles are never deleted, only deactivated, like users. Stock, calculations, productions
-and sales do not exist yet; their tiles show 0 and open empty pages that later milestones fill.
+Articles are never deleted, only deactivated, like users. Calculations, productions and
+sales do not exist yet; their tiles show 0 and open empty pages that later milestones fill.
+The stock tile counts the stock movements (issue #11).
 """
 
 from collections.abc import Awaitable, Callable
@@ -14,7 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app import audit, auth
+from app import audit, auth, stock
 from app.article_form import FIELD_NAMES, form_values, number_key, validate
 from app.models import Article
 from app.permissions import Permission, requires
@@ -128,6 +129,8 @@ def add_article_routes(
     def article_detail(request: Request, article_id: int, saved: str | None = None) -> HTMLResponse:
         article = load(article_id)
         counts = {section: 0 for section in SECTIONS}
+        with new_session() as db:
+            counts["stock"] = stock.count_movements(db, article_id)
         return render(
             request,
             "article_detail.html",
@@ -220,6 +223,19 @@ def add_article_routes(
     def article_section(request: Request, article_id: int, section: str) -> HTMLResponse:
         if section not in SECTIONS:
             raise HTTPException(status_code=404)
+        if section == "stock":
+            article = load(article_id)
+            with new_session() as db:
+                rows = stock.movement_rows(db, language, article_id)
+                current_stock = stock.stock_of(db, article_id)
+            return render(
+                request,
+                "article_stock.html",
+                "nav.articles",
+                article=article,
+                rows=rows,
+                current_stock=current_stock,
+            )
         return render(
             request,
             "article_section.html",

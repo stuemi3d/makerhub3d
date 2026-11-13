@@ -1,12 +1,13 @@
 """Database tables. Every change here needs an Alembic migration (see migrations/)."""
 
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from enum import StrEnum
 
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
+    Date,
     DateTime,
     ForeignKey,
     Integer,
@@ -77,6 +78,47 @@ class Article(Base):
     min_stock: Mapped[int | None] = mapped_column(Integer)
     active: Mapped[bool] = mapped_column(Boolean, server_default=true())
     created_at: Mapped[datetime] = mapped_column(DateTime)
+
+
+class StockMovementKind(StrEnum):
+    """Why the stock changed. Production and sale come with M2 and M5."""
+
+    PRODUCTION = "production"
+    SALE = "sale"
+    CORRECTION = "correction"
+    CANCELLATION = "cancellation"
+
+
+class StockMovement(Base):
+    """One change of an article's stock (issue #11). Never changed or deleted, only cancelled
+    by a counter booking (kind cancellation, pointing to the original with cancels_id)."""
+
+    __tablename__ = "stock_movements"
+    __table_args__ = (
+        CheckConstraint(
+            "kind IN ('production', 'sale', 'correction', 'cancellation')",
+            name="ck_stock_movements_kind",
+        ),
+        CheckConstraint("quantity <> 0", name="ck_stock_movements_quantity"),
+        # A booking can be cancelled only once, even if two cancels arrive at the same moment.
+        UniqueConstraint("cancels_id", name="uq_stock_movements_cancels_id"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    article_id: Mapped[int] = mapped_column(ForeignKey("articles.id"), index=True)
+    # The day the movement is about (may differ from the day it was entered)
+    booked_on: Mapped[date] = mapped_column(Date)
+    # UTC without time zone
+    created_at: Mapped[datetime] = mapped_column(DateTime)
+    # Pieces, plus for stock in, minus for stock out; never 0
+    quantity: Mapped[int] = mapped_column(Integer)
+    kind: Mapped[StockMovementKind] = mapped_column(String(20))
+    # Free text for manual bookings; empty for cancellations
+    reason: Mapped[str] = mapped_column(String(200))
+    # Set on a cancellation: the booking it reverses
+    cancels_id: Mapped[int | None] = mapped_column(ForeignKey("stock_movements.id"))
+    # Empty for movements made by the system
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
 
 
 class UserRole(StrEnum):

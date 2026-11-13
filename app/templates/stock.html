@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}{{ t('stock.title') }} – {{ app_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>{{ t('stock.title') }}</h1>
+  <div class="page-actions">
+    {% if show_inactive %}<a href="/stock" role="button" class="secondary outline">{{ t('articles.hide_inactive') }}</a>
+    {% else %}<a href="/stock?inactive=1" role="button" class="secondary outline">{{ t('articles.show_inactive') }}</a>{% endif %}
+    <a href="/stock/movements" role="button" class="secondary">{{ t('stock.movements.title') }}</a>
+    {% if can('edit') %}<a href="/stock/new" role="button">{{ t('stock.new') }}</a>{% endif %}
+  </div>
+</div>
+{% if items %}
+<div class="overflow-auto">
+<table>
+  <thead>
+    <tr>
+      <th scope="col">{{ t('article.field.number') }}</th>
+      <th scope="col">{{ t('article.field.name') }}</th>
+      <th scope="col">{{ t('stock.col.stock') }}</th>
+      <th scope="col">{{ t('article.field.min_stock') }}</th>
+      <th scope="col">{{ t('article.col.status') }}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for a in items %}
+    <tr>
+      <td><a href="/articles/{{ a.id }}/stock">{{ a.number }}</a></td>
+      <td>{{ a.name }}</td>
+      <td class="num">{{ a.stock }}</td>
+      <td class="num">{{ a.min_stock if a.min_stock is not none else t('article.value.none') }}</td>
+      <td>
+        {% if a.low %}<span class="badge badge-inactive">{{ t('stock.low') }}</span>
+        {% elif not a.active %}{{ t('article.status.inactive') }}{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<article class="empty-hint">
+  <p>{{ t('stock.empty') }}</p>
+</article>
+{% endif %}
+{% endblock %}

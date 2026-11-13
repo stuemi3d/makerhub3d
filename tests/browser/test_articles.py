@@ -1,7 +1,5 @@
 """Articles in a real browser, on desktop and phone (issue #10, test case 14)."""
 
-import re
-
 from playwright.sync_api import Page, expect
 
 from tests.browser.conftest import t
@@ -28,11 +26,9 @@ def test_article_list_form_and_detail_work_on_every_screen(
     expect(admin_page.locator("h1")).to_contain_text("Kabelhalter")
     assert fits_screen_width(admin_page)
     for section in SECTIONS:
-        expect(
-            admin_page.get_by_role("link", name=re.compile(t(f"article.tile.{section}")))
-        ).to_be_visible()
+        expect(admin_page.locator("a.tile", has_text=t(f"article.tile.{section}"))).to_be_visible()
 
-    admin_page.get_by_role("link", name=re.compile(t("article.tile.stock"))).click()
+    admin_page.locator("a.tile", has_text=t("article.tile.stock")).click()
     expect(admin_page.get_by_text(t("article.section.empty"))).to_be_visible()
     assert fits_screen_width(admin_page)
 
