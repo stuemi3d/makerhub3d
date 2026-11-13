@@ -16,7 +16,7 @@ from sqlalchemy import (
     false,
     true,
 )
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base, DecimalText
 
@@ -85,6 +85,67 @@ class UserRole(StrEnum):
     ADMIN = "admin"
     EMPLOYEE = "employee"
     READ_ONLY = "read_only"
+
+
+class Attribute(Base):
+    """A feature such as colour or size (issue #44), shared by several templates."""
+
+    __tablename__ = "attributes"
+    __table_args__ = (UniqueConstraint("name_key", name="uq_attributes_name_key"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(50))
+    # Lower-case form (casefold), for a unique name regardless of case
+    name_key: Mapped[str] = mapped_column(String(100))
+    values_rel: Mapped[list["AttributeValue"]] = relationship(
+        cascade="all, delete-orphan", order_by="AttributeValue.id"
+    )
+
+
+class AttributeValue(Base):
+    """One value of an attribute, e.g. "red"."""
+
+    __tablename__ = "attribute_values"
+    __table_args__ = (
+        UniqueConstraint("attribute_id", "value_key", name="uq_attribute_values_key"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    attribute_id: Mapped[int] = mapped_column(ForeignKey("attributes.id", ondelete="CASCADE"))
+    value: Mapped[str] = mapped_column(String(50))
+    value_key: Mapped[str] = mapped_column(String(100))
+
+
+class ArticleTemplate(Base):
+    """A template for variants (issue #44). Has no stock and no sales, so it is not an article.
+
+    Deleted only while nothing hangs on it (plan, section 4); otherwise deactivated.
+    """
+
+    __tablename__ = "article_templates"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(100))
+    description: Mapped[str] = mapped_column(Text, server_default="")
+    # Defaults that variants inherit; empty = not set (same meaning as for articles)
+    selling_price: Mapped[Decimal | None] = mapped_column(DecimalText)
+    weight: Mapped[Decimal | None] = mapped_column(DecimalText)
+    min_stock: Mapped[int | None] = mapped_column(Integer)
+    active: Mapped[bool] = mapped_column(Boolean, server_default=true())
+    created_at: Mapped[datetime] = mapped_column(DateTime)
+
+
+class TemplateAttribute(Base):
+    """Which attributes a template uses, in the order they are shown."""
+
+    __tablename__ = "template_attributes"
+
+    template_id: Mapped[int] = mapped_column(
+        ForeignKey("article_templates.id", ondelete="CASCADE"), primary_key=True
+    )
+    # No cascade here: an attribute that a template uses cannot be deleted.
+    attribute_id: Mapped[int] = mapped_column(ForeignKey("attributes.id"), primary_key=True)
+    position: Mapped[int] = mapped_column(Integer)
 
 
 class User(Base):

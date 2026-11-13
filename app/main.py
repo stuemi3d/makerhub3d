@@ -28,6 +28,7 @@ from app.log_pages import add_log_routes
 from app.models import AppSettings, Rounding, User, UserRole
 from app.permissions import Permission, PermissionDenied, has_permission, requires
 from app.settings_form import FIELD_NAMES, form_values, validate
+from app.template_pages import add_template_routes
 from app.user_admin import add_user_admin_routes
 
 APP_DIR = Path(__file__).parent
@@ -509,6 +510,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     add_log_routes(app, new_session, render, language, settings.timezone)
     add_backup_routes(app, new_session, render, settings)
     add_article_routes(app, new_session, render, read_form, language)
+    add_template_routes(app, new_session, render, read_form, language)
 
     # Deliberately without login: the container health check calls it. Returns no details.
     @app.get("/healthz", response_class=PlainTextResponse)

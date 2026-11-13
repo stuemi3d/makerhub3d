@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% from "_form_macros.html" import field_attrs, feedback %}
+{% block title %}{{ t('attribute.new.title') }} – {{ app_name }}{% endblock %}
+{% block content %}
+<h1>{{ t('attribute.new.title') }}</h1>
+{% if errors %}
+<p role="alert"><mark>{{ t('article.has_errors') }}</mark></p>
+{% endif %}
+<form method="post" action="/attributes/new" novalidate>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label for="name">{{ t('attribute.field.name') }}</label>
+  <input type="text" maxlength="50" autocomplete="off" {{ field_attrs('name', errors) }} value="{{ values.get('name', '') }}">
+  {{ feedback('name', errors, t, 'attribute.hint.') }}
+  <label for="values">{{ t('attribute.field.values') }}</label>
+  <textarea rows="5" {{ field_attrs('values', errors) }}>{{ values.get('values', '') }}</textarea>
+  {{ feedback('values', errors, t, 'attribute.hint.') }}
+  <button type="submit">{{ t('article.create') }}</button>
+</form>
+<p><a href="/attributes">{{ t('article.cancel') }}</a></p>
+{% endblock %}

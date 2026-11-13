@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}{{ tpl.name }} – {{ app_name }}{% endblock %}
+{% block content %}
+<h1>{{ tpl.name }}</h1>
+{% if saved %}
+<p role="status"><ins>{{ t('article.saved') }}</ins></p>
+{% endif %}
+<p>{{ t('template.note') }}</p>
+<dl>
+  <dt>{{ t('template.field.name') }}</dt>
+  <dd>{{ tpl.name }}</dd>
+  <dt>{{ t('template.field.description') }}</dt>
+  <dd>{{ tpl.description if tpl.description else t('article.value.none') }}</dd>
+  <dt>{{ t('article.field.selling_price') }}</dt>
+  <dd>{{ tpl.selling_price if tpl.selling_price else t('article.value.none') }}</dd>
+  <dt>{{ t('article.field.weight') }}</dt>
+  <dd>{{ tpl.weight if tpl.weight else t('article.value.none') }}</dd>
+  <dt>{{ t('article.field.min_stock') }}</dt>
+  <dd>{{ tpl.min_stock if tpl.min_stock is not none else t('article.value.none') }}</dd>
+  <dt>{{ t('template.field.attributes') }}</dt>
+  <dd>
+    {% for a in tpl.attributes %}
+    <div>{{ a.name }}: {{ a.value_list | join(', ') }}</div>
+    {% else %}
+    {{ t('article.value.none') }}
+    {% endfor %}
+  </dd>
+  <dt>{{ t('article.col.status') }}</dt>
+  <dd>{{ t('article.status.active' if tpl.active else 'article.status.inactive') }}</dd>
+</dl>
+{% if can('edit') %}
+<p><a href="/templates/{{ tpl.id }}/edit" role="button" class="secondary">{{ t('article.edit') }}</a></p>
+<form method="post" action="/templates/{{ tpl.id }}/{{ 'deactivate' if tpl.active else 'activate' }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <button type="submit" class="secondary outline">{{ t('article.deactivate' if tpl.active else 'article.activate') }}</button>
+</form>
+<p><a href="/templates/{{ tpl.id }}/delete">{{ t('template.delete') }}</a></p>
+{% endif %}
+<p><a href="/templates">{{ t('template.back_to_list') }}</a></p>
+{% endblock %}

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}{{ t('attribute.delete') }} – {{ app_name }}{% endblock %}
+{% block content %}
+<h1>{{ t('attribute.delete') }}</h1>
+<p><strong>{{ attribute.name }}</strong> ({{ attribute.value_list | join(', ') }})</p>
+{% if attribute.used %}
+<p role="alert"><mark>{{ t('attribute.delete.blocked') }}</mark></p>
+{% else %}
+<p>{{ t('attribute.delete.confirm') }}</p>
+<form method="post" action="/attributes/{{ attribute.id }}/delete">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <button type="submit" class="secondary">{{ t('attribute.delete.button') }}</button>
+</form>
+{% endif %}
+<p><a href="/attributes">{{ t('article.cancel') }}</a></p>
+{% endblock %}

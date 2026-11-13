@@ -68,24 +68,10 @@ def _parse_whole(raw: str) -> tuple[int | None, str | None]:
     return int(value), None
 
 
-def validate(raw: dict[str, str]) -> tuple[dict[str, object], dict[str, str]]:
-    """Checks the submitted form.
-
-    Returns the cleaned values and a mapping field name -> translation key of the error.
-    Only when the error mapping is empty may the values be saved. Uniqueness of the number
-    is checked against the database by the caller.
-    """
+def validate_defaults(raw: dict[str, str]) -> tuple[dict[str, object], dict[str, str]]:
+    """Checks selling price, weight and minimum stock, which articles and templates share."""
     values: dict[str, object] = {}
     errors: dict[str, str] = {}
-
-    for name, limit in (("number", NUMBER_MAX_LENGTH), ("name", NAME_MAX_LENGTH)):
-        text = raw.get(name, "").strip()
-        if not text:
-            errors[name] = "article.error.required"
-        elif len(text) > limit or any(not char.isprintable() for char in text):
-            errors[name] = "article.error.too_long" if len(text) > limit else "article.error.chars"
-        else:
-            values[name] = text
 
     for field in DECIMAL_FIELDS:
         text = raw.get(field.name, "").strip()
@@ -107,6 +93,32 @@ def validate(raw: dict[str, str]) -> tuple[dict[str, object], dict[str, str]]:
             errors["min_stock"] = error
         else:
             values["min_stock"] = whole
+
+    return values, errors
+
+
+def validate(raw: dict[str, str]) -> tuple[dict[str, object], dict[str, str]]:
+    """Checks the submitted form.
+
+    Returns the cleaned values and a mapping field name -> translation key of the error.
+    Only when the error mapping is empty may the values be saved. Uniqueness of the number
+    is checked against the database by the caller.
+    """
+    values: dict[str, object] = {}
+    errors: dict[str, str] = {}
+
+    for name, limit in (("number", NUMBER_MAX_LENGTH), ("name", NAME_MAX_LENGTH)):
+        text = raw.get(name, "").strip()
+        if not text:
+            errors[name] = "article.error.required"
+        elif len(text) > limit or any(not char.isprintable() for char in text):
+            errors[name] = "article.error.too_long" if len(text) > limit else "article.error.chars"
+        else:
+            values[name] = text
+
+    default_values, default_errors = validate_defaults(raw)
+    values.update(default_values)
+    errors.update(default_errors)
 
     return values, errors
 

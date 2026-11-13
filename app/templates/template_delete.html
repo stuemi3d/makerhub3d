@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}{{ t('template.delete') }} – {{ app_name }}{% endblock %}
+{% block content %}
+<h1>{{ t('template.delete') }}</h1>
+<p><strong>{{ tpl.name }}</strong></p>
+<p>{{ t('template.delete.confirm') }}</p>
+<form method="post" action="/templates/{{ tpl.id }}/delete">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <button type="submit" class="secondary">{{ t('template.delete.button') }}</button>
+</form>
+<p><a href="/templates/{{ tpl.id }}">{{ t('article.cancel') }}</a></p>
+{% endblock %}
