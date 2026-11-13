@@ -163,12 +163,18 @@ class AttributeValue(Base):
     __tablename__ = "attribute_values"
     __table_args__ = (
         UniqueConstraint("attribute_id", "value_key", name="uq_attribute_values_key"),
+        UniqueConstraint(
+            "attribute_id", "abbreviation_key", name="uq_attribute_values_abbreviation"
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     attribute_id: Mapped[int] = mapped_column(ForeignKey("attributes.id", ondelete="CASCADE"))
     value: Mapped[str] = mapped_column(String(50))
     value_key: Mapped[str] = mapped_column(String(100))
+    # Short form used in variant numbers (issue #62), e.g. "bl" for blue; unique per attribute
+    abbreviation: Mapped[str] = mapped_column(String(10))
+    abbreviation_key: Mapped[str] = mapped_column(String(20))
 
 
 class ArticleTemplate(Base):
@@ -178,8 +184,13 @@ class ArticleTemplate(Base):
     """
 
     __tablename__ = "article_templates"
+    __table_args__ = (UniqueConstraint("number_key", name="uq_article_templates_number_key"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    # Template number (issue #62), the start of the variant numbers; empty only for templates
+    # that existed before the number was introduced
+    number: Mapped[str | None] = mapped_column(String(50))
+    number_key: Mapped[str | None] = mapped_column(String(100))
     name: Mapped[str] = mapped_column(String(100))
     description: Mapped[str] = mapped_column(Text, server_default="")
     # Defaults that variants inherit; empty = not set (same meaning as for articles)

@@ -19,9 +19,10 @@ def test_variant_inherits_shows_it_and_can_be_deleted_on_every_screen(
 
     admin_page.goto("/attributes/new")
     admin_page.fill("#name", attribute)
-    admin_page.fill("#values", "rot\nblau")
+    admin_page.fill("#values", "rot = rt\nblau = bl")
     submit(admin_page, "article.create")
     admin_page.goto("/templates/new")
+    admin_page.fill("#number", f"B-V-{viewport_name}")
     admin_page.fill("#name", template)
     admin_page.fill("#selling_price", "12,90")
     admin_page.get_by_label(attribute).check()
@@ -30,9 +31,17 @@ def test_variant_inherits_shows_it_and_can_be_deleted_on_every_screen(
 
     admin_page.get_by_role("button", name=t("variant.new"), exact=True).click()
     assert fits_screen_width(admin_page)
-    admin_page.fill("#number", number)
-    admin_page.fill("#name", f"{template} rot")
+    # The number is suggested from the template number and the abbreviation of the value ...
+    expect(admin_page.locator("#number")).to_have_value("")
     admin_page.locator("select[name^=attr_]").select_option(label="rot")
+    expect(admin_page.locator("#number")).to_have_value(f"B-V-{viewport_name}-rt")
+    admin_page.locator("select[name^=attr_]").select_option(label="blau")
+    expect(admin_page.locator("#number")).to_have_value(f"B-V-{viewport_name}-bl")
+    # ... and stays as typed once the person changes it themselves.
+    admin_page.fill("#number", number)
+    admin_page.locator("select[name^=attr_]").select_option(label="rot")
+    expect(admin_page.locator("#number")).to_have_value(number)
+    admin_page.fill("#name", f"{template} rot")
     submit(admin_page, "article.create")
 
     expect(admin_page.locator("h1")).to_contain_text(number)

@@ -21,16 +21,17 @@ def test_attribute_and_template_pages_work_on_every_screen(
     admin_page.get_by_role("button", name=t("attributes.new"), exact=True).click()
     assert fits_screen_width(admin_page)
     admin_page.fill("#name", attribute)
-    admin_page.fill("#values", "rot\nblau")
+    admin_page.fill("#values", "rot = rt\nblau = bl")
     admin_page.locator(f"button[type=submit]:has-text('{t('article.create')}')").click()
     expect(admin_page.get_by_text(attribute)).to_be_visible()
-    expect(admin_page.get_by_text("rot, blau").first).to_be_visible()
+    expect(admin_page.get_by_text("rot (rt), blau (bl)").first).to_be_visible()
     assert fits_screen_width(admin_page)
 
     admin_page.goto(admin_page.url.rsplit("/", 1)[0] + "/templates")
     expect(admin_page.locator("h1")).to_have_text(t("templates.title"))
     admin_page.get_by_role("button", name=t("templates.new"), exact=True).click()
     assert fits_screen_width(admin_page)
+    admin_page.fill("#number", f"B-T-{viewport_name}")
     admin_page.fill("#name", template)
     admin_page.fill("#selling_price", "12,90")
     admin_page.get_by_label(attribute).check()
@@ -38,7 +39,9 @@ def test_attribute_and_template_pages_work_on_every_screen(
 
     expect(admin_page.locator("h1")).to_contain_text("Halter")
     expect(admin_page.get_by_text(t("template.note"))).to_be_visible()
-    expect(admin_page.get_by_text(re.compile(attribute + ": rot, blau"))).to_be_visible()
+    expect(
+        admin_page.get_by_text(re.compile(re.escape(attribute) + ": rot .rt., blau .bl."))
+    ).to_be_visible()
     assert fits_screen_width(admin_page)
 
     admin_page.get_by_role("link", name=t("template.delete"), exact=True).click()

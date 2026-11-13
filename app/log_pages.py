@@ -26,6 +26,7 @@ _ARTICLE_FIELDS = {
     "min_stock",
     "template",
     "attribute_value",
+    "abbreviation",
 }
 _STOCK_FIELDS = {"quantity", "reason", "date", "cancels"}
 _PURGE_FIELDS = {"calculations", "productions", "stock_movements", "sales"}

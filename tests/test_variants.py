@@ -422,6 +422,7 @@ def test_template_change_reaches_only_variants_without_own_value(
     client.post(
         f"/templates/{setup.template_id}",
         data={
+            "number": "V-1",
             "name": "Halter A",
             "description": "",
             "selling_price": "11,00",
@@ -563,6 +564,7 @@ def add_third_attribute(client: AppClient, setup: Setup) -> int:
     response = client.post(
         f"/templates/{setup.template_id}",
         data={
+            "number": "V-1",
             "name": "Halter A",
             "description": "",
             "selling_price": "10,00",
@@ -645,6 +647,7 @@ def test_attribute_in_use_by_variants_cannot_be_removed_from_the_template(
     response = client.post(
         f"/templates/{setup.template_id}",
         data={
+            "number": "V-1",
             "name": "Halter A",
             "description": "",
             "selling_price": "",
@@ -663,6 +666,7 @@ def test_unused_attribute_can_still_be_removed(client: AppClient, setup: Setup) 
     response = client.post(
         f"/templates/{setup.template_id}",
         data={
+            "number": "V-1",
             "name": "Halter A",
             "description": "",
             "selling_price": "",

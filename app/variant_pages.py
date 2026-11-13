@@ -42,7 +42,11 @@ def add_variant_routes(
         with new_session() as db:
             template = usable_template(db, template_id)
             fields = variants.attribute_fields(db, template_id)
-            return {"id": template.id, "name": template.name}, fields
+            return {
+                "id": template.id,
+                "name": template.name,
+                "number": template.number,
+            }, fields
 
     def form_page(request: Request, template: dict, fields, values, errors, status_code=200):
         return render(
@@ -61,6 +65,7 @@ def add_variant_routes(
     )
     def new_variant_page(request: Request, template_id: int) -> HTMLResponse:
         template, fields = load(template_id)
+        # The number is completed in the page from the chosen values (see app.js).
         return form_page(request, template, fields, {"name": template["name"]}, {})
 
     def create(
