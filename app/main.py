@@ -1,5 +1,7 @@
 """FastAPI application factory and routes."""
 
+import asyncio
+import contextlib
 import sys
 import threading
 from collections.abc import AsyncIterator
@@ -15,8 +17,9 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import sessionmaker
 
-from app import APP_NAME, audit, auth, two_factor
+from app import APP_NAME, audit, auth, backup, two_factor
 from app.account_two_factor import add_two_factor_routes
+from app.backup_pages import add_backup_routes
 from app.config import Settings
 from app.db import make_engine, run_migrations
 from app.i18n import translate
@@ -126,7 +129,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         settings.data_dir.mkdir(parents=True, exist_ok=True)
-        run_migrations(engine)
+        # An existing database that is behind gets a backup first; if that fails, no start.
+        run_migrations(engine, lambda: backup.backup_before_migration(settings))
         with new_session() as db:
             users_exist = auth.has_users(db)
             key_matches = auth.two_factor_key_matches(db, cipher)
@@ -141,7 +145,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if app.state.setup_code:
             message = translate(language, "setup.log_code").format(code=app.state.setup_code)
             print(message, file=sys.stderr, flush=True)
+        nightly = asyncio.create_task(backup.nightly_loop(settings))
         yield
+        nightly.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await nightly
         engine.dispose()
 
     # The generated API docs are disabled: they would be reachable without login.
@@ -498,6 +506,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     add_user_admin_routes(app, new_session, render, read_form)
     add_log_routes(app, new_session, render, language, settings.timezone)
+    add_backup_routes(app, new_session, render, settings)
 
     # Deliberately without login: the container health check calls it. Returns no details.
     @app.get("/healthz", response_class=PlainTextResponse)

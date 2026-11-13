@@ -8,9 +8,16 @@ from playwright.sync_api import Error, Page, expect
 from tests.browser.conftest import ADMIN_NAME, ADMIN_PASSWORD, LiveServer, t
 
 LOGIN_BUTTON = f"button[type=submit]:has-text('{t('login.submit')}')"
-PROTECTED_PATHS = ["/", "/settings", "/settings/users", "/settings/log", "/account"]
+PROTECTED_PATHS = [
+    "/",
+    "/settings",
+    "/settings/users",
+    "/settings/backups",
+    "/settings/log",
+    "/account",
+]
 # Pages that must fit the screen width: login and the main pages.
-FIT_PATHS = ["/settings", "/settings/users"]
+FIT_PATHS = ["/settings", "/settings/users", "/settings/backups"]
 
 
 # --- Test case 1: login ----------------------------------------------------------------
@@ -37,6 +44,7 @@ def test_all_pages_open_through_the_navigation(admin_page: Page) -> None:
     steps = [
         (t("nav.settings"), "/settings", t("settings.title")),
         (t("settings.tab.users"), "/settings/users", t("users.title")),
+        (t("settings.tab.backups"), "/settings/backups", t("backup.title")),
         (t("settings.tab.log"), "/settings/log", t("log.title")),
         (ADMIN_NAME, "/account", t("account.title")),
         (t("nav.dashboard"), "/", t("nav.dashboard")),

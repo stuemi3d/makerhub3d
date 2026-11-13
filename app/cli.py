@@ -13,7 +13,7 @@ import sys
 
 from sqlalchemy.orm import Session
 
-from app import auth
+from app import auth, backup
 from app.config import Settings
 from app.db import make_engine, run_migrations
 from app.i18n import translate
@@ -51,7 +51,7 @@ def main(argv: list[str] | None = None) -> int:
     settings.data_dir.mkdir(parents=True, exist_ok=True)
     engine = make_engine(settings.database_path)
     try:
-        run_migrations(engine)
+        run_migrations(engine, lambda: backup.backup_before_migration(settings))
         with Session(engine) as db, db.begin():
             if len(args) == 1:
                 message, exit_code = _reset_all(db, settings.language)

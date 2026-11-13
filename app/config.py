@@ -102,6 +102,10 @@ class Settings:
     def database_path(self) -> Path:
         return self.data_dir / DATABASE_FILE
 
+    @property
+    def backup_dir(self) -> Path:
+        return self.data_dir / "backups"
+
     @classmethod
     def from_env(cls) -> "Settings":
         return cls(
