@@ -11,10 +11,20 @@ from sqlalchemy.orm import Session
 from app.models import (
     Article,
     ArticleAttributeValue,
+    ArticleTemplate,
     Attribute,
     AttributeValue,
     TemplateAttribute,
 )
+
+
+def template_number_taken(db: Session, number_key: str) -> bool:
+    """True when a template has this number (compared without regard to case)."""
+    return (
+        db.scalar(select(ArticleTemplate.id).where(ArticleTemplate.number_key == number_key))
+        is not None
+    )
+
 
 INHERITED_FIELDS = ("selling_price", "weight", "min_stock")
 

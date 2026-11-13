@@ -118,6 +118,8 @@ def add_article_routes(
                     select(Article.id).where(Article.number_key == number_key(values["number"]))
                 ):
                     return {"number": "article.error.taken"}, None
+                if variants.template_number_taken(db, number_key(values["number"])):
+                    return {"number": "article.error.template_number"}, None
                 article = Article(
                     **values,
                     number_key=number_key(values["number"]),
@@ -223,6 +225,10 @@ def add_article_routes(
                 )
                 if taken:
                     return {"number": "article.error.taken"}, current
+                if number_key(values["number"]) != article.number_key and (
+                    variants.template_number_taken(db, number_key(values["number"]))
+                ):
+                    return {"number": "article.error.template_number"}, current
                 if choices is not None and variants.combination_taken(
                     db, article.template_id, choices, article.id
                 ):
