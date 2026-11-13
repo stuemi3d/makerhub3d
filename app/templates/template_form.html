@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% from "_form_macros.html" import field_attrs, feedback %}
+{% set heading = t('template.edit.title') if tpl else t('template.new.title') %}
+{% block title %}{{ heading }} – {{ app_name }}{% endblock %}
+{% block content %}
+<h1>{{ heading }}</h1>
+{% if errors %}
+<p role="alert"><mark>{{ t('article.has_errors') }}</mark></p>
+{% endif %}
+<form method="post" action="{{ '/templates/' ~ tpl.id if tpl else '/templates/new' }}" novalidate>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label for="name">{{ t('template.field.name') }}</label>
+  <input type="text" maxlength="100" autocomplete="off" {{ field_attrs('name', errors) }} value="{{ values.get('name', '') }}">
+  {{ feedback('name', errors, t, 'template.hint.') }}
+  <label for="description">{{ t('template.field.description') }}</label>
+  <textarea rows="3" {{ field_attrs('description', errors) }}>{{ values.get('description', '') }}</textarea>
+  {{ feedback('description', errors, t, 'template.hint.') }}
+  <label for="selling_price">{{ t('article.field.selling_price') }}</label>
+  <input type="text" inputmode="decimal" autocomplete="off" {{ field_attrs('selling_price', errors) }} value="{{ values.get('selling_price', '') }}">
+  {{ feedback('selling_price', errors, t, 'article.hint.') }}
+  <label for="weight">{{ t('article.field.weight') }}</label>
+  <input type="text" inputmode="decimal" autocomplete="off" {{ field_attrs('weight', errors) }} value="{{ values.get('weight', '') }}">
+  {{ feedback('weight', errors, t, 'article.hint.') }}
+  <label for="min_stock">{{ t('article.field.min_stock') }}</label>
+  <input type="text" inputmode="numeric" autocomplete="off" {{ field_attrs('min_stock', errors) }} value="{{ values.get('min_stock', '') }}">
+  {{ feedback('min_stock', errors, t, 'article.hint.') }}
+  <fieldset>
+    <legend>{{ t('template.field.attributes') }}</legend>
+    {% for a in all_attributes %}
+    <label>
+      <input type="checkbox" name="attr_{{ a.id }}" value="1"{% if values.get('attr_' ~ a.id) %} checked{% endif %}>
+      {{ a.name }}
+    </label>
+    {% else %}
+    <small>{{ t('template.no_attributes') }} <a href="/attributes/new">{{ t('attributes.new') }}</a></small>
+    {% endfor %}
+  </fieldset>
+  <button type="submit">{{ t('article.save' if tpl else 'article.create') }}</button>
+</form>
+<p><a href="{{ '/templates/' ~ tpl.id if tpl else '/templates' }}">{{ t('article.cancel') }}</a></p>
+{% endblock %}

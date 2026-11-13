@@ -5,6 +5,7 @@
 {% if can('edit') %}
 <p><a href="/articles/new" role="button">{{ t('articles.new') }}</a></p>
 {% endif %}
+<p><a href="/templates">{{ t('templates.title') }}</a> · <a href="/attributes">{{ t('attributes.title') }}</a></p>
 <p>
   {% if show_inactive %}<a href="/articles">{{ t('articles.hide_inactive') }}</a>
   {% else %}<a href="/articles?inactive=1">{{ t('articles.show_inactive') }}</a>{% endif %}

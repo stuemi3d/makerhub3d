@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}{{ t('templates.title') }} – {{ app_name }}{% endblock %}
+{% block content %}
+<h1>{{ t('templates.title') }}</h1>
+<p>{{ t('templates.intro') }}</p>
+{% if can('edit') %}
+<p><a href="/templates/new" role="button">{{ t('templates.new') }}</a></p>
+{% endif %}
+<p>
+  {% if show_inactive %}<a href="/templates">{{ t('articles.hide_inactive') }}</a>
+  {% else %}<a href="/templates?inactive=1">{{ t('articles.show_inactive') }}</a>{% endif %}
+</p>
+{% if templates %}
+<div class="overflow-auto">
+<table>
+  <thead>
+    <tr>
+      <th scope="col">{{ t('template.field.name') }}</th>
+      <th scope="col">{{ t('template.field.attributes') }}</th>
+      <th scope="col">{{ t('article.field.selling_price') }}</th>
+      <th scope="col">{{ t('article.col.status') }}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for tpl in templates %}
+    <tr>
+      <td><a href="/templates/{{ tpl.id }}">{{ tpl.name }}</a></td>
+      <td>{{ tpl.attributes | map(attribute='name') | join(', ') }}</td>
+      <td>{{ tpl.selling_price if tpl.selling_price else t('article.value.none') }}</td>
+      <td>{{ t('article.status.active' if tpl.active else 'article.status.inactive') }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p>{{ t('templates.empty') }}</p>
+{% endif %}
+<p><a href="/articles">{{ t('article.back_to_list') }}</a></p>
+{% endblock %}
