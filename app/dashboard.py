@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app import stock
+from app import stock, variants
 from app.models import Article
 
 
@@ -30,10 +30,12 @@ def build(db: Session) -> Dashboard:
     equal is fine. The biggest shortfall comes first."""
     articles = list(db.scalars(select(Article).where(Article.active.is_(True))))
     levels = stock.stock_levels(db, [article.id for article in articles])
+    # A variant without an own minimum uses the template's (issue #49).
+    minimums = {a.id: variants.effective(a, "min_stock") for a in articles}
     low = [
-        LowStockRow(a.id, a.number, a.name, levels[a.id], a.min_stock)
+        LowStockRow(a.id, a.number, a.name, levels[a.id], minimums[a.id])
         for a in articles
-        if a.min_stock is not None and levels[a.id] < a.min_stock
+        if minimums[a.id] is not None and levels[a.id] < minimums[a.id]
     ]
     low.sort(key=lambda row: (row.stock - row.min_stock, row.number.casefold()))
     return Dashboard(

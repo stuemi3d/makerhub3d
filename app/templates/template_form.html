@@ -26,6 +26,7 @@
   {{ feedback('min_stock', errors, t, 'article.hint.') }}
   <fieldset>
     <legend>{{ t('template.field.attributes') }}</legend>
+    {% if errors.get('attributes') %}<p role="alert"><mark>{{ t(errors['attributes']) }}</mark></p>{% endif %}
     {% for a in all_attributes %}
     <label>
       <input type="checkbox" name="attr_{{ a.id }}" value="1"{% if values.get('attr_' ~ a.id) %} checked{% endif %}>

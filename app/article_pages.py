@@ -14,9 +14,9 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, object_session
 
-from app import article_purge, audit, auth, stock
+from app import article_purge, audit, auth, stock, variants
 from app.article_form import FIELD_NAMES, form_values, number_key, validate
 from app.models import Article
 from app.permissions import Permission, requires
@@ -35,6 +35,13 @@ def _logged(values: dict[str, object]) -> dict[str, object]:
     return {name: "" if value is None else value for name, value in values.items()}
 
 
+def _attribute_fields(db: Session, article: Article) -> list[dict]:
+    """The attributes a variant has values for (the template's); empty for a normal article."""
+    if article.template_id is None:
+        return []
+    return variants.attribute_fields(db, article.template_id)
+
+
 def add_article_routes(
     app: FastAPI,
     new_session: Callable[[], Session],
@@ -50,14 +57,22 @@ def add_article_routes(
         return None if value is None else format_decimal(value.quantize(Decimal("0.01")), language)
 
     def article_view(article: Article) -> dict:
+        """The article as the pages show it. A variant shows the values that count (its own,
+        else the template's) and, per field, where each comes from."""
+        template = article.template
         return {
             "id": article.id,
             "number": article.number,
             "name": article.name,
-            "selling_price": shown(article.selling_price),
-            "weight": shown(article.weight),
-            "min_stock": article.min_stock,
+            "selling_price": shown(variants.effective(article, "selling_price")),
+            "weight": shown(variants.effective(article, "weight")),
+            "min_stock": variants.effective(article, "min_stock"),
             "active": article.active,
+            "template": None if template is None else {"id": template.id, "name": template.name},
+            "sources": {name: variants.source(article, name) for name in variants.INHERITED_FIELDS}
+            if template
+            else {},
+            "attributes": variants.attribute_rows(object_session(article), article),
         }
 
     def load(article_id: int) -> dict:
@@ -140,7 +155,7 @@ def add_article_routes(
         counts = {section: 0 for section in SECTIONS}
         with new_session() as db:
             counts["stock"] = stock.count_movements(db, article_id)
-            can_purge = article_purge.has_dependents(db, article_id)
+            blocked = article_purge.blocking(db, article_id)
         return render(
             request,
             "article_detail.html",
@@ -149,7 +164,8 @@ def add_article_routes(
             sections=SECTIONS,
             counts=counts,
             saved=saved == "1",
-            can_purge=can_purge,
+            can_purge=blocked,
+            can_delete=not blocked,
         )
 
     @app.get("/articles/{article_id}/edit", response_class=HTMLResponse, dependencies=edit)
@@ -160,11 +176,29 @@ def add_article_routes(
                 raise HTTPException(status_code=404)
             values = form_values(_stored_values(article), language)
             current = article_view(article)
+            fields = _attribute_fields(db, article)
+            values.update(variants.selected_values(article))
         return render(
-            request, "article_form.html", "nav.articles", article=current, values=values, errors={}
+            request,
+            "article_form.html",
+            "nav.articles",
+            article=current,
+            values=values,
+            errors={},
+            attr_fields=fields,
         )
 
-    def change(article_id: int, actor_id: int, raw: dict[str, str]) -> tuple[dict[str, str], dict]:
+    def attribute_fields_of(article_id: int) -> list[dict]:
+        """The attribute fields of the article's template; empty for a normal article."""
+        with new_session() as db:
+            article = db.get(Article, article_id)
+            if article is None:
+                raise HTTPException(status_code=404)
+            return _attribute_fields(db, article)
+
+    def change(
+        article_id: int, actor_id: int, raw: dict[str, str], fields: list[dict]
+    ) -> tuple[dict[str, str], dict]:
         values, errors = validate(raw)
         try:
             with new_session() as db, db.begin():
@@ -172,6 +206,13 @@ def add_article_routes(
                 if article is None:
                     raise HTTPException(status_code=404)
                 current = article_view(article)
+                choices = None
+                if fields:
+                    old_choices = variants.chosen(article)
+                    # A value that is missing since the template got a new attribute may stay so.
+                    missing = frozenset(f["id"] for f in fields if f["id"] not in old_choices)
+                    choices, choice_errors = variants.check_choices(raw, fields, missing)
+                    errors.update(choice_errors)
                 if errors:
                     return errors, current
                 taken = db.scalar(
@@ -182,11 +223,21 @@ def add_article_routes(
                 )
                 if taken:
                     return {"number": "article.error.taken"}, current
+                if choices is not None and variants.combination_taken(
+                    db, article.template_id, choices, article.id
+                ):
+                    return {"combination": "variant.error.combination_taken"}, current
                 details = audit.field_changes(_logged(_stored_values(article)), _logged(values))
+                if choices is not None:
+                    details += variants.value_changes(
+                        variants.describe(db, old_choices), variants.describe(db, choices)
+                    )
                 if details:
                     for name, value in values.items():
                         setattr(article, name, value)
                     article.number_key = number_key(article.number)
+                    if choices is not None:
+                        variants.apply_choices(db, article, choices)
                     db.flush()
                     audit.record_change(db, actor_id, "article.changed", article.number, details)
                 return {}, article_view(article)
@@ -195,8 +246,12 @@ def add_article_routes(
 
     @app.post("/articles/{article_id}", response_class=HTMLResponse, dependencies=edit)
     async def save_article(request: Request, article_id: int) -> Response:
-        raw = await read_form(request, FIELD_NAMES)
-        errors, article = await run_in_threadpool(change, article_id, request.state.user.id, raw)
+        fields = await run_in_threadpool(attribute_fields_of, article_id)
+        names = FIELD_NAMES + tuple(variants.field_name(field["id"]) for field in fields)
+        raw = await read_form(request, names)
+        errors, article = await run_in_threadpool(
+            change, article_id, request.state.user.id, raw, fields
+        )
         if errors:
             return render(
                 request,
@@ -206,8 +261,39 @@ def add_article_routes(
                 article=article,
                 values=raw,
                 errors=errors,
+                attr_fields=fields,
             )
         return RedirectResponse(f"/articles/{int(article['id'])}?saved=1", status_code=303)
+
+    def reset_to_template(article_id: int, actor_id: int, field: str) -> int:
+        with new_session() as db, db.begin():
+            article = db.get(Article, article_id)
+            # Only a variant has a template value to go back to, and only for these fields.
+            if (
+                article is None
+                or article.template_id is None
+                or field not in variants.INHERITED_FIELDS
+            ):
+                raise HTTPException(status_code=404)
+            old = getattr(article, field)
+            if old is not None:
+                setattr(article, field, None)
+                db.flush()
+                audit.record_change(
+                    db,
+                    actor_id,
+                    "article.changed",
+                    article.number,
+                    [{"field": field, "old": str(old), "new": ""}],
+                )
+            return article.id
+
+    @app.post("/articles/{article_id}/reset/{field}", dependencies=edit)
+    async def reset_field(request: Request, article_id: int, field: str) -> Response:
+        stored_id = await run_in_threadpool(
+            reset_to_template, article_id, request.state.user.id, field
+        )
+        return RedirectResponse(f"/articles/{int(stored_id)}", status_code=303)
 
     def set_active(article_id: int, actor_id: int, active: bool) -> int:
         with new_session() as db, db.begin():
@@ -230,11 +316,52 @@ def add_article_routes(
         stored_id = await run_in_threadpool(set_active, article_id, request.state.user.id, True)
         return RedirectResponse(f"/articles/{int(stored_id)}", status_code=303)
 
+    def delete_view(article_id: int) -> tuple[dict, dict[str, int]]:
+        """The article and its counts; 404 when it is gone, 409 when productions, stock
+        movements or sales hang on it (then it can only be deactivated)."""
+        with new_session() as db:
+            article = db.get(Article, article_id)
+            if article is None:
+                raise HTTPException(status_code=404)
+            if article_purge.blocking(db, article_id):
+                raise HTTPException(status_code=409)
+            return article_view(article), article_purge.counts(db, article_id)
+
+    @app.get("/articles/{article_id}/delete", response_class=HTMLResponse, dependencies=edit)
+    def delete_article_page(request: Request, article_id: int) -> HTMLResponse:
+        article, found = delete_view(article_id)
+        return render(
+            request,
+            "article_delete.html",
+            "nav.articles",
+            article=article,
+            counts=found,
+            count_keys=article_purge.COUNT_KEYS,
+        )
+
+    def do_delete(article_id: int, actor_id: int) -> None:
+        try:
+            with new_session() as db, db.begin():
+                article = db.get(Article, article_id)
+                if article is None:
+                    raise HTTPException(status_code=404)
+                if article_purge.blocking(db, article_id):
+                    raise HTTPException(status_code=409)
+                article_purge.remove(db, actor_id, article)
+        except IntegrityError:
+            # A booking arrived at the same moment: the database refused, nothing is deleted.
+            raise HTTPException(status_code=409) from None
+
+    @app.post("/articles/{article_id}/delete", dependencies=edit)
+    async def delete_article(request: Request, article_id: int) -> Response:
+        await run_in_threadpool(do_delete, article_id, request.state.user.id)
+        return RedirectResponse("/articles", status_code=303)
+
     def purge_view(article_id: int) -> tuple[dict, dict[str, int]]:
         """The article and its counts; 404 when it is gone or nothing hangs on it."""
         with new_session() as db:
             article = db.get(Article, article_id)
-            if article is None or not article_purge.has_dependents(db, article_id):
+            if article is None or not article_purge.blocking(db, article_id):
                 raise HTTPException(status_code=404)
             return article_view(article), article_purge.counts(db, article_id)
 
@@ -259,7 +386,7 @@ def add_article_routes(
         """True when deleted, False when the typed number does not match."""
         with new_session() as db, db.begin():
             article = db.get(Article, article_id)
-            if article is None or not article_purge.has_dependents(db, article_id):
+            if article is None or not article_purge.blocking(db, article_id):
                 raise HTTPException(status_code=404)
             if typed != article.number:
                 return False

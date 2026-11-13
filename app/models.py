@@ -61,7 +61,10 @@ class Article(Base):
     """
 
     __tablename__ = "articles"
-    __table_args__ = (UniqueConstraint("number_key", name="uq_articles_number_key"),)
+    __table_args__ = (
+        UniqueConstraint("number_key", name="uq_articles_number_key"),
+        UniqueConstraint("template_id", "combo_key", name="uq_articles_template_combo"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     # Shown as entered; the key to the invoicing software, so freely chosen
@@ -78,6 +81,16 @@ class Article(Base):
     min_stock: Mapped[int | None] = mapped_column(Integer)
     active: Mapped[bool] = mapped_column(Boolean, server_default=true())
     created_at: Mapped[datetime] = mapped_column(DateTime)
+    # Set for a variant (issue #49): the template it belongs to. Price, weight and minimum
+    # stock that are empty here are inherited from the template.
+    template_id: Mapped[int | None] = mapped_column(ForeignKey("article_templates.id"))
+    # The attribute values of a variant as text ("attribute id:value id", sorted), so that the
+    # database itself refuses two variants of a template with the same combination.
+    combo_key: Mapped[str | None] = mapped_column(String(500))
+    template: Mapped["ArticleTemplate | None"] = relationship(lazy="joined")
+    attribute_values: Mapped[list["ArticleAttributeValue"]] = relationship(
+        cascade="all, delete-orphan", order_by="ArticleAttributeValue.attribute_id"
+    )
 
 
 class StockMovementKind(StrEnum):
@@ -188,6 +201,20 @@ class TemplateAttribute(Base):
     # No cascade here: an attribute that a template uses cannot be deleted.
     attribute_id: Mapped[int] = mapped_column(ForeignKey("attributes.id"), primary_key=True)
     position: Mapped[int] = mapped_column(Integer)
+
+
+class ArticleAttributeValue(Base):
+    """The value a variant has for one attribute of its template (issue #49)."""
+
+    __tablename__ = "article_attribute_values"
+
+    article_id: Mapped[int] = mapped_column(
+        ForeignKey("articles.id", ondelete="CASCADE"), primary_key=True
+    )
+    attribute_id: Mapped[int] = mapped_column(ForeignKey("attributes.id"), primary_key=True)
+    value_id: Mapped[int] = mapped_column(ForeignKey("attribute_values.id"))
+    attribute: Mapped[Attribute] = relationship(lazy="joined")
+    value: Mapped[AttributeValue] = relationship(lazy="joined")
 
 
 class User(Base):

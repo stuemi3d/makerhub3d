@@ -25,8 +25,20 @@ def counts(db: Session, article_id: int) -> dict[str, int]:
     }
 
 
-def has_dependents(db: Session, article_id: int) -> bool:
-    return any(counts(db, article_id).values())
+def blocking(db: Session, article_id: int) -> bool:
+    """True when productions, stock movements or sales hang on the article (stage 3 of the
+    deletion rules): an employee can then only deactivate it, an admin can delete it for good.
+    Calculations alone do not block; they are deleted with the article (stage 2)."""
+    found = counts(db, article_id)
+    return any(found[key] for key in found if key != "calculations")
+
+
+def remove(db: Session, actor_id: int, article: Article) -> None:
+    """Deletes an article that nothing blocks (stages 1 and 2) and writes the change log, in
+    the caller's transaction."""
+    subject = f"{article.number} · {article.name}"
+    db.delete(article)
+    audit.record_change(db, actor_id, "article.deleted", subject)
 
 
 def purge(db: Session, actor_id: int, article: Article) -> None:

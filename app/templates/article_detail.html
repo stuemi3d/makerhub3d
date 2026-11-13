@@ -1,5 +1,21 @@
 {% extends "base.html" %}
 {% block title %}{{ article.number }} – {{ app_name }}{% endblock %}
+{% macro source_note(name) %}
+{% if article.template %}
+{% set origin = article.sources.get(name) %}
+{% if origin == 'own' %}
+<small class="source-note">{{ t('variant.own') }}</small>
+{% if can('edit') %}
+<form method="post" action="/articles/{{ article.id }}/reset/{{ name }}" class="reset-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <button type="submit" class="secondary outline">{{ t('variant.reset') }}</button>
+</form>
+{% endif %}
+{% elif origin == 'inherited' %}
+<small class="source-note">{{ t('variant.inherited') }}</small>
+{% endif %}
+{% endif %}
+{% endmacro %}
 {% block content %}
 <nav aria-label="breadcrumb">
   <ul>
@@ -16,12 +32,18 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <button type="submit" class="secondary outline">{{ t('article.deactivate' if article.active else 'article.activate') }}</button>
     </form>
+    {% if can_delete %}
+    <a href="/articles/{{ article.id }}/delete" role="button" class="secondary outline">{{ t('article.delete') }}</a>
+    {% endif %}
     {% if can_purge and can('manage') %}
     <a href="/articles/{{ article.id }}/purge" role="button" class="secondary outline">{{ t('article.purge.button') }}</a>
     {% endif %}
   </div>
   {% endif %}
 </div>
+{% if not can_delete and can('edit') %}
+<p><small>{{ t('article.delete.blocked') }}</small></p>
+{% endif %}
 {% if saved %}
 <p role="status"><ins>{{ t('article.saved') }}</ins></p>
 {% endif %}
@@ -37,16 +59,28 @@
     </div>
     <div>
       <dt>{{ t('article.field.selling_price') }}</dt>
-      <dd>{{ article.selling_price if article.selling_price else t('article.value.none') }}</dd>
+      <dd>{{ article.selling_price if article.selling_price else t('article.value.none') }} {{ source_note('selling_price') }}</dd>
     </div>
     <div>
       <dt>{{ t('article.field.weight') }}</dt>
-      <dd>{{ article.weight if article.weight else t('article.value.none') }}</dd>
+      <dd>{{ article.weight if article.weight else t('article.value.none') }} {{ source_note('weight') }}</dd>
     </div>
     <div>
       <dt>{{ t('article.field.min_stock') }}</dt>
-      <dd>{{ article.min_stock if article.min_stock is not none else t('article.value.none') }}</dd>
+      <dd>{{ article.min_stock if article.min_stock is not none else t('article.value.none') }} {{ source_note('min_stock') }}</dd>
     </div>
+    {% if article.template %}
+    <div>
+      <dt>{{ t('variant.of_template') }}</dt>
+      <dd><a href="/templates/{{ article.template.id }}">{{ article.template.name }}</a></dd>
+    </div>
+    {% for a in article.attributes %}
+    <div>
+      <dt>{{ a.name }}</dt>
+      <dd>{% if a.value %}{{ a.value }}{% else %}<mark>{{ t('variant.missing') }}</mark>{% endif %}</dd>
+    </div>
+    {% endfor %}
+    {% endif %}
     <div>
       <dt>{{ t('article.col.status') }}</dt>
       <dd><span class="badge {{ 'badge-active' if article.active else 'badge-inactive' }}">

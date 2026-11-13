@@ -15,6 +15,11 @@
   <label for="name">{{ t('article.field.name') }}</label>
   <input type="text" maxlength="100" autocomplete="off" {{ field_attrs('name', errors) }} value="{{ values.get('name', '') }}">
   {{ feedback('name', errors, t, 'article.hint.') }}
+  {% if article and article.template %}
+  <p>{{ t('variant.template') }}: <a href="/templates/{{ article.template.id }}">{{ article.template.name }}</a></p>
+  {% include "_variant_fields.html" %}
+  <p><small>{{ t('variant.hint.inherit') }}</small></p>
+  {% endif %}
   <label for="selling_price">{{ t('article.field.selling_price') }}</label>
   <input type="text" inputmode="decimal" autocomplete="off" {{ field_attrs('selling_price', errors) }} value="{{ values.get('selling_price', '') }}">
   {{ feedback('selling_price', errors, t, 'article.hint.') }}
