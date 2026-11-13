@@ -62,11 +62,11 @@ Der Artikel ist der Knotenpunkt; alles andere hängt über die Artikelnummer an 
 
 - Kosten und Preise werden **beim Buchen als Wert gespeichert** (spätere Preisänderungen verändern die Vergangenheit nicht).
 - Der **Bestand wird nie gespeichert**, sondern aus den Lagerbewegungen summiert.
-- Produktionen und Lagerbewegungen werden **nie gelöscht, sondern storniert** (Gegenbuchung).
+- Produktionen und Lagerbewegungen werden **nie gelöscht, sondern storniert** (Gegenbuchung). Einzige Ausnahme: das endgültige Löschen eines Artikels durch einen Admin (siehe „Löschen von Artikeln und Vorlagen“).
 
 | Tabelle | Wichtigste Felder | Verknüpfung nach außen |
 | --- | --- | --- |
-| Artikelvorlage | Name, Beschreibung, Merkmale (z. B. Farbe, Größe), Standardwerte für Preis und Gewichtung | nur Vorlage: kein Bestand, kein Verkauf |
+| Artikelvorlage | Name, Beschreibung, Merkmale (z. B. Farbe, Größe), Standardwerte für Preis, Gewichtung und Mindestbestand, aktiv | nur Vorlage: kein Bestand, kein Verkauf |
 | Artikel | Artikelnummer, Bezeichnung, optional Vorlage + Merkmalswerte (= Variante), Soll-Verkaufspreis, Gewichtung, Mindestbestand, aktiv | Artikelnummer = Schlüssel zur Rechnungs-Software |
 | Kalkulation (optional) | Artikel oder Vorlage, Datum, „maßgeblich“-Kennzeichen, Materialzeilen (Spule/Durchschnitt/frei, Gramm, Preis/kg), Druckzeit, Teile pro Platte, Drucker, Ausschussquote %, Rüstzeit pro Platte (Min.), Nacharbeit pro Stück (Min.), Zusatzteile pro Stück, Gewinnaufschlag %, Ergebnis pro Stück (Selbstkosten ohne/mit Arbeitszeit, Verkaufspreis-Vorschlag) | Spule aus Bambuddy (nur gelesen) |
 | Produktion | Datum, Notiz, Gesamtkosten, storniert | – |
@@ -79,7 +79,16 @@ Der Artikel ist der Knotenpunkt; alles andere hängt über die Artikelnummer an 
 | Einstellungen | Strompreis (eigen oder aus Bambuddy), Arbeits-Stundensatz, Standard-Ausschussquote, Standard-Gewinnaufschlag, Rundung, Spulen-Kategorie für „geschäftlich“, Abweichungsschwelle | – |
 | Benutzer, Änderungsprotokoll | siehe Sicherheit | – |
 
-**Vorlagen und Varianten:** Eine Vorlage beschreibt z. B. „Halter A“ mit dem Merkmal Farbe; jede Variante („Halter A rot“, `3D-0042-RT`) ist ein vollwertiger Artikel mit eigener Artikelnummer und eigenem Bestand. Artikel ohne Varianten brauchen keine Vorlage. Preis, Gewichtung und Kalkulation erbt die Variante von der Vorlage und kann sie überschreiben.
+**Vorlagen und Varianten:** Eine Vorlage beschreibt z. B. „Halter A“ mit dem Merkmal Farbe; jede Variante („Halter A rot“, `3D-0042-RT`) ist ein vollwertiger Artikel mit eigener Artikelnummer und eigenem Bestand. Artikel ohne Varianten brauchen keine Vorlage. Preis, Gewichtung, Mindestbestand und Kalkulation erbt die Variante von der Vorlage und kann sie überschreiben.
+
+**Löschen von Artikeln und Vorlagen:** Normalfall ist „Deaktivieren“ (der Artikel verschwindet aus den Listen und kann wieder aktiviert werden). Löschen gibt es in vier Stufen:
+
+1. **Nichts verknüpft:** „Löschen“ mit Rückfrage (Admin und Mitarbeiter; „Nur lesen“ nie).
+2. **Nur Kalkulationen verknüpft:** Löschen möglich (Admin und Mitarbeiter); die Rückfrage nennt, was mitgelöscht wird, und rät zum Deaktivieren.
+3. **Produktionen, Lagerbewegungen oder Verkäufe verknüpft:** für Mitarbeiter nur Deaktivieren, mit erklärendem Hinweis.
+4. **Admin, „Endgültig löschen“:** löscht den Artikel samt allem Zugehörigen. Die Warnung nennt die Anzahl der betroffenen Datensätze und weist darauf hin, dass es nicht rückgängig zu machen ist; zur Bestätigung wird die Artikelnummer abgetippt. Das Änderungsprotokoll hält fest, wer wann welchen Artikel mit wie vielen Datensätzen gelöscht hat. Der Button wird nur angeboten, wenn Stufe 3 gilt (etwas hängt am Artikel). Gehört der Artikel zu einer Produktion mit mehreren Ergebnis-Artikeln, entfallen nur seine Ergebniszeile und seine Lagerbewegungen; Produktion und Kosten der übrigen Artikel bleiben unverändert (Kosten sind als Wert gespeichert). Dies ist die einzige Ausnahme von der Regel „nie löschen, sondern stornieren“; gedacht vor allem für Testdaten zu Beginn.
+
+**Vorlagen** haben nie Bestand, Produktion oder Verkauf; für sie gelten deshalb nur die Stufen 1 und 2 plus Deaktivieren. Eine Vorlage lässt sich erst löschen, wenn alle ihre Varianten gelöscht sind; ihre Kalkulationen werden dann mitgelöscht (Rückfrage nennt die Anzahl). Eine deaktivierte Vorlage kann nicht mehr für neue Varianten genutzt werden; vorhandene Varianten bleiben unberührt.
 
 **Produktion:** fasst beliebig viele Drucke und beliebig viele Ergebnis-Artikel zusammen. Ein einziger Ergebnis-Artikel (z. B. Laterne aus 5 Platten) bekommt alle Kosten, ohne Schätzung. Bei mehreren Ergebnis-Artikeln: Aufteilung nach Stückzahl, optional mit Gewichtung pro Zeile (z. B. Halter zählt 3, Clip zählt 1); Vorschau vor dem Speichern, korrigierbar; in der Auswertung als „aufgeteilt“ markiert.
 
@@ -166,6 +175,8 @@ Das Tool wird von Anfang an so gebaut, dass es als Open Source veröffentlicht *
 | --- | --- | --- | --- |
 | Ansehen (Dashboard, Artikel, Auswertung) | ja | ja | ja |
 | Bearbeiten (Artikel, Kalkulation, Produktion, Lager, Verkäufe), Stornieren | ja | ja | nein |
+| Artikel und Vorlagen löschen oder deaktivieren (Stufen 1–3) | ja | ja | nein |
+| Artikel endgültig löschen (Stufe 4) | ja | nein | nein |
 | Einstellungen, Geräte, Bambuddy-Verbindung | ja | nein | nein |
 | Benutzer, Sicherung, Änderungsprotokoll | ja | nein | nein |
 
@@ -177,7 +188,7 @@ Das Tool wird von Anfang an so gebaut, dass es als Open Source veröffentlicht *
 
 **Datensicherung:** nächtliche Sicherung der Datenbank nach `/data/backups` über die SQLite-Backup-Funktion; 14 Tages- und 12 Monatssicherungen; automatische Sicherung vor jeder Migration; „Sicherung herunterladen“ für Admins; getestete Wiederherstellung mit Anleitung.
 
-**Steuern:** Das Tool führt keine steuerrelevanten Aufzeichnungen (Rechnungen, Kasse, Buchhaltung liegen in der Rechnungs-Software). Es ist trotzdem „GoBD-nah“ gebaut: Stornieren statt Löschen, Änderungsprotokoll.
+**Steuern:** Das Tool führt keine steuerrelevanten Aufzeichnungen (Rechnungen, Kasse, Buchhaltung liegen in der Rechnungs-Software). Es ist trotzdem „GoBD-nah“ gebaut: Stornieren statt Löschen (einzige Ausnahme: endgültiges Löschen eines Artikels durch einen Admin, protokolliert), Änderungsprotokoll.
 
 ## 9. Entwicklungsprozess
 

@@ -72,7 +72,7 @@ Jeder PR enthält (siehe Vorlage):
 - Struktur: `app/` (Code), `tests/` (Tests), `docs/` (Doku), `migrations/` (Alembic).
 - Geldbeträge mit `Decimal`, nie mit `float`. Gramm und Stunden ebenfalls `Decimal`.
 - Kosten und Preise beim Buchen als Wert speichern; Bestand immer aus Lagerbewegungen berechnen.
-- Produktionen und Lagerbewegungen nie löschen, sondern stornieren.
+- Produktionen und Lagerbewegungen nie löschen, sondern stornieren. **Einzige Ausnahme:** Ein Admin darf einen Artikel „endgültig löschen“ (samt Kalkulationen, Lagerbewegungen, Verkäufen und der Produktion bzw. bei mehreren Ergebnis-Artikeln nur seiner Zeile darin), mit Warnung, Bestätigung durch Abtippen der Artikelnummer und Eintrag im Änderungsprotokoll. Löschregeln für Artikel und Vorlagen: siehe `docs/plan.md`, Abschnitt 4.
 - Jede Datenbankänderung über eine Alembic-Migration, mit Test.
 - Bambuddy-Zugriffe ausschließlich über einen einzigen Client-Baustein; Tests nutzen aufgezeichnete, bereinigte Antworten (Fixtures, siehe „Was du nie tust“), nie die echte API.
 - Konfiguration nur über Umgebungsvariablen (siehe `.env.example`).
