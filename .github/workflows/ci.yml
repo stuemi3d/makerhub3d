@@ -40,6 +40,43 @@ jobs:
       - name: Run tests
         run: uv run pytest
 
+  browser-tests:
+    name: Browser-Tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "0.13.7"
+          python-version: "3.12"
+          enable-cache: false
+
+      - name: Install dependencies from lockfile
+        run: uv sync --locked
+
+      # Downloads Chromium (from Playwright) and installs the system libraries it needs.
+      - name: Install Chromium
+        run: uv run playwright install --with-deps chromium
+
+      # The browser only talks to the test app on 127.0.0.1 (see tests/browser/conftest.py).
+      - name: Run browser tests
+        run: uv run pytest -m browser
+
+      - name: Upload screenshots of failed tests
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: browser-test-screenshots
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
   lint:
     name: Codestil (ruff)
     runs-on: ubuntu-24.04

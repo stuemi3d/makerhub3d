@@ -231,3 +231,6 @@ __marimo__/
 *.db-wal
 *.db-shm
 *.db-journal
+
+# Browser tests: screenshots and other results of failed tests
+/test-results/
