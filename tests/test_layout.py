@@ -69,8 +69,8 @@ def test_dashboard_is_marked_as_current_and_unbuilt_entries_are_not_links_yet(
     current = re.findall(r'<a\b[^>]*aria-current="page"[^>]*>', nav)
     assert len(current) == 1
     assert 'href="/"' in current[0]
-    # Built so far: dashboard and settings.
-    assert len(re.findall(r'aria-disabled="true"', nav)) == len(NAV_KEYS) - 2
+    # Built so far: dashboard, articles and settings.
+    assert len(re.findall(r'aria-disabled="true"', nav)) == len(NAV_KEYS) - 3
 
 
 # --- Test case 3: mobile, dark theme, local Pico CSS ----------------------------------

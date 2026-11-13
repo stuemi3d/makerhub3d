@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}{{ t('articles.title') }} – {{ app_name }}{% endblock %}
+{% block content %}
+<h1>{{ t('articles.title') }}</h1>
+{% if can('edit') %}
+<p><a href="/articles/new" role="button">{{ t('articles.new') }}</a></p>
+{% endif %}
+<p>
+  {% if show_inactive %}<a href="/articles">{{ t('articles.hide_inactive') }}</a>
+  {% else %}<a href="/articles?inactive=1">{{ t('articles.show_inactive') }}</a>{% endif %}
+</p>
+{% if articles %}
+<div class="overflow-auto">
+<table>
+  <thead>
+    <tr>
+      <th scope="col">{{ t('article.field.number') }}</th>
+      <th scope="col">{{ t('article.field.name') }}</th>
+      <th scope="col">{{ t('article.field.selling_price') }}</th>
+      <th scope="col">{{ t('article.col.status') }}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for a in articles %}
+    <tr>
+      <td><a href="/articles/{{ a.id }}">{{ a.number }}</a></td>
+      <td>{{ a.name }}</td>
+      <td>{{ a.selling_price if a.selling_price else t('article.value.none') }}</td>
+      <td>{{ t('article.status.active' if a.active else 'article.status.inactive') }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p>{{ t('articles.empty') }}</p>
+{% endif %}
+{% endblock %}

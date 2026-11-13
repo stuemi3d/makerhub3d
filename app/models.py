@@ -53,6 +53,32 @@ class AppSettings(Base):
     deviation_threshold: Mapped[Decimal] = mapped_column(DecimalText)
 
 
+class Article(Base):
+    """An article (issue #10). Never deleted, only deactivated.
+
+    Stock is not stored here; it is always summed from stock movements (issue #11).
+    """
+
+    __tablename__ = "articles"
+    __table_args__ = (UniqueConstraint("number_key", name="uq_articles_number_key"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    # Shown as entered; the key to the invoicing software, so freely chosen
+    number: Mapped[str] = mapped_column(String(50))
+    # Lower-case form (casefold) for a unique number regardless of case; casefold can make
+    # text longer (ß becomes ss), hence the extra room
+    number_key: Mapped[str] = mapped_column(String(100))
+    name: Mapped[str] = mapped_column(String(100))
+    # Euro per piece; empty = no target price set
+    selling_price: Mapped[Decimal | None] = mapped_column(DecimalText)
+    # Share when production costs are split between articles (plan, section 4)
+    weight: Mapped[Decimal | None] = mapped_column(DecimalText)
+    # Pieces; empty = no minimum
+    min_stock: Mapped[int | None] = mapped_column(Integer)
+    active: Mapped[bool] = mapped_column(Boolean, server_default=true())
+    created_at: Mapped[datetime] = mapped_column(DateTime)
+
+
 class UserRole(StrEnum):
     """Fixed roles from the plan (section 8); their rights are in app/permissions.py."""
 

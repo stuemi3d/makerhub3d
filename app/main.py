@@ -19,6 +19,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app import APP_NAME, audit, auth, backup, two_factor
 from app.account_two_factor import add_two_factor_routes
+from app.article_pages import add_article_routes
 from app.backup_pages import add_backup_routes
 from app.config import Settings
 from app.db import make_engine, run_migrations
@@ -40,7 +41,7 @@ templates.env.globals["app_name"] = APP_NAME
 # only shown to roles with the given permission.
 NAV_ITEMS = (
     {"key": "nav.dashboard", "href": "/", "permission": Permission.VIEW},
-    {"key": "nav.articles", "href": None, "permission": Permission.VIEW},
+    {"key": "nav.articles", "href": "/articles", "permission": Permission.VIEW},
     {"key": "nav.calculation", "href": None, "permission": Permission.VIEW},
     {"key": "nav.production", "href": None, "permission": Permission.VIEW},
     {"key": "nav.stock", "href": None, "permission": Permission.VIEW},
@@ -507,6 +508,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     add_user_admin_routes(app, new_session, render, read_form)
     add_log_routes(app, new_session, render, language, settings.timezone)
     add_backup_routes(app, new_session, render, settings)
+    add_article_routes(app, new_session, render, read_form, language)
 
     # Deliberately without login: the container health check calls it. Returns no details.
     @app.get("/healthz", response_class=PlainTextResponse)
