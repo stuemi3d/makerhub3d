@@ -398,5 +398,19 @@
   "dashboard.low.ok": "All good: no article is below its minimum stock.",
   "dashboard.low.no_articles": "No articles yet. Create an article first.",
   "dashboard.low.create": "Create the first article",
-  "dashboard.low.col.shortfall": "Missing"
+  "dashboard.low.col.shortfall": "Missing",
+  "article.purge.button": "Delete for good",
+  "article.purge.title": "Delete article for good",
+  "article.purge.irreversible": "This cannot be undone.",
+  "article.purge.intro": "The article is deleted together with everything that hangs on it:",
+  "article.purge.hint": "If you only want to hide the article from the lists, deactivate it instead.",
+  "article.purge.count.calculations": "Calculations",
+  "article.purge.count.productions": "Productions",
+  "article.purge.count.stock_movements": "Stock movements",
+  "article.purge.count.sales": "Sales",
+  "article.purge.type_number": "To confirm, type the article number:",
+  "article.purge.confirm": "Delete for good",
+  "article.purge.mismatch": "The article number does not match. Nothing was deleted.",
+  "article.purge.done": "The article was deleted for good.",
+  "log.action.article.purged": "Article deleted for good"
 }

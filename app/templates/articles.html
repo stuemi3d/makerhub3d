@@ -9,6 +9,9 @@
     {% if can('edit') %}<a href="/articles/new" role="button">{{ t('articles.new') }}</a>{% endif %}
   </div>
 </div>
+{% if purged %}
+<p role="status"><ins>{{ t('article.purge.done') }}</ins></p>
+{% endif %}
 {% if articles %}
 <div class="overflow-auto">
 <table>

@@ -20,10 +20,13 @@ PAGE_SIZE = 50
 _DECIMAL_NAMES = {field.name for field in DECIMAL_FIELDS} | {"selling_price", "weight"}
 _ARTICLE_FIELDS = {"number", "name", "selling_price", "weight", "min_stock"}
 _STOCK_FIELDS = {"quantity", "reason", "date", "cancels"}
+_PURGE_FIELDS = {"calculations", "productions", "stock_movements", "sales"}
 _TIME_FORMATS = {"de": "%d.%m.%Y %H:%M", "en": "%Y-%m-%d %H:%M"}
 
 
 def _label(field: str, language: str) -> str:
+    if field in _PURGE_FIELDS:
+        return translate(language, f"article.purge.count.{field}")
     if field in _ARTICLE_FIELDS:
         return translate(language, f"article.field.{field}")
     if field in _STOCK_FIELDS:

@@ -398,5 +398,19 @@
   "dashboard.low.ok": "Alles im grünen Bereich: Kein Artikel liegt unter seinem Mindestbestand.",
   "dashboard.low.no_articles": "Noch keine Artikel. Lege zuerst einen Artikel an.",
   "dashboard.low.create": "Ersten Artikel anlegen",
-  "dashboard.low.col.shortfall": "Fehlt"
+  "dashboard.low.col.shortfall": "Fehlt",
+  "article.purge.button": "Endgültig löschen",
+  "article.purge.title": "Artikel endgültig löschen",
+  "article.purge.irreversible": "Das kann nicht rückgängig gemacht werden.",
+  "article.purge.intro": "Der Artikel wird zusammen mit allem gelöscht, was an ihm hängt:",
+  "article.purge.hint": "Wenn du den Artikel nur aus den Listen ausblenden willst, deaktiviere ihn stattdessen.",
+  "article.purge.count.calculations": "Kalkulationen",
+  "article.purge.count.productions": "Produktionen",
+  "article.purge.count.stock_movements": "Lagerbewegungen",
+  "article.purge.count.sales": "Verkäufe",
+  "article.purge.type_number": "Zur Bestätigung die Artikelnummer eintippen:",
+  "article.purge.confirm": "Endgültig löschen",
+  "article.purge.mismatch": "Die Artikelnummer stimmt nicht. Es wurde nichts gelöscht.",
+  "article.purge.done": "Der Artikel wurde endgültig gelöscht.",
+  "log.action.article.purged": "Artikel endgültig gelöscht"
 }
