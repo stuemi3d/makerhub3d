@@ -263,6 +263,7 @@
   "article.error.too_long": "The text is too long.",
   "article.error.chars": "Please do not use special characters such as line breaks.",
   "article.error.taken": "This article number already exists.",
+  "article.error.template_number": "This number already belongs to a template.",
   "article.error.number": "Please enter a number, e.g. 12.90.",
   "article.error.negative": "The value must not be negative.",
   "article.error.decimals": "At most 2 decimal places.",

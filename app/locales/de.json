@@ -263,6 +263,7 @@
   "article.error.too_long": "Der Text ist zu lang.",
   "article.error.chars": "Bitte keine Sonderzeichen wie Zeilenumbrüche verwenden.",
   "article.error.taken": "Diese Artikelnummer gibt es schon.",
+  "article.error.template_number": "Diese Nummer gehört schon zu einer Vorlage.",
   "article.error.number": "Bitte eine Zahl eingeben, z. B. 12,90.",
   "article.error.negative": "Der Wert darf nicht negativ sein.",
   "article.error.decimals": "Höchstens 2 Nachkommastellen.",

@@ -83,6 +83,8 @@ def add_variant_routes(
                     select(Article.id).where(Article.number_key == number_key(values["number"]))
                 ):
                     return {"number": "article.error.taken"}, None
+                if variants.template_number_taken(db, number_key(values["number"])):
+                    return {"number": "article.error.template_number"}, None
                 if variants.combination_taken(db, template_id, choices):
                     return {"combination": "variant.error.combination_taken"}, None
                 article = Article(
