@@ -18,7 +18,7 @@ LOGIN_LOG_RETENTION = timedelta(days=365)
 
 def record_change(
     db: Session,
-    user_id: int,
+    user_id: int | None,
     action: str,
     subject: str = "",
     details: list[dict[str, str]] | None = None,

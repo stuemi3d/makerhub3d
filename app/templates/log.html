@@ -25,7 +25,7 @@
     {% for e in entries %}
     <tr>
       <td>{{ e.time }}</td>
-      <td>{{ e.user if e.user else t('log.unknown_user') }}</td>
+      <td>{% if e.user %}{{ e.user }}{% elif log_tab == 'changes' %}{{ t('log.server_command') }}{% else %}{{ t('log.unknown_user') }}{% endif %}</td>
       {% if log_tab == 'changes' %}
       <td>{{ t(e.action) }}{% if e.subject %}: {{ e.subject }}{% endif %}</td>
       <td>{% for line in e.details %}{{ line }}{% if not loop.last %}<br>{% endif %}{% endfor %}</td>

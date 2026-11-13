@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}{{ t('two_factor.codes.title') }} – {{ app_name }}{% endblock %}
+{% block content %}
+<h1>{{ t('two_factor.codes.title') }}</h1>
+<p role="status"><ins>{{ t('two_factor.codes.saved') }}</ins></p>
+<p><mark>{{ t('two_factor.codes.warning') }}</mark></p>
+<ul class="recovery-codes">
+  {% for code in codes %}
+  <li><code>{{ code }}</code></li>
+  {% endfor %}
+</ul>
+<p><a href="/account" role="button">{{ t('two_factor.codes.done') }}</a></p>
+{% endblock %}

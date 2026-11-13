@@ -85,6 +85,13 @@ class User(Base):
     active: Mapped[bool] = mapped_column(Boolean, server_default=true())
     # Set for initial passwords given by an admin; the user must change it first (issue #32).
     must_change_password: Mapped[bool] = mapped_column(Boolean, server_default=false())
+    # Two-factor login (issue #30): the secret is encrypted with MAKERHUB_2FA_KEY.
+    # Set = two-factor login is on.
+    totp_secret: Mapped[str | None] = mapped_column(Text)
+    # Secret shown during setup, until the user confirms it with a first code.
+    totp_pending_secret: Mapped[str | None] = mapped_column(Text)
+    # Last used 30-second step; codes of this or earlier steps are refused (no reuse).
+    totp_last_step: Mapped[int | None] = mapped_column(Integer)
 
 
 class LoginSession(Base):
@@ -100,6 +107,27 @@ class LoginSession(Base):
     last_seen_at: Mapped[datetime] = mapped_column(DateTime)
 
 
+class RecoveryCode(Base):
+    """One-time code for a lost phone (issue #30). Only a SHA-256 fingerprint is stored."""
+
+    __tablename__ = "recovery_codes"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    code_hash: Mapped[str] = mapped_column(String(64))
+
+
+class PendingLogin(Base):
+    """Right password, code not yet entered (issue #30). Like LoginSession, the browser
+    holds a random token and only its fingerprint is stored."""
+
+    __tablename__ = "pending_logins"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    created_at: Mapped[datetime] = mapped_column(DateTime)
+
+
 class ChangeLogEntry(Base):
     """Who changed what and when (plan, section 8). Never changed or deleted."""
 
@@ -107,8 +135,9 @@ class ChangeLogEntry(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, index=True)
-    # Users are never deleted, so the reference always stays valid.
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    # Users are never deleted, so the reference always stays valid. Empty for changes made
+    # by a command on the server (no user logged in).
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     # Translation key below "log.action.", e.g. "settings.changed"
     action: Mapped[str] = mapped_column(String(50))
     # The changed object as text, e.g. the user name; empty for the settings
@@ -123,7 +152,8 @@ class LoginLogEntry(Base):
     __tablename__ = "login_log"
     __table_args__ = (
         CheckConstraint(
-            "event IN ('success', 'failed', 'locked', 'logout', 'wrong_current_password')",
+            "event IN ('success', 'failed', 'locked', 'logout', 'wrong_current_password',"
+            " 'wrong_code', 'recovery_code_used')",
             name="ck_login_log_event",
         ),
     )
