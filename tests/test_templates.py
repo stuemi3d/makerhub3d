@@ -3,6 +3,7 @@
 Test case numbers refer to the confirmed list in the issue.
 """
 
+import itertools
 import json
 import re
 import sqlite3
@@ -78,14 +79,37 @@ def log_actions() -> list[str]:
         return [e.action for e in entries if e.action != "setup.admin_created"]
 
 
+def with_abbreviations(values: str) -> str:
+    """Adds an invented abbreviation to each plain line ("rot" -> "rot = ro"); lines that
+    already have one stay as they are. Keeps the older tests short."""
+    lines, used = [], set()
+    for line in values.splitlines():
+        if "=" in line or not line.strip():
+            lines.append(line)
+            continue
+        base = "".join(c for c in line.strip() if c.isalnum()).lower()[:2] or "x"
+        abbreviation, count = base, 1
+        while abbreviation in used:
+            count += 1
+            abbreviation = f"{base}{count}"
+        used.add(abbreviation)
+        lines.append(f"{line.strip()} = {abbreviation}")
+    return "\n".join(lines)
+
+
 def make_attribute(client: AppClient, name: str = "Farbe", values: str = "rot\nblau"):
+    values = with_abbreviations(values)
     return client.post(
         "/attributes/new", data={"name": name, "values": values}, follow_redirects=False
     )
 
 
+_numbers = itertools.count(100)
+
+
 def template_form(client: AppClient, **overrides: str) -> dict[str, str]:
     form = {
+        "number": f"V-{next(_numbers)}",
         "name": "Halter A",
         "description": "",
         "selling_price": "",
@@ -153,7 +177,9 @@ def test_a_value_can_be_added_later(client: AppClient) -> None:
     attribute_id = attributes()[0].id
 
     response = client.post(
-        f"/attributes/{attribute_id}/values", data={"value": "grün"}, follow_redirects=False
+        f"/attributes/{attribute_id}/values",
+        data={"value": "grün", "abbreviation": "gr"},
+        follow_redirects=False,
     )
 
     assert response.status_code == 303
@@ -195,7 +221,9 @@ def test_duplicate_value_is_refused_when_adding(client: AppClient) -> None:
     make_attribute(client)
     attribute_id = attributes()[0].id
 
-    response = client.post(f"/attributes/{attribute_id}/values", data={"value": " ROT "})
+    response = client.post(
+        f"/attributes/{attribute_id}/values", data={"value": " ROT ", "abbreviation": "xx"}
+    )
 
     assert response.status_code == 422
     assert DE["attribute.error.value_taken"] in response.text
@@ -427,7 +455,10 @@ def test_unknown_ids_give_404(client: AppClient) -> None:
     assert client.get("/templates/999/delete").status_code == 404
     assert client.post("/templates/999/delete", data={}).status_code == 404
     assert client.post("/templates/999/deactivate", data={}).status_code == 404
-    assert client.post("/attributes/999/values", data={"value": "x"}).status_code == 404
+    assert (
+        client.post("/attributes/999/values", data={"value": "x", "abbreviation": "x"}).status_code
+        == 404
+    )
     assert client.get("/attributes/999/delete").status_code == 404
 
 
@@ -499,7 +530,9 @@ def test_post_without_form_token_is_refused(client: AppClient, method: str, path
     make_template(client)
     client.csrf_token = None
 
-    response = client.post(path, data={"name": "x", "values": "x", "value": "x"})
+    response = client.post(
+        path, data={"name": "x", "values": "x = x", "value": "x", "abbreviation": "x"}
+    )
 
     assert response.status_code == 403
     assert len(attributes()) == 1
@@ -529,7 +562,7 @@ def test_forms_carry_the_token(client: AppClient) -> None:
 def test_changes_are_written_to_the_change_log(client: AppClient) -> None:
     make_attribute(client)
     attribute_id = attributes()[0].id
-    client.post(f"/attributes/{attribute_id}/values", data={"value": "grün"})
+    client.post(f"/attributes/{attribute_id}/values", data={"value": "grün", "abbreviation": "gr"})
     make_template(client)
     template_id = templates()[0].id
     client.post(

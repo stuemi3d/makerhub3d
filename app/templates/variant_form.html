@@ -17,8 +17,9 @@
 <form method="post" action="/templates/{{ tpl.id }}/variants/new" novalidate>
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <label for="number">{{ t('article.field.number') }}</label>
-  <input type="text" maxlength="50" autocomplete="off" {{ field_attrs('number', errors) }} value="{{ values.get('number', '') }}">
-  {{ feedback('number', errors, t, 'article.hint.') }}
+  <input type="text" maxlength="50" autocomplete="off" {{ field_attrs('number', errors) }} value="{{ values.get('number', '') }}"{% if tpl.number %} data-number-prefix="{{ tpl.number }}"{% endif %}>
+  {% if tpl.number and not errors.get('number') %}<small id="number-hint">{{ t('variant.hint.number') }}</small>
+  {% else %}{{ feedback('number', errors, t, 'article.hint.') }}{% endif %}
   <label for="name">{{ t('article.field.name') }}</label>
   <input type="text" maxlength="100" autocomplete="off" {{ field_attrs('name', errors) }} value="{{ values.get('name', '') }}">
   {{ feedback('name', errors, t, 'article.hint.') }}

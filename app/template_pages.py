@@ -19,7 +19,13 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app import audit, auth, variants
-from app.article_form import NAME_MAX_LENGTH, form_values, validate_defaults
+from app.article_form import (
+    NAME_MAX_LENGTH,
+    NUMBER_MAX_LENGTH,
+    form_values,
+    number_key,
+    validate_defaults,
+)
 from app.models import (
     Article,
     ArticleAttributeValue,
@@ -33,8 +39,9 @@ from app.settings_form import format_decimal
 
 NAME_LIMIT = 50
 VALUE_LIMIT = 50
+ABBREVIATION_LIMIT = 10
 DESCRIPTION_LIMIT = 1000
-TEMPLATE_FIELDS = ("name", "description", "selling_price", "weight", "min_stock")
+TEMPLATE_FIELDS = ("number", "name", "description", "selling_price", "weight", "min_stock")
 DEFAULT_FIELDS = ("selling_price", "weight", "min_stock")
 
 
@@ -62,28 +69,69 @@ def validate_attribute_name(raw: str) -> tuple[str | None, str | None]:
     return name, None
 
 
-def validate_attribute_values(raw: str) -> tuple[list[str], str | None]:
-    """One value per line; empty lines are ignored. Returns the values or an error key."""
-    values: list[str] = []
+def validate_abbreviation(raw: str) -> tuple[str | None, str | None]:
+    """A short form of a value: letters and digits only, at most 10 characters."""
+    abbreviation = _clean_line(raw)
+    if not abbreviation:
+        return None, "attribute.error.abbreviation_required"
+    if len(abbreviation) > ABBREVIATION_LIMIT:
+        return None, "attribute.error.abbreviation_too_long"
+    if not abbreviation.isalnum():
+        return None, "attribute.error.abbreviation_chars"
+    return abbreviation, None
+
+
+def validate_attribute_values(raw: str) -> tuple[list[tuple[str, str]], str | None]:
+    """One value per line as "value = abbreviation"; empty lines are ignored.
+
+    Returns (value, abbreviation) pairs or an error key. The abbreviation follows the last
+    equals sign, so a value may contain one itself.
+    """
+    pairs: list[tuple[str, str]] = []
     for line in raw.splitlines():
-        value = _clean_line(line)
-        if not value:
+        if not line.strip():
             continue
+        value_text, _, abbreviation_text = line.rpartition("=")
+        if not value_text:
+            # No equals sign at all: the whole line is a value without abbreviation.
+            value_text, abbreviation_text = line, ""
+        value = _clean_line(value_text)
         if len(value) > VALUE_LIMIT:
             return [], "attribute.error.too_long"
         if not _printable(value):
             return [], "attribute.error.chars"
-        values.append(value)
-    if not values:
+        if not value:
+            return [], "attribute.error.value_required"
+        abbreviation, error = validate_abbreviation(abbreviation_text)
+        if error:
+            return [], error
+        pairs.append((value, abbreviation))
+    if not pairs:
         return [], "attribute.error.values_required"
-    if len({key_of(value) for value in values}) != len(values):
+    if len({key_of(value) for value, _ in pairs}) != len(pairs):
         return [], "attribute.error.value_taken"
-    return values, None
+    if len({key_of(abbreviation) for _, abbreviation in pairs}) != len(pairs):
+        return [], "attribute.error.abbreviation_taken"
+    return pairs, None
 
 
-def validate_template(raw: dict[str, str]) -> tuple[dict[str, object], dict[str, str]]:
+def validate_template(
+    raw: dict[str, str], number_optional: bool = False
+) -> tuple[dict[str, object], dict[str, str]]:
+    """number_optional: a template from before numbers existed may stay without one."""
     values: dict[str, object] = {}
     errors: dict[str, str] = {}
+
+    number = raw.get("number", "").strip()
+    if not number:
+        if not number_optional:
+            errors["number"] = "article.error.required"
+    elif len(number) > NUMBER_MAX_LENGTH:
+        errors["number"] = "article.error.too_long"
+    elif not _printable(number):
+        errors["number"] = "article.error.chars"
+    else:
+        values["number"] = number
 
     name = raw.get("name", "").strip()
     if not name:
@@ -135,6 +183,9 @@ def add_template_routes(
             "id": attribute.id,
             "name": attribute.name,
             "value_list": [value.value for value in attribute.values_rel],
+            "value_labels": [
+                f"{value.value} ({value.abbreviation})" for value in attribute.values_rel
+            ],
             "used": used is not None,
         }
 
@@ -183,7 +234,13 @@ def add_template_routes(
                     return {"name": "attribute.error.taken"}
                 attribute = Attribute(name=name, name_key=key_of(name))
                 attribute.values_rel = [
-                    AttributeValue(value=value, value_key=key_of(value)) for value in values
+                    AttributeValue(
+                        value=value,
+                        value_key=key_of(value),
+                        abbreviation=abbreviation,
+                        abbreviation_key=key_of(abbreviation),
+                    )
+                    for value, abbreviation in values
                 ]
                 db.add(attribute)
                 db.flush()
@@ -207,8 +264,9 @@ def add_template_routes(
             )
         return RedirectResponse("/attributes", status_code=303)
 
-    def add_value(attribute_id: int, actor_id: int, raw: str) -> str | None:
-        value = _clean_line(raw)
+    def add_value(attribute_id: int, actor_id: int, raw_value: str, raw_abbreviation: str):
+        value = _clean_line(raw_value)
+        abbreviation, abbreviation_error = validate_abbreviation(raw_abbreviation)
         error = None
         if not value:
             error = "attribute.error.value_required"
@@ -216,6 +274,8 @@ def add_template_routes(
             error = "attribute.error.too_long"
         elif not _printable(value):
             error = "attribute.error.chars"
+        else:
+            error = abbreviation_error
         try:
             with new_session() as db, db.begin():
                 attribute = attribute_or_404(db, attribute_id)
@@ -223,24 +283,49 @@ def add_template_routes(
                     return error
                 if any(key_of(v.value) == key_of(value) for v in attribute.values_rel):
                     return "attribute.error.value_taken"
-                attribute.values_rel.append(AttributeValue(value=value, value_key=key_of(value)))
+                if any(v.abbreviation_key == key_of(abbreviation) for v in attribute.values_rel):
+                    return "attribute.error.abbreviation_taken"
+                attribute.values_rel.append(
+                    AttributeValue(
+                        value=value,
+                        value_key=key_of(value),
+                        abbreviation=abbreviation,
+                        abbreviation_key=key_of(abbreviation),
+                    )
+                )
                 db.flush()
                 audit.record_change(
                     db,
                     actor_id,
                     "attribute.value_added",
                     attribute.name,
-                    [{"field": "value", "old": "", "new": value}],
+                    [
+                        {"field": "value", "old": "", "new": value},
+                        {"field": "abbreviation", "old": "", "new": abbreviation},
+                    ],
                 )
         except IntegrityError:
+            # Two saves at the same moment: say which of the two was already there.
+            with new_session() as db:
+                if db.scalar(
+                    select(AttributeValue.id).where(
+                        AttributeValue.attribute_id == attribute_id,
+                        AttributeValue.abbreviation_key == key_of(abbreviation),
+                    )
+                ):
+                    return "attribute.error.abbreviation_taken"
             return "attribute.error.value_taken"
         return None
 
     @app.post("/attributes/{attribute_id}/values", dependencies=edit)
     async def add_attribute_value(request: Request, attribute_id: int) -> Response:
-        raw = await read_form(request, ("value",))
+        raw = await read_form(request, ("value", "abbreviation"))
         error = await run_in_threadpool(
-            add_value, attribute_id, request.state.user.id, raw.get("value", "")
+            add_value,
+            attribute_id,
+            request.state.user.id,
+            raw.get("value", ""),
+            raw.get("abbreviation", ""),
         )
         if error:
             return attribute_list(request, errors={attribute_id: error}, status_code=422)
@@ -280,6 +365,7 @@ def add_template_routes(
     def template_view(db: Session, template: ArticleTemplate) -> dict:
         return {
             "id": template.id,
+            "number": template.number,
             "name": template.name,
             "description": template.description,
             "selling_price": shown(template.selling_price),
@@ -342,6 +428,17 @@ def add_template_routes(
     def new_template_page(request: Request) -> HTMLResponse:
         return form_page(request, None, {}, {})
 
+    def number_taken(db: Session, number: str, own_id: int | None = None) -> bool:
+        """True when another template or any article already has this number."""
+        key = number_key(number)
+        query = select(ArticleTemplate.id).where(ArticleTemplate.number_key == key)
+        if own_id is not None:
+            query = query.where(ArticleTemplate.id != own_id)
+        return (
+            db.scalar(query) is not None
+            or db.scalar(select(Article.id).where(Article.number_key == key)) is not None
+        )
+
     def attach(db: Session, template_id: int, attribute_ids: list[int]) -> None:
         for position, attribute_id in enumerate(attribute_ids):
             db.add(
@@ -354,16 +451,27 @@ def add_template_routes(
         values, errors = validate_template(raw)
         if errors:
             return errors, None
-        with new_session() as db, db.begin():
-            template = ArticleTemplate(**values, active=True, created_at=auth.utcnow())
-            db.add(template)
-            db.flush()
-            # Only attributes that exist are attached.
-            existing = set(db.scalars(select(Attribute.id)))
-            attach(db, template.id, [i for i in chosen_ids(raw, known) if i in existing])
-            db.flush()
-            audit.record_change(db, actor_id, "template.created", template.name)
-            return {}, template.id
+        try:
+            with new_session() as db, db.begin():
+                if number_taken(db, str(values["number"])):
+                    return {"number": "template.error.number_taken"}, None
+                template = ArticleTemplate(
+                    **values,
+                    number_key=number_key(str(values["number"])),
+                    active=True,
+                    created_at=auth.utcnow(),
+                )
+                db.add(template)
+                db.flush()
+                # Only attributes that exist are attached.
+                existing = set(db.scalars(select(Attribute.id)))
+                attach(db, template.id, [i for i in chosen_ids(raw, known) if i in existing])
+                db.flush()
+                audit.record_change(db, actor_id, "template.created", template.name)
+                return {}, template.id
+        except IntegrityError:
+            # Two saves at the same moment: the database decides which number was first.
+            return {"number": "template.error.number_taken"}, None
 
     @app.post("/templates/new", response_class=HTMLResponse, dependencies=edit)
     async def create_template_route(request: Request) -> Response:
@@ -410,6 +518,7 @@ def add_template_routes(
             values = form_values(
                 {name: getattr(template, name) for name in DEFAULT_FIELDS}, language
             )
+            values["number"] = template.number or ""
             values["name"] = template.name
             values["description"] = template.description
             for item in template_attributes(db, template.id):
@@ -433,12 +542,17 @@ def add_template_routes(
         )
 
     def change_template(template_id: int, actor_id: int, raw: dict[str, str], known: list[dict]):
-        values, errors = validate_template(raw)
+        with new_session() as db:
+            # A template from before numbers existed may stay without one.
+            number_optional = template_or_404(db, template_id).number is None
+        values, errors = validate_template(raw, number_optional)
         with new_session() as db, db.begin():
             template = template_or_404(db, template_id)
             current = template_view(db, template)
             if errors:
                 return errors, current
+            if "number" in values and number_taken(db, str(values["number"]), template.id):
+                return {"number": "template.error.number_taken"}, current
             old_names = ", ".join(item["name"] for item in current["attributes"])
             old = {name: getattr(template, name) for name in TEMPLATE_FIELDS}
             existing = set(db.scalars(select(Attribute.id)))
@@ -450,6 +564,8 @@ def add_template_routes(
             attach(db, template.id, ids)
             for name, value in values.items():
                 setattr(template, name, value)
+            if "number" in values:
+                template.number_key = number_key(str(values["number"]))
             db.flush()
             new_names = ", ".join(item["name"] for item in template_attributes(db, template.id))
             changes = audit.field_changes(
@@ -460,12 +576,22 @@ def add_template_routes(
                 audit.record_change(db, actor_id, "template.changed", template.name, changes)
             return {}, template_view(db, template)
 
+    def save(template_id: int, actor_id: int, raw: dict[str, str], known: list[dict]):
+        try:
+            return change_template(template_id, actor_id, raw, known)
+        except IntegrityError:
+            return {"number": "template.error.number_taken"}, current_view(template_id)
+
+    def current_view(template_id: int) -> dict:
+        with new_session() as db:
+            return template_view(db, template_or_404(db, template_id))
+
     @app.post("/templates/{template_id}", response_class=HTMLResponse, dependencies=edit)
     async def save_template(request: Request, template_id: int) -> Response:
         known = await run_in_threadpool(all_attributes)
         raw = await read_template_form(request, known)
         errors, template = await run_in_threadpool(
-            change_template, template_id, request.state.user.id, raw, known
+            save, template_id, request.state.user.id, raw, known
         )
         if errors:
             return form_page(request, template, raw, errors, status_code=422)

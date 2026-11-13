@@ -13,12 +13,14 @@
 {% for a in attributes %}
 <article>
   <header><strong>{{ a.name }}</strong></header>
-  <p>{{ a.value_list | join(', ') }}</p>
+  <p>{{ a.value_labels | join(', ') }}</p>
   {% if can('edit') %}
   <form method="post" action="/attributes/{{ a.id }}/values">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <label for="value-{{ a.id }}">{{ t('attribute.add_value') }}</label>
     <input type="text" id="value-{{ a.id }}" name="value" maxlength="50" autocomplete="off"{% if errors.get(a.id) %} aria-invalid="true" aria-describedby="value-{{ a.id }}-error"{% endif %}>
+    <label for="abbreviation-{{ a.id }}">{{ t('attribute.field.abbreviation') }}</label>
+    <input type="text" id="abbreviation-{{ a.id }}" name="abbreviation" maxlength="10" autocomplete="off"{% if errors.get(a.id) %} aria-invalid="true" aria-describedby="value-{{ a.id }}-error"{% endif %}>
     {% if errors.get(a.id) %}<small id="value-{{ a.id }}-error">{{ t(errors[a.id]) }}</small>{% endif %}
     <button type="submit" class="secondary">{{ t('attribute.add_value_button') }}</button>
   </form>

@@ -15,6 +15,7 @@
 <table>
   <thead>
     <tr>
+      <th scope="col">{{ t('template.field.number') }}</th>
       <th scope="col">{{ t('template.field.name') }}</th>
       <th scope="col">{{ t('template.field.attributes') }}</th>
       <th scope="col">{{ t('article.field.selling_price') }}</th>
@@ -24,6 +25,7 @@
   <tbody>
     {% for tpl in templates %}
     <tr>
+      <td>{{ tpl.number if tpl.number else t('article.value.none') }}</td>
       <td><a href="/templates/{{ tpl.id }}">{{ tpl.name }}</a></td>
       <td>{{ tpl.attributes | map(attribute='name') | join(', ') }}</td>
       <td>{{ tpl.selling_price if tpl.selling_price else t('article.value.none') }}</td>

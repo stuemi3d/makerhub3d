@@ -149,6 +149,7 @@ def test_area_tabs_are_also_on_detail_pages(client: AppClient) -> None:
     client.post(
         "/templates/new",
         data={
+            "number": "V-1",
             "name": "Halter A",
             "description": "",
             "selling_price": "",
@@ -188,6 +189,7 @@ def test_template_detail_has_a_path_back_to_the_list(client: AppClient) -> None:
     client.post(
         "/templates/new",
         data={
+            "number": "V-1",
             "name": "Halter A",
             "description": "",
             "selling_price": "",
@@ -207,6 +209,7 @@ def test_back_links_at_the_page_end_are_gone(client: AppClient) -> None:
     client.post(
         "/templates/new",
         data={
+            "number": "V-1",
             "name": "Halter A",
             "description": "",
             "selling_price": "",

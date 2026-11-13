@@ -9,6 +9,9 @@
 {% endif %}
 <form method="post" action="{{ '/templates/' ~ tpl.id if tpl else '/templates/new' }}" novalidate>
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label for="number">{{ t('template.field.number') }}</label>
+  <input type="text" maxlength="50" autocomplete="off" {{ field_attrs('number', errors) }} value="{{ values.get('number', '') }}">
+  {{ feedback('number', errors, t, 'template.hint.') }}
   <label for="name">{{ t('template.field.name') }}</label>
   <input type="text" maxlength="100" autocomplete="off" {{ field_attrs('name', errors) }} value="{{ values.get('name', '') }}">
   {{ feedback('name', errors, t, 'template.hint.') }}

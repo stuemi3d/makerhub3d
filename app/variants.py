@@ -53,7 +53,10 @@ def attribute_fields(db: Session, template_id: int) -> list[dict]:
         {
             "id": attribute.id,
             "name": attribute.name,
-            "options": [{"id": value.id, "value": value.value} for value in attribute.values_rel],
+            "options": [
+                {"id": value.id, "value": value.value, "abbreviation": value.abbreviation}
+                for value in attribute.values_rel
+            ],
         }
         for attribute in template_attributes(db, template_id)
     ]

@@ -26,7 +26,12 @@
 <p role="status"><ins>{{ t('article.saved') }}</ins></p>
 {% endif %}
 <p>{{ t('template.note') }}</p>
+{% if not tpl.number %}
+<p role="status"><mark>{{ t('template.number_missing') }}</mark>{% if can('edit') %} <a href="/templates/{{ tpl.id }}/edit">{{ t('template.number_add') }}</a>{% endif %}</p>
+{% endif %}
 <dl>
+  <dt>{{ t('template.field.number') }}</dt>
+  <dd>{{ tpl.number if tpl.number else t('article.value.none') }}</dd>
   <dt>{{ t('template.field.name') }}</dt>
   <dd>{{ tpl.name }}</dd>
   <dt>{{ t('template.field.description') }}</dt>
@@ -40,7 +45,7 @@
   <dt>{{ t('template.field.attributes') }}</dt>
   <dd>
     {% for a in tpl.attributes %}
-    <div>{{ a.name }}: {{ a.value_list | join(', ') }}</div>
+    <div>{{ a.name }}: {{ a.value_labels | join(', ') }}</div>
     {% else %}
     {{ t('article.value.none') }}
     {% endfor %}

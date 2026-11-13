@@ -8,7 +8,7 @@
 <select id="{{ name }}" name="{{ name }}"{% if errors.get(name) %} aria-invalid="true" aria-describedby="{{ name }}-error"{% endif %}>
   <option value="">{{ t('variant.value.choose') }}</option>
   {% for v in f.options %}
-  <option value="{{ v.id }}"{% if values.get(name) == v.id | string %} selected{% endif %}>{{ v.value }}</option>
+  <option value="{{ v.id }}" data-abbreviation="{{ v.abbreviation }}"{% if values.get(name) == v.id | string %} selected{% endif %}>{{ v.value }}</option>
   {% endfor %}
 </select>
 {% if errors.get(name) %}<small id="{{ name }}-error">{{ t(errors[name]) }}</small>{% endif %}
