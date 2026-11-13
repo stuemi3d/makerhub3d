@@ -17,7 +17,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import sessionmaker
 
-from app import APP_NAME, audit, auth, backup, two_factor
+from app import APP_NAME, audit, auth, backup, dashboard, two_factor
 from app.account_two_factor import add_two_factor_routes
 from app.article_pages import add_article_routes
 from app.backup_pages import add_backup_routes
@@ -416,7 +416,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.get("/", response_class=HTMLResponse, dependencies=[requires(Permission.VIEW)])
     def index(request: Request) -> HTMLResponse:
-        return render(request, "index.html", "nav.dashboard")
+        with new_session() as session:
+            data = dashboard.build(session)
+        return render(request, "index.html", "nav.dashboard", data=data)
 
     # Login is checked by the middleware above, the role by the dependency of each route.
     @app.get("/settings", response_class=HTMLResponse, dependencies=[requires(Permission.MANAGE)])

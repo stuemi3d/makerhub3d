@@ -165,3 +165,32 @@
   border-bottom: 2px solid currentColor;
   font-weight: bold;
 }
+
+/* Dashboard key figures: one column on the phone, three on wide screens. */
+.stats {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.stat {
+  margin: 0;
+}
+
+.stat-label {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.stat-value {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 600;
+}
+
+@media (min-width: 768px) {
+  .stats {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
