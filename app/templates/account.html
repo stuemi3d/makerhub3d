@@ -7,8 +7,10 @@
 {% if user.must_change_password %}
 <p role="alert"><mark>{{ t('account.must_change') }}</mark></p>
 {% endif %}
-{% if changed %}
+{% if changed == '1' %}
 <p role="status"><ins>{{ t('account.changed') }}</ins></p>
+{% elif changed == '2fa_off' %}
+<p role="status"><ins>{{ t('two_factor.disabled') }}</ins></p>
 {% endif %}
 {% if errors %}
 <p role="alert"><mark>{{ t('account.has_errors') }}</mark></p>
@@ -28,5 +30,43 @@
     {{ feedback('password_repeat', errors, t, 'account.hint.') }}
     <button type="submit">{{ t('account.password.submit') }}</button>
   </form>
+</section>
+<section>
+  <h2>{{ t('two_factor.title') }}</h2>
+  {% if two_factor.enabled %}
+  <p><strong>{{ t('two_factor.status.on') }}</strong></p>
+  <p>{{ t('two_factor.codes_left').format(count=two_factor.codes_left) }}</p>
+  <h3>{{ t('two_factor.renew.title') }}</h3>
+  <form method="post" action="/account/2fa/codes" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label for="renew_code">{{ t('two_factor.field.code') }}</label>
+    <input type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="100" {{ field_attrs('renew_code', errors) }}>
+    {{ feedback('renew_code', errors, t, 'two_factor.hint.') }}
+    <button type="submit">{{ t('two_factor.renew.submit') }}</button>
+  </form>
+  <h3>{{ t('two_factor.off.title') }}</h3>
+  <form method="post" action="/account/2fa/disable" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label for="off_password">{{ t('account.field.current_password') }}</label>
+    <input type="password" autocomplete="current-password" {{ field_attrs('off_password', errors) }}>
+    {{ feedback('off_password', errors, t, 'two_factor.hint.') }}
+    <label for="off_code">{{ t('two_factor.field.code') }}</label>
+    <input type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="100" {{ field_attrs('off_code', errors) }}>
+    {{ feedback('off_code', errors, t, 'two_factor.hint.') }}
+    <button type="submit" class="secondary">{{ t('two_factor.off.submit') }}</button>
+  </form>
+  {% elif not two_factor.available %}
+  <p>{{ t('two_factor.status.off') }}</p>
+  <p role="note"><mark>{{ t('two_factor.no_key') }}</mark></p>
+  {% else %}
+  <p>{{ t('two_factor.status.off') }} {{ t('two_factor.explain') }}</p>
+  <form method="post" action="/account/2fa/start" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label for="tfa_password">{{ t('account.field.current_password') }}</label>
+    <input type="password" autocomplete="current-password" {{ field_attrs('tfa_password', errors) }}>
+    {{ feedback('tfa_password', errors, t, 'two_factor.hint.') }}
+    <button type="submit">{{ t('two_factor.setup.start') }}</button>
+  </form>
+  {% endif %}
 </section>
 {% endblock %}

@@ -28,7 +28,8 @@ from tests.forms import valid_form
 APP_DIR = Path(__file__).resolve().parent.parent / "app"
 DE = json.loads((APP_DIR / "locales" / "de.json").read_text(encoding="utf-8"))
 # Reachable without login (issue #8); they need no permission level.
-WITHOUT_LOGIN = {"/login", "/setup", "/healthz"}
+# /login/code is the code step of a two-factor login (issue #30), part of the login.
+WITHOUT_LOGIN = {"/login", "/login/code", "/setup", "/healthz"}
 MANAGE_PAGES = ["/settings", "/settings/users", "/settings/users/new"]
 
 

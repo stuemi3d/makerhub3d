@@ -373,3 +373,78 @@ def test_log_tables_are_created_and_keep_users(tmp_path: Path) -> None:
         # Users with log entries cannot be deleted by accident.
         with pytest.raises(sqlite3.IntegrityError):
             connection.execute("DELETE FROM users")
+
+
+# --- Issue #30: two-factor login --------------------------------------------------------
+
+
+def test_two_factor_migration_keeps_users_and_logs(tmp_path: Path) -> None:
+    database = tmp_path / "two_factor.db"
+    engine = make_engine(database)
+    with engine.begin() as connection:
+        command.upgrade(alembic_config(connection), "0005")
+    with sqlite3.connect(database) as connection:
+        connection.execute(
+            "INSERT INTO users"
+            " (id, username, username_key, password_hash, role, failed_logins, created_at)"
+            " VALUES (1, 'erfunden', 'erfunden', 'x', 'admin', 0, '2026-01-01 00:00:00')"
+        )
+        connection.execute(
+            "INSERT INTO login_log (created_at, user_id, event)"
+            " VALUES ('2026-01-01 00:00:00', 1, 'success')"
+        )
+
+    run_migrations(engine)
+
+    with sqlite3.connect(database) as connection:
+        # Existing users start without two-factor login; log entries stay.
+        assert connection.execute(
+            "SELECT username, totp_secret, totp_pending_secret, totp_last_step FROM users"
+        ).fetchall() == [("erfunden", None, None, None)]
+        assert connection.execute("SELECT event FROM login_log").fetchall() == [("success",)]
+        for event in ("wrong_code", "recovery_code_used"):
+            connection.execute(
+                "INSERT INTO login_log (created_at, user_id, event)"
+                " VALUES ('2026-01-01 00:00:00', 1, ?)",
+                (event,),
+            )
+        with pytest.raises(sqlite3.IntegrityError):
+            connection.execute(
+                "INSERT INTO login_log (created_at, user_id, event)"
+                " VALUES ('2026-01-01 00:00:00', 1, 'erfunden')"
+            )
+        # Commands on the server write change log entries without a user.
+        connection.execute(
+            "INSERT INTO change_log (created_at, user_id, action, subject, details)"
+            " VALUES ('2026-01-01 00:00:00', NULL, 'system.2fa_reset_all', '', '[]')"
+        )
+
+
+def test_two_factor_migration_can_be_undone(tmp_path: Path) -> None:
+    database = tmp_path / "two_factor_down.db"
+    engine = make_engine(database)
+    run_migrations(engine)
+    with sqlite3.connect(database) as connection:
+        connection.execute(
+            "INSERT INTO users"
+            " (id, username, username_key, password_hash, role, failed_logins, created_at)"
+            " VALUES (1, 'erfunden', 'erfunden', 'x', 'admin', 0, '2026-01-01 00:00:00')"
+        )
+        connection.execute(
+            "INSERT INTO login_log (created_at, user_id, event)"
+            " VALUES ('2026-01-01 00:00:00', 1, 'wrong_code')"
+        )
+        connection.execute(
+            "INSERT INTO change_log (created_at, user_id, action, subject, details)"
+            " VALUES ('2026-01-01 00:00:00', NULL, 'system.2fa_reset_all', '', '[]')"
+        )
+
+    with engine.begin() as connection:
+        command.downgrade(alembic_config(connection), "0005")
+
+    tables = inspect(engine).get_table_names()
+    assert "recovery_codes" not in tables
+    assert "pending_logins" not in tables
+    with sqlite3.connect(database) as connection:
+        assert connection.execute("SELECT username FROM users").fetchall() == [("erfunden",)]
+        assert connection.execute("SELECT count(*) FROM login_log").fetchone() == (0,)
