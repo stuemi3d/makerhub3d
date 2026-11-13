@@ -30,14 +30,16 @@ def _reset_all(db: Session, language: str) -> tuple[str, int]:
 
 def _reset_one(db: Session, language: str, username: str) -> tuple[str, int]:
     """Resets one user; returns the message and the exit code."""
+    # The message does not repeat the name: the person on the server just typed it, and
+    # names are personal data that should not end up in terminal logs.
     user = auth.find_user(db, username)
     if user is None:
-        key, name, exit_code = "cli.reset_2fa.unknown_user", username, UNKNOWN_USER
+        key, exit_code = "cli.reset_2fa.unknown_user", UNKNOWN_USER
     elif auth.reset_two_factor(db, user, None):
-        key, name, exit_code = "cli.reset_2fa.user_done", user.username, 0
+        key, exit_code = "cli.reset_2fa.user_done", 0
     else:
-        key, name, exit_code = "cli.reset_2fa.user_was_off", user.username, 0
-    return translate(language, key).format(username=name), exit_code
+        key, exit_code = "cli.reset_2fa.user_was_off", 0
+    return translate(language, key), exit_code
 
 
 def main(argv: list[str] | None = None) -> int:

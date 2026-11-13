@@ -218,7 +218,7 @@
   "user.two_factor.reset.done": "Two-factor login reset.",
   "user.error.self_2fa": "Not reset: you switch off your own two-factor login under \"My account\".",
   "log.action.user.2fa_reset": "Two-factor login reset",
-  "cli.reset_2fa.user_done": "Two-factor login of {username} reset. Logging in now needs the password only; it can be set up again under \"My account\".",
-  "cli.reset_2fa.user_was_off": "Two-factor login of {username} was not switched on. Nothing changed.",
-  "cli.reset_2fa.unknown_user": "There is no user \"{username}\". Nothing changed."
+  "cli.reset_2fa.user_done": "Two-factor login of this user reset. Logging in now needs the password only; it can be set up again under \"My account\".",
+  "cli.reset_2fa.user_was_off": "Two-factor login of this user was not switched on. Nothing changed.",
+  "cli.reset_2fa.unknown_user": "There is no user with this name. Nothing changed."
 }

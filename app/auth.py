@@ -636,10 +636,9 @@ def reset_two_factor(db: Session, user: User, actor_id: int | None) -> bool:
 
 def admin_reset_two_factor(
     new_session: Callable[[], Session], actor_id: int, user_id: int
-) -> tuple[str | None, str | None]:
-    """An admin resets the two-factor login of another user; returns error key and name.
-
-    The name is None for an unknown user.
+) -> tuple[str | None, int | None]:
+    """An admin resets the two-factor login of another user; returns error key and the
+    stored user id, which is None for an unknown user.
     """
     # The same lock as the login, so a code step cannot run at the same moment.
     with _login_lock, new_session() as db, db.begin():
@@ -648,9 +647,9 @@ def admin_reset_two_factor(
             return None, None
         if user.id == actor_id:
             # The own two-factor login is turned off under "Mein Konto", with password and code.
-            return "user.error.self_2fa", user.username
+            return "user.error.self_2fa", user.id
         reset_two_factor(db, user, actor_id)
-        return None, user.username
+        return None, user.id
 
 
 def find_user(db: Session, username: str) -> User | None:

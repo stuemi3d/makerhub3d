@@ -281,8 +281,10 @@ def test_command_resets_only_the_named_user(client: AppClient, employee, capsys,
     assert recovery_code_count(EMPLOYEE_NAME) == 0
     assert is_on(ADMIN_NAME)
     assert recovery_code_count(ADMIN_NAME) == 10
-    expected = DE["cli.reset_2fa.user_done"].format(username=EMPLOYEE_NAME)
-    assert expected in capsys.readouterr().out
+    output = capsys.readouterr()
+    assert DE["cli.reset_2fa.user_done"] in output.out
+    # Names are personal data and do not go into the terminal output.
+    assert EMPLOYEE_NAME.lower() not in (output.out + output.err).lower()
     assert password_step(client.app) == "/"
 
 
@@ -301,9 +303,7 @@ def test_command_with_unknown_name_changes_nothing(client: AppClient, employee, 
 
     assert cli.main(["reset-2fa", "gibt-es-nicht"]) == 1
 
-    assert DE["cli.reset_2fa.unknown_user"].format(username="gibt-es-nicht") in (
-        capsys.readouterr().err
-    )
+    assert DE["cli.reset_2fa.unknown_user"] in (capsys.readouterr().err)
     assert is_on(EMPLOYEE_NAME)
     assert len(changes()) == before
 
@@ -314,7 +314,7 @@ def test_command_for_a_user_without_two_factor_changes_nothing(client: AppClient
 
     assert cli.main(["reset-2fa", EMPLOYEE_NAME]) == 0
 
-    expected = DE["cli.reset_2fa.user_was_off"].format(username=EMPLOYEE_NAME)
+    expected = DE["cli.reset_2fa.user_was_off"]
     assert expected in capsys.readouterr().out
     assert len(changes()) == before
 

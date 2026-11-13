@@ -232,11 +232,14 @@ def add_user_admin_routes(
     async def reset_two_factor(request: Request, user_id: int) -> Response:
         # The form has no fields; its form token (CSRF) is checked for every form in main.py.
         actor_id = request.state.user.id
-        error, username = await run_in_threadpool(
+        error, stored_id = await run_in_threadpool(
             auth.admin_reset_two_factor, new_session, actor_id, user_id
         )
-        if username is None:
+        if stored_id is None:
             raise HTTPException(status_code=404)
         if error:
-            return render_edit(request, load_user(user_id), status_code=422, errors={"form": error})
-        return RedirectResponse(f"/settings/users/{user_id}?tfa_reset=1", status_code=303)
+            return render_edit(
+                request, load_user(stored_id), status_code=422, errors={"form": error}
+            )
+        # The address is built from the stored user, not from the requested one.
+        return RedirectResponse(f"/settings/users/{int(stored_id)}?tfa_reset=1", status_code=303)

@@ -218,7 +218,7 @@
   "user.two_factor.reset.done": "Zwei-Faktor-Anmeldung zurückgesetzt.",
   "user.error.self_2fa": "Nicht zurückgesetzt: Deine eigene Zwei-Faktor-Anmeldung schaltest du unter „Mein Konto“ aus.",
   "log.action.user.2fa_reset": "Zwei-Faktor-Anmeldung zurückgesetzt",
-  "cli.reset_2fa.user_done": "Zwei-Faktor-Anmeldung von {username} zurückgesetzt. Die Anmeldung geht jetzt nur mit dem Passwort; sie kann in „Mein Konto“ neu eingerichtet werden.",
-  "cli.reset_2fa.user_was_off": "Bei {username} war die Zwei-Faktor-Anmeldung nicht eingeschaltet. Nichts geändert.",
-  "cli.reset_2fa.unknown_user": "Einen Benutzer „{username}“ gibt es nicht. Nichts geändert."
+  "cli.reset_2fa.user_done": "Zwei-Faktor-Anmeldung dieses Benutzers zurückgesetzt. Die Anmeldung geht jetzt nur mit dem Passwort; sie kann in „Mein Konto“ neu eingerichtet werden.",
+  "cli.reset_2fa.user_was_off": "Bei diesem Benutzer war die Zwei-Faktor-Anmeldung nicht eingeschaltet. Nichts geändert.",
+  "cli.reset_2fa.unknown_user": "Einen Benutzer mit diesem Namen gibt es nicht. Nichts geändert."
 }
