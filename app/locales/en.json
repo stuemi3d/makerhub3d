@@ -8,7 +8,6 @@
   "nav.settings": "Settings",
   "nav.label": "Main navigation",
   "nav.not_available": "Not available yet",
-  "page.dashboard.intro": "Welcome. Key figures will follow in a later version.",
   "settings.title": "Settings",
   "settings.section.costs": "Costing",
   "settings.section.other": "Spools and analysis",
@@ -391,5 +390,13 @@
   "stock.error.cancel_cancellation": "A cancellation cannot be cancelled.",
   "stock.error.cancel_at_source": "This booking comes from production or sale and is cancelled there.",
   "log.action.stock.booked": "Stock booking",
-  "log.action.stock.cancelled": "Stock booking cancelled"
+  "log.action.stock.cancelled": "Stock booking cancelled",
+  "dashboard.tile.articles": "Active articles",
+  "dashboard.tile.stock": "Total stock (pieces)",
+  "dashboard.tile.low": "Below minimum stock",
+  "dashboard.low.title": "Below minimum stock",
+  "dashboard.low.ok": "All good: no article is below its minimum stock.",
+  "dashboard.low.no_articles": "No articles yet. Create an article first.",
+  "dashboard.low.create": "Create the first article",
+  "dashboard.low.col.shortfall": "Missing"
 }

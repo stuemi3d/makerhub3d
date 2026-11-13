@@ -2,5 +2,56 @@
 {% block title %}{{ t('nav.dashboard') }} – {{ app_name }}{% endblock %}
 {% block content %}
 <h1>{{ t('nav.dashboard') }}</h1>
-<p>{{ t('page.dashboard.intro') }}</p>
+<div class="stats">
+  <article class="stat">
+    <p class="stat-label">{{ t('dashboard.tile.articles') }}</p>
+    <p class="stat-value">{{ data.active_articles }}</p>
+  </article>
+  <article class="stat">
+    <p class="stat-label">{{ t('dashboard.tile.stock') }}</p>
+    <p class="stat-value">{{ data.total_stock }}</p>
+  </article>
+  <article class="stat">
+    <p class="stat-label">{{ t('dashboard.tile.low') }}</p>
+    <p class="stat-value">{{ data.low_stock | length }}</p>
+  </article>
+</div>
+<section id="low-stock">
+  <h2>{{ t('dashboard.low.title') }}</h2>
+  {% if data.low_stock %}
+  <div class="overflow-auto">
+  <table>
+    <thead>
+      <tr>
+        <th scope="col">{{ t('article.field.number') }}</th>
+        <th scope="col">{{ t('article.field.name') }}</th>
+        <th scope="col">{{ t('stock.col.stock') }}</th>
+        <th scope="col">{{ t('article.field.min_stock') }}</th>
+        <th scope="col">{{ t('dashboard.low.col.shortfall') }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for a in data.low_stock %}
+      <tr>
+        <td data-label="number"><a href="/articles/{{ a.id }}/stock">{{ a.number }}</a></td>
+        <td data-label="name">{{ a.name }}</td>
+        <td data-label="stock" class="num">{{ a.stock }}</td>
+        <td data-label="min_stock" class="num">{{ a.min_stock }}</td>
+        <td data-label="shortfall" class="num">{{ a.min_stock - a.stock }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% elif data.active_articles %}
+  <article class="empty-hint">
+    <p>{{ t('dashboard.low.ok') }}</p>
+  </article>
+  {% else %}
+  <article class="empty-hint">
+    <p>{{ t('dashboard.low.no_articles') }}</p>
+    {% if can('edit') %}<a href="/articles/new" role="button">{{ t('dashboard.low.create') }}</a>{% endif %}
+  </article>
+  {% endif %}
+</section>
 {% endblock %}

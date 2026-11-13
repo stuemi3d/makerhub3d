@@ -8,7 +8,6 @@
   "nav.settings": "Einstellungen",
   "nav.label": "Hauptnavigation",
   "nav.not_available": "Noch nicht verfügbar",
-  "page.dashboard.intro": "Willkommen. Die Kennzahlen folgen in einer späteren Version.",
   "settings.title": "Einstellungen",
   "settings.section.costs": "Kalkulation",
   "settings.section.other": "Spulen und Auswertung",
@@ -391,5 +390,13 @@
   "stock.error.cancel_cancellation": "Ein Storno kann nicht storniert werden.",
   "stock.error.cancel_at_source": "Diese Buchung stammt aus Produktion oder Verkauf und wird dort storniert.",
   "log.action.stock.booked": "Lagerbuchung",
-  "log.action.stock.cancelled": "Lagerbuchung storniert"
+  "log.action.stock.cancelled": "Lagerbuchung storniert",
+  "dashboard.tile.articles": "Aktive Artikel",
+  "dashboard.tile.stock": "Gesamtbestand (Stück)",
+  "dashboard.tile.low": "Unter Mindestbestand",
+  "dashboard.low.title": "Unter Mindestbestand",
+  "dashboard.low.ok": "Alles im grünen Bereich: Kein Artikel liegt unter seinem Mindestbestand.",
+  "dashboard.low.no_articles": "Noch keine Artikel. Lege zuerst einen Artikel an.",
+  "dashboard.low.create": "Ersten Artikel anlegen",
+  "dashboard.low.col.shortfall": "Fehlt"
 }
