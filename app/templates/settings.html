@@ -20,8 +20,8 @@ id="{{ name }}" name="{{ name }}"{% if errors.get(name) %} aria-invalid="true" a
 {% endif %}
 <form method="post" action="/settings" novalidate>
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-  <fieldset>
-    <legend><strong>{{ t('settings.section.costs') }}</strong></legend>
+  <article class="detail-card">
+    <h2 class="card-title">{{ t('settings.section.costs') }}</h2>
     {% for name in ['electricity_price', 'labour_rate', 'scrap_rate', 'markup'] %}
     <label for="{{ name }}">{{ t('settings.field.' ~ name) }}</label>
     <input type="text" inputmode="decimal" autocomplete="off" {{ field_attrs(name) }} value="{{ values.get(name, '') }}">
@@ -34,16 +34,16 @@ id="{{ name }}" name="{{ name }}"{% if errors.get(name) %} aria-invalid="true" a
       {% endfor %}
     </select>
     {{ feedback('rounding') }}
-  </fieldset>
-  <fieldset>
-    <legend><strong>{{ t('settings.section.other') }}</strong></legend>
+  </article>
+  <article class="detail-card">
+    <h2 class="card-title">{{ t('settings.section.other') }}</h2>
     <label for="spool_category">{{ t('settings.field.spool_category') }}</label>
     <input type="text" maxlength="50" autocomplete="off" {{ field_attrs('spool_category') }} value="{{ values.get('spool_category', '') }}">
     {{ feedback('spool_category') }}
     <label for="deviation_threshold">{{ t('settings.field.deviation_threshold') }}</label>
     <input type="text" inputmode="decimal" autocomplete="off" {{ field_attrs('deviation_threshold') }} value="{{ values.get('deviation_threshold', '') }}">
     {{ feedback('deviation_threshold') }}
-  </fieldset>
+  </article>
   <button type="submit">{{ t('settings.save') }}</button>
 </form>
 {% endblock %}

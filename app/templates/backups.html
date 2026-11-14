@@ -1,33 +1,39 @@
 {% extends "base.html" %}
+{% from "_data_table.html" import head, chip with context %}
 {% block title %}{{ t('backup.title') }} – {{ app_name }}{% endblock %}
 {% block content %}
 {% set settings_tab = 'backups' %}
 {% include "_settings_tabs.html" %}
-<h1>{{ t('backup.title') }}</h1>
+<div class="page-head">
+  <h1>{{ t('backup.title') }}</h1>
+  <div class="page-actions">
+    <form method="post" action="/settings/backups">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit">{{ t('backup.create') }}</button>
+    </form>
+  </div>
+</div>
 {% if created %}<p role="status"><ins>{{ t('backup.created') }}</ins></p>{% endif %}
 {% if failed %}<p role="alert"><del>{{ t('backup.failed') }}</del></p>{% endif %}
 <p><small>{{ t('backup.hint.schedule') }}</small></p>
 <p><small>{{ t('backup.hint.confidential') }}</small></p>
-<form method="post" action="/settings/backups">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-  <button type="submit">{{ t('backup.create') }}</button>
-</form>
 {% if files %}
-<div class="overflow-auto">
-<table>
+<article class="data-card">
+<div class="data-scroll">
+<table class="data-table">
   <thead>
     <tr>
-      <th scope="col">{{ t('backup.col.time') }}</th>
-      <th scope="col">{{ t('backup.col.kind') }}</th>
-      <th scope="col">{{ t('backup.col.size') }}</th>
-      <th scope="col">{{ t('backup.col.name') }}</th>
+      {{ head(t('backup.col.time')) }}
+      {{ head(t('backup.col.kind')) }}
+      {{ head(t('backup.col.size')) }}
+      {{ head(t('backup.col.name')) }}
     </tr>
   </thead>
   <tbody>
     {% for f in files %}
     <tr>
       <td>{{ f.time }}</td>
-      <td>{{ t('backup.kind.' ~ f.kind) }}</td>
+      <td>{{ chip(t('backup.kind.' ~ f.kind), 'active' if f.kind == 'manual' else 'inactive') }}</td>
       <td>{{ f.size }}</td>
       <td><a href="/settings/backups/{{ f.name }}/download" download>{{ f.name }}</a></td>
     </tr>
@@ -35,7 +41,8 @@
   </tbody>
 </table>
 </div>
+</article>
 {% else %}
-<p>{{ t('backup.empty') }}</p>
+<article class="empty-hint"><p>{{ t('backup.empty') }}</p></article>
 {% endif %}
 {% endblock %}

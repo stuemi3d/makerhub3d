@@ -5,11 +5,11 @@
 {% include "_settings_tabs.html" %}
 <h1>{{ t('appearance.title') }}</h1>
 <form>
-  <fieldset>
-    <legend><strong>{{ t('appearance.theme.legend') }}</strong></legend>
+  <article class="detail-card">
+    <h2 class="card-title">{{ t('appearance.theme.legend') }}</h2>
     <label for="theme-dark"><input type="radio" id="theme-dark" name="theme" value="dark" checked> {{ t('appearance.theme.dark') }}</label>
     <label for="theme-light"><input type="radio" id="theme-light" name="theme" value="light"> {{ t('appearance.theme.light') }}</label>
     <small>{{ t('appearance.hint') }}</small>
-  </fieldset>
+  </article>
 </form>
 {% endblock %}
