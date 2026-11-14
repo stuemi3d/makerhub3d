@@ -223,54 +223,56 @@ Das Tool wird von Anfang an so gebaut, dass es als Open Source veröffentlicht *
 
 Jeder Meilenstein ist für sich nutzbar; danach wird das Tool eine Weile im Alltag eingesetzt, bevor der nächste startet.
 
+Erledigte Punkte sind mit `[x]` abgehakt. Das Abhaken gehört in den Pull Request, der den Punkt erledigt.
+
 **M0 – Grundgerüst**
 
-- Projektgrundlagen: `CLAUDE.md`, Plan, Pull-Request-Vorlage, Issues
-- Projektstruktur mit uv, FastAPI-App mit erster Seite, pytest und ruff
-- GitHub Actions: Tests, ruff, gitleaks, CodeQL, Dependency Review
-- Dockerfile und `compose.yml` (abgesichert wie oben), Image-Build in GitHub Actions, Trivy
-- Grundlayout mit Navigation, dunklem Theme, Übersetzbarkeit; Einbetten nur für konfigurierte Ursprünge
-- Datenbank mit Alembic-Migrationen, Seite Einstellungen
-- Login, Benutzer und Rollen, Zwei-Faktor, Änderungsprotokoll
-- Datensicherung
+- [x] Projektgrundlagen: `CLAUDE.md`, Plan, Pull-Request-Vorlage, Issues
+- [x] Projektstruktur mit uv, FastAPI-App mit erster Seite, pytest und ruff
+- [x] GitHub Actions: Tests, ruff, gitleaks, CodeQL, Dependency Review
+- [x] Dockerfile und `compose.yml` (abgesichert wie oben), Image-Build in GitHub Actions, Trivy
+- [x] Grundlayout mit Navigation, dunklem Theme, Übersetzbarkeit; Einbetten nur für konfigurierte Ursprünge
+- [x] Datenbank mit Alembic-Migrationen, Seite Einstellungen
+- [x] Login, Benutzer und Rollen, Zwei-Faktor, Änderungsprotokoll
+- [x] Datensicherung
 
 **M1 – Artikel und Lager**
 
-- Vorlagen, Varianten und Artikel; Artikel-Detail mit Kacheln
-- Lagerbewegungen, Bestand, Abgang und Korrektur von Hand, Storno
-- Dashboard (erste Fassung) mit Mindestbestand
+- [x] Vorlagen, Varianten und Artikel; Artikel-Detail mit Kacheln
+- [x] Lagerbewegungen, Bestand, Abgang und Korrektur von Hand, Storno
+- [x] Dashboard (erste Fassung) mit Mindestbestand
 
 **M1b – Oberfläche Stufe 2**
 
 Startet erst, nachdem M1 eine Weile im Alltag genutzt wurde. Vorher sammelt der Maintainer Beispiel-Screenshots und nennt die 3–5 Stellen, die am meisten stören. Eine Aufgabe nach der anderen, in dieser Reihenfolge:
 
-- Gesamtlayout nach dem Vorbild von Bambuddy: Seitenleiste, Kennzahlen-Kacheln, Tabellen mit Suche und Filtern, dunkel
-- Artikel-Dashboard nach dem Vorbild von ERPNext: Von der Übersicht springt man in die jeweilige Liste (Preise, Lagerbuchungen …)
-- Feinschliff: Farben, Logo, Diagramm-Optik, echte Ein/Aus-Schalter, Vorlagen-Detail als Karte
+- [ ] Gesamtlayout nach dem Vorbild von Bambuddy: Seitenleiste, Kennzahlen-Kacheln, Tabellen mit Suche und Filtern, dunkel
+- [ ] Artikel-Dashboard nach dem Vorbild von ERPNext: Von der Übersicht springt man in die jeweilige Liste (Preise, Lagerbuchungen …)
+- [ ] Feinschliff: Farben, Logo, Diagramm-Optik, echte Ein/Aus-Schalter, Vorlagen-Detail als Karte
 
 **M2 – Bambuddy-Anbindung und Produktion**
 
-- Bambuddy-Client: Archiv-Liste, Archiv-Detail, Spulen, Drucker, Strompreis
-- Seite Produktion: Drucke auswählen, Ergebnis-Artikel, Kostenaufteilung mit Vorschau, Fehldrucke, Ignorieren
-- Artikel-Detail: Produktionen und Kosten pro Stück, Links zu Bambuddy
+- [ ] Bambuddy-Client: Archiv-Liste, Archiv-Detail, Spulen, Drucker, Strompreis
+- [ ] Seite Produktion: Drucke auswählen, Ergebnis-Artikel, Kostenaufteilung mit Vorschau, Fehldrucke, Ignorieren
+- [ ] Artikel-Detail: Produktionen und Kosten pro Stück, Links zu Bambuddy
 
 **M3 – Kalkulation**
 
-- Geräte und Stundensätze inkl. Trocknungspauschale
-- Rechenkern der Kalkulation
-- 3MF- und G-Code-Auslesen
-- Seite Kalkulation
+- [ ] Geräte und Stundensätze inkl. Trocknungspauschale
+- [ ] Rechenkern der Kalkulation
+- [ ] 3MF- und G-Code-Auslesen
+- [ ] Seite Kalkulation
 
 **M4 – Verkauf und Auswertung**
 
-- Verkauf von Hand
-- Auswertung pro Artikel, pro Vorlage, gesamt; Dashboard vollständig
-- CSV-Export
+- [ ] Verkauf von Hand
+- [ ] Auswertung pro Artikel, pro Vorlage, gesamt; Dashboard vollständig
+- [ ] CSV-Export
 
 **M5 – Anbindung Rechnungs-Software (später)**
 
-- Austauschbarer Anbindungs-Baustein
-- RechnungsFee und/oder Haben
+- [ ] Austauschbarer Anbindungs-Baustein
+- [ ] RechnungsFee und/oder Haben
 
 ## 11. Offene Punkte
 
