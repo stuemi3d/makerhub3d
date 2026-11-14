@@ -20,8 +20,8 @@
 <p role="alert"><mark>{{ t('user.has_errors') }}</mark></p>
 {% endif %}
 
-<section>
-  <h2>{{ t('user.edit.title') }}</h2>
+<article class="detail-card">
+  <h2 class="card-title">{{ t('user.edit.title') }}</h2>
   {% if is_self %}
   <p>{{ t('role.' ~ target.role) }} · {{ t('user.status.active') }}</p>
   <p><small>{{ t('user.hint.self') }}</small></p>
@@ -48,11 +48,11 @@
     <button type="submit">{{ t('user.save') }}</button>
   </form>
   {% endif %}
-</section>
+</article>
 
 {% if not is_self %}
-<section>
-  <h2>{{ t('user.reset.title') }}</h2>
+<article class="detail-card">
+  <h2 class="card-title">{{ t('user.reset.title') }}</h2>
   <p>{{ t('user.reset.intro') }}</p>
   <form method="post" action="/settings/users/{{ target.id }}/password" novalidate>
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -64,10 +64,10 @@
     {{ feedback('password_repeat', errors, t, 'user.hint.') }}
     <button type="submit" class="secondary">{{ t('user.reset.submit') }}</button>
   </form>
-</section>
+</article>
 {% endif %}
-<section>
-  <h2>{{ t('user.two_factor.title') }}</h2>
+<article class="detail-card">
+  <h2 class="card-title">{{ t('user.two_factor.title') }}</h2>
   <p>{{ t('user.two_factor.status.on' if target.two_factor else 'user.two_factor.status.off') }}</p>
   {% if is_self %}
   <p><small>{{ t('user.two_factor.self') }}</small></p>
@@ -78,6 +78,6 @@
     <button type="submit" class="secondary">{{ t('user.two_factor.reset.submit') }}</button>
   </form>
   {% endif %}
-</section>
+</article>
 <p><a href="/settings/users">{{ t('users.back') }}</a></p>
 {% endblock %}

@@ -1,29 +1,38 @@
 {% extends "base.html" %}
+{% from "_data_table.html" import head, chip with context %}
+{% from "_form_macros.html" import popup_attrs %}
 {% block title %}{{ t('users.title') }} – {{ app_name }}{% endblock %}
 {% block content %}
 {% set settings_tab = 'users' %}
 {% include "_settings_tabs.html" %}
-<h1>{{ t('users.title') }}</h1>
-<p><a href="/settings/users/new" role="button">{{ t('users.new') }}</a></p>
-<div class="overflow-auto">
-<table>
+<div class="page-head">
+  <h1>{{ t('users.title') }}</h1>
+  <div class="page-actions">
+    <a {{ popup_attrs('/settings/users/new') }} role="button">{{ t('users.new') }}</a>
+  </div>
+</div>
+{# Refreshed after the pop-up was saved (app.js). #}
+<div id="users-list" data-popup-refresh>
+<article class="data-card">
+<div class="data-scroll">
+<table class="data-table">
   <thead>
     <tr>
-      <th scope="col">{{ t('users.col.name') }}</th>
-      <th scope="col">{{ t('users.col.role') }}</th>
-      <th scope="col">{{ t('users.col.status') }}</th>
-      <th scope="col">{{ t('users.col.two_factor') }}</th>
+      {{ head(t('users.col.name'), sort_links.name) }}
+      {{ head(t('users.col.role'), sort_links.role) }}
+      {{ head(t('users.col.status'), sort_links.status) }}
+      {{ head(t('users.col.two_factor')) }}
     </tr>
   </thead>
   <tbody>
     {% for u in users %}
     <tr>
-      <td><a href="/settings/users/{{ u.id }}">{{ u.username }}</a></td>
+      <td class="cell-strong"><a href="/settings/users/{{ u.id }}">{{ u.username }}</a></td>
       <td>{{ t('role.' ~ u.role) }}</td>
-      <td>
-        {% if not u.active %}{{ t('user.status.inactive') }}
-        {% elif u.locked_minutes %}{{ t('user.status.locked').format(minutes=u.locked_minutes) }}
-        {% else %}{{ t('user.status.active') }}{% endif %}
+      <td class="cell-status">
+        {% if not u.active %}{{ chip(t('user.status.inactive'), 'inactive') }}
+        {% elif u.locked_minutes %}{{ chip(t('user.status.locked').format(minutes=u.locked_minutes), 'inactive') }}
+        {% else %}{{ chip(t('user.status.active'), 'active') }}{% endif %}
         {% if u.must_change_password %}<br><small>{{ t('user.status.initial_password') }}</small>{% endif %}
       </td>
       <td>{{ t('user.two_factor.on' if u.two_factor else 'user.two_factor.off') }}</td>
@@ -31,5 +40,7 @@
     {% endfor %}
   </tbody>
 </table>
+</div>
+</article>
 </div>
 {% endblock %}

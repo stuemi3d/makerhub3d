@@ -15,12 +15,15 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app import audit, auth
+from app.article_pages import saved_in_popup, wants_popup
 from app.models import User, UserRole
 from app.permissions import Permission, requires
+from app.table_sort import chosen_sort, sort_links
 
 ROLES = [role.value for role in UserRole]
 NEW_USER_FIELDS = ("username", "role", "password", "password_repeat")
 ACTIVE_CHOICES = {"1": True, "0": False}
+USER_SORT_KEYS = ("name", "role", "status")
 
 # Changes to users run one after another, so that the check "at least one active admin
 # remains" cannot be bypassed by two changes at the same moment (single process).
@@ -81,19 +84,50 @@ def add_user_admin_routes(
         )
 
     @app.get("/settings/users", response_class=HTMLResponse, dependencies=manage)
-    def users_page(request: Request) -> HTMLResponse:
+    def users_page(
+        request: Request, sort: str | None = None, dir: str | None = None
+    ) -> HTMLResponse:
+        chosen = chosen_sort(USER_SORT_KEYS, sort, dir)
         with new_session() as db:
             users = [
                 _user_view(user) for user in db.scalars(select(User).order_by(User.username_key))
             ]
-        return render(request, "users.html", "nav.settings", users=users)
+        if chosen:
+            key, direction = chosen
+            column = {
+                "name": lambda u: u["username"].casefold(),
+                "role": lambda u: u["role"],
+                "status": lambda u: (not u["active"], bool(u["locked_minutes"])),
+            }[key]
+            users.sort(key=column, reverse=direction == "desc")
+        return render(
+            request,
+            "users.html",
+            "nav.settings",
+            users=users,
+            sort_links=sort_links("/settings/users", USER_SORT_KEYS, chosen, ("name", "asc")),
+        )
 
     @app.get("/settings/users/new", response_class=HTMLResponse, dependencies=manage)
     def new_user_page(request: Request) -> HTMLResponse:
-        values = {"role": UserRole.EMPLOYEE.value}
-        return render(
-            request, "user_new.html", "nav.settings", values=values, errors={}, roles=ROLES
+        return new_user_form(request, {"role": UserRole.EMPLOYEE.value}, {})
+
+    def new_user_form(
+        request: Request, values: dict, errors: dict, status_code: int = 200
+    ) -> HTMLResponse:
+        """The form: the whole page, or only the form for the pop-up (same template)."""
+        response = render(
+            request,
+            "user_new.html",
+            "nav.settings",
+            status_code=status_code,
+            values=values,
+            errors=errors,
+            roles=ROLES,
+            popup=wants_popup(request),
         )
+        response.headers["Vary"] = "HX-Request"
+        return response
 
     def create(actor_id: int, raw: dict[str, str]) -> dict[str, str]:
         errors = {}
@@ -126,15 +160,9 @@ def add_user_admin_routes(
         if errors:
             # Passwords are never sent back.
             values = {"username": raw.get("username", ""), "role": raw.get("role", "")}
-            return render(
-                request,
-                "user_new.html",
-                "nav.settings",
-                status_code=422,
-                values=values,
-                errors=errors,
-                roles=ROLES,
-            )
+            return new_user_form(request, values, errors, 422)
+        if wants_popup(request):
+            return saved_in_popup()
         return RedirectResponse("/settings/users", status_code=303)
 
     @app.get("/settings/users/{user_id}", response_class=HTMLResponse, dependencies=manage)

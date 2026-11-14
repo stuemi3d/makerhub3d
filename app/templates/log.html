@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_data_table.html" import head with context %}
 {% block title %}{{ t('log.title') }} – {{ app_name }}{% endblock %}
 {% block content %}
 {% set settings_tab = 'log' %}
@@ -11,14 +12,15 @@
   </ul>
 </nav>
 <p><small>{{ t('log.hint.' ~ log_tab) }}</small></p>
-<div class="overflow-auto">
-<table>
+<article class="data-card">
+<div class="data-scroll">
+<table class="data-table">
   <thead>
     <tr>
-      <th scope="col">{{ t('log.col.time') }}</th>
-      <th scope="col">{{ t('log.col.user') }}</th>
-      <th scope="col">{{ t('log.col.event') }}</th>
-      {% if log_tab == 'changes' %}<th scope="col">{{ t('log.col.details') }}</th>{% endif %}
+      {{ head(t('log.col.time')) }}
+      {{ head(t('log.col.user')) }}
+      {{ head(t('log.col.event')) }}
+      {% if log_tab == 'changes' %}{{ head(t('log.col.details')) }}{% endif %}
     </tr>
   </thead>
   <tbody>
@@ -37,6 +39,7 @@
   </tbody>
 </table>
 </div>
+</article>
 {% if not entries %}<p>{{ t('log.empty') }}</p>{% endif %}
 {% if last_page > 1 %}
 <nav aria-label="{{ t('log.paging') }}">
