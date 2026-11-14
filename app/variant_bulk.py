@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from app import audit, auth, variants
 from app.article_form import NAME_MAX_LENGTH, number_key, validate
+from app.article_pages import saved_in_popup, wants_popup
 from app.models import Article, ArticleAttributeValue, ArticleTemplate
 from app.permissions import Permission, requires
 
@@ -75,11 +76,12 @@ def add_variant_bulk_routes(
         return template, fields, combinations(template, fields, existing)
 
     def page(request: Request, template: dict, fields, rows, values, errors, status_code=200):
-        return render(
+        response = render(
             request,
             "variant_bulk.html",
             "nav.articles",
             status_code=status_code,
+            popup=wants_popup(request),
             tpl=template,
             attr_fields=fields,
             rows=rows,
@@ -87,6 +89,9 @@ def add_variant_bulk_routes(
             errors=errors,
             new_count=sum(1 for row in rows if not row["present"]),
         )
+        # The same address gives a different answer for HTMX, so caches must tell them apart.
+        response.headers["Vary"] = "HX-Request"
+        return response
 
     def view(template_id: int) -> tuple[dict, list[dict], list[dict]]:
         with new_session() as db:
@@ -178,4 +183,6 @@ def add_variant_bulk_routes(
         errors, _count = await run_in_threadpool(create, request.state.user.id, template_id, raw)
         if errors:
             return page(request, template, fields, rows, raw, errors, status_code=422)
+        if wants_popup(request):
+            return saved_in_popup()
         return RedirectResponse(f"/templates/{int(template_id)}?saved=1", status_code=303)

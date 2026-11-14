@@ -49,6 +49,9 @@ def test_variant_inherits_shows_it_and_can_be_deleted_on_every_screen(
     admin_page.fill("#name", f"{template} rot")
     submit(admin_page, "article.create")
 
+    # The pop-up closes and the list on the template page shows the variant (issue #87).
+    expect(admin_page.locator("dialog#popup")).not_to_be_visible()
+    admin_page.get_by_role("link", name=number, exact=True).click()
     expect(admin_page.locator("h1")).to_contain_text(number)
     expect(admin_page.get_by_text(t("variant.inherited")).first).to_be_visible()
     expect(admin_page.get_by_role("link", name=template, exact=True)).to_be_visible()
