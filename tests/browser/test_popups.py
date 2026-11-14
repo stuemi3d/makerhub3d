@@ -1,4 +1,7 @@
-"""Pop-ups in a real browser, on desktop and phone (issue #76, test cases 1-4 and 11-14)."""
+"""Pop-ups in a real browser, on desktop and phone (issue #76, test cases 1-4 and 11-14).
+
+Case 11 was changed by the maintainer: only Cancel (or saving) closes the pop-up.
+"""
 
 from playwright.sync_api import Page, expect
 
@@ -97,38 +100,31 @@ def test_errors_are_shown_in_the_popup_and_input_stays(
     expect(row_of(admin_page, number + "-B")).to_be_visible()
 
 
-def test_escape_cancel_and_backdrop_close_without_saving_and_return_focus(
+def test_only_cancel_closes_the_popup_and_returns_focus(
     admin_page: Page, viewport_name: str
 ) -> None:
     number = f"3D-P-{viewport_name}-4"
     add_in_popup(admin_page, number, "Bleibt")
     dialog = admin_page.locator("dialog#popup")
+    link = row_of(admin_page, number).get_by_role("link", name=t("table.action.edit"))
+    link.click()
+    expect(dialog).to_be_visible()
+    dialog.locator("#name").fill("Geändert")
 
-    def open_edit():
-        link = row_of(admin_page, number).get_by_role("link", name=t("table.action.edit"))
-        link.click()
-        expect(dialog).to_be_visible()
-        dialog.locator("#name").fill("Geändert")
-        return link
-
-    link = open_edit()
+    # Escape (even twice) and a click on the dimmed background do not close it; input stays.
     admin_page.keyboard.press("Escape")
+    admin_page.keyboard.press("Escape")
+    admin_page.mouse.click(2, 2)
+    expect(dialog).to_be_visible()
+    expect(dialog.locator("#name")).to_have_value("Geändert")
+
+    dialog.get_by_role("button", name=t("article.cancel")).click()
     expect(dialog).not_to_be_visible()
     expect(link).to_be_focused()
     expect(row_of(admin_page, number)).to_contain_text("Bleibt")
 
-    open_edit()
-    dialog.get_by_role("button", name=t("article.cancel")).click()
-    expect(dialog).not_to_be_visible()
-    expect(row_of(admin_page, number)).to_contain_text("Bleibt")
-
-    open_edit()
-    admin_page.mouse.click(2, 2)  # outside the pop-up box: on the dimmed background
-    expect(dialog).not_to_be_visible()
-    expect(row_of(admin_page, number)).to_contain_text("Bleibt")
-
     # Nothing was typed into the stale form: opening again shows the stored value.
-    row_of(admin_page, number).get_by_role("link", name=t("table.action.edit")).click()
+    link.click()
     expect(dialog.locator("#name")).to_have_value("Bleibt")
 
 
