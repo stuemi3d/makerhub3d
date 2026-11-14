@@ -1,18 +1,21 @@
 {% extends "base.html" %}
+{% from "_form_macros.html" import popup_attrs %}
 {% block title %}{{ t('attributes.title') }} – {{ app_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
   <h1>{{ t('attributes.title') }}</h1>
   {% if can('edit') %}
   <div class="page-actions">
-    <a href="/attributes/new" role="button">{{ t('attributes.new') }}</a>
+    <a {{ popup_attrs('/attributes/new') }} role="button">{{ t('attributes.new') }}</a>
   </div>
   {% endif %}
 </div>
 <p>{{ t('attributes.intro') }}</p>
+{# Refreshed after the pop-up was saved (app.js). #}
+<div id="attributes-list" data-popup-refresh>
 {% for a in attributes %}
-<article>
-  <header><strong>{{ a.name }}</strong></header>
+<article class="detail-card">
+  <h2 class="card-title">{{ a.name }}</h2>
   <p>{{ a.value_labels | join(', ') }}</p>
   {% if can('edit') %}
   <form method="post" action="/attributes/{{ a.id }}/values">
@@ -30,7 +33,8 @@
 {% else %}
 <article class="empty-hint">
   <p>{{ t('attributes.empty') }}</p>
-  {% if can('edit') %}<a href="/attributes/new" role="button">{{ t('attributes.empty.create') }}</a>{% endif %}
+  {% if can('edit') %}<a {{ popup_attrs('/attributes/new') }} role="button">{{ t('attributes.empty.create') }}</a>{% endif %}
 </article>
 {% endfor %}
+</div>
 {% endblock %}

@@ -578,6 +578,11 @@ dialog#popup h1 {
   margin: 0 0 1rem;
 }
 
+.card-title {
+  font-size: 1.1rem;
+  margin: 0 0 0.5rem;
+}
+
 .details dt,
 .stat-label {
   color: var(--mh-text-muted);

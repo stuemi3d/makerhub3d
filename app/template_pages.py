@@ -26,6 +26,7 @@ from app.article_form import (
     number_key,
     validate_defaults,
 )
+from app.article_pages import saved_in_popup, wants_popup
 from app.models import (
     Article,
     ArticleAttributeValue,
@@ -36,6 +37,7 @@ from app.models import (
 )
 from app.permissions import Permission, requires
 from app.settings_form import format_decimal
+from app.table_sort import chosen_sort, sort_links
 
 NAME_LIMIT = 50
 VALUE_LIMIT = 50
@@ -158,6 +160,23 @@ def validate_template(
     return values, errors
 
 
+TEMPLATE_SORT_KEYS = ("number", "name", "price", "status")
+
+
+def sort_templates(items: list[dict], key: str, direction: str) -> list[dict]:
+    """Sorts the rows; templates without a price (or number) stay at the end, whichever the
+    direction."""
+    reverse = direction == "desc"
+    if key in ("price", "number"):
+        field = "price_value" if key == "price" else "number"
+        filled = [item for item in items if item[field] is not None]
+        empty = [item for item in items if item[field] is None]
+        sort_key = (lambda item: item[field]) if key == "price" else (lambda i: i[field].casefold())
+        return sorted(filled, key=sort_key, reverse=reverse) + empty
+    column = {"name": lambda item: item["name"].casefold(), "status": lambda item: item["active"]}
+    return sorted(items, key=column[key], reverse=reverse)
+
+
 def add_template_routes(
     app: FastAPI,
     new_session: Callable[[], Session],
@@ -214,9 +233,23 @@ def add_template_routes(
     def attributes_page(request: Request) -> HTMLResponse:
         return attribute_list(request)
 
+    def attribute_form_page(request: Request, values, errors, status_code=200) -> HTMLResponse:
+        """The form: the whole page, or only the form for the pop-up (same template)."""
+        response = render(
+            request,
+            "attribute_form.html",
+            "nav.articles",
+            status_code=status_code,
+            values=values,
+            errors=errors,
+            popup=wants_popup(request),
+        )
+        response.headers["Vary"] = "HX-Request"
+        return response
+
     @app.get("/attributes/new", response_class=HTMLResponse, dependencies=edit)
     def new_attribute_page(request: Request) -> HTMLResponse:
-        return render(request, "attribute_form.html", "nav.articles", values={}, errors={})
+        return attribute_form_page(request, {}, {})
 
     def create_attribute(actor_id: int, raw: dict[str, str]) -> dict[str, str]:
         name, name_error = validate_attribute_name(raw.get("name", ""))
@@ -254,14 +287,9 @@ def add_template_routes(
         raw = await read_form(request, ("name", "values"))
         errors = await run_in_threadpool(create_attribute, request.state.user.id, raw)
         if errors:
-            return render(
-                request,
-                "attribute_form.html",
-                "nav.articles",
-                status_code=422,
-                values=raw,
-                errors=errors,
-            )
+            return attribute_form_page(request, raw, errors, 422)
+        if wants_popup(request):
+            return saved_in_popup()
         return RedirectResponse("/attributes", status_code=303)
 
     def add_value(attribute_id: int, actor_id: int, raw_value: str, raw_abbreviation: str):
@@ -369,6 +397,7 @@ def add_template_routes(
             "name": template.name,
             "description": template.description,
             "selling_price": shown(template.selling_price),
+            "price_value": template.selling_price,
             "weight": shown(template.weight),
             "min_stock": template.min_stock,
             "active": template.active,
@@ -409,19 +438,30 @@ def add_template_routes(
         )
 
     @app.get("/templates", response_class=HTMLResponse, dependencies=view)
-    def template_list(request: Request, inactive: str | None = None) -> HTMLResponse:
+    def template_list(
+        request: Request,
+        inactive: str | None = None,
+        sort: str | None = None,
+        dir: str | None = None,
+    ) -> HTMLResponse:
         show_inactive = inactive == "1"
+        chosen = chosen_sort(TEMPLATE_SORT_KEYS, sort, dir)
         with new_session() as db:
             query = select(ArticleTemplate).order_by(ArticleTemplate.name)
             if not show_inactive:
                 query = query.where(ArticleTemplate.active.is_(True))
             items = [template_view(db, template) for template in db.scalars(query)]
+        keep = {"inactive": "1"} if show_inactive else {}
+        if chosen:
+            items = sort_templates(items, *chosen)
         return render(
             request,
             "templates_list.html",
             "nav.articles",
             templates=items,
             show_inactive=show_inactive,
+            sort_links=sort_links("/templates", TEMPLATE_SORT_KEYS, chosen, ("name", "asc"), keep),
+            toggle_inactive_href="/templates" + ("" if show_inactive else "?inactive=1"),
         )
 
     @app.get("/templates/new", response_class=HTMLResponse, dependencies=edit)

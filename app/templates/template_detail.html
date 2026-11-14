@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "_form_macros.html" import popup_attrs %}
+{% from "_data_table.html" import head, chip with context %}
 {% block title %}{{ tpl.name }} – {{ app_name }}{% endblock %}
 {% block content %}
 <nav aria-label="breadcrumb">
@@ -33,57 +34,77 @@
 {% if not tpl.number %}
 <p role="status"><mark>{{ t('template.number_missing') }}</mark>{% if can('edit') %} <a href="/templates/{{ tpl.id }}/edit">{{ t('template.number_add') }}</a>{% endif %}</p>
 {% endif %}
-<dl>
-  <dt>{{ t('template.field.number') }}</dt>
-  <dd>{{ tpl.number if tpl.number else t('article.value.none') }}</dd>
-  <dt>{{ t('template.field.name') }}</dt>
-  <dd>{{ tpl.name }}</dd>
-  <dt>{{ t('template.field.description') }}</dt>
-  <dd>{{ tpl.description if tpl.description else t('article.value.none') }}</dd>
-  <dt>{{ t('article.field.selling_price') }}</dt>
-  <dd>{{ tpl.selling_price if tpl.selling_price else t('article.value.none') }}</dd>
-  <dt>{{ t('article.field.weight') }}</dt>
-  <dd>{{ tpl.weight if tpl.weight else t('article.value.none') }}</dd>
-  <dt>{{ t('article.field.min_stock') }}</dt>
-  <dd>{{ tpl.min_stock if tpl.min_stock is not none else t('article.value.none') }}</dd>
-  <dt>{{ t('template.field.attributes') }}</dt>
-  <dd>
-    {% for a in tpl.attributes %}
-    <div>{{ a.name }}: {{ a.value_labels | join(', ') }}</div>
-    {% else %}
-    {{ t('article.value.none') }}
-    {% endfor %}
-  </dd>
-  <dt>{{ t('article.col.status') }}</dt>
-  <dd>{{ t('article.status.active' if tpl.active else 'article.status.inactive') }}</dd>
-</dl>
+<article class="detail-card">
+  <dl class="details">
+    <div>
+      <dt>{{ t('template.field.number') }}</dt>
+      <dd>{{ tpl.number if tpl.number else t('article.value.none') }}</dd>
+    </div>
+    <div>
+      <dt>{{ t('template.field.name') }}</dt>
+      <dd>{{ tpl.name }}</dd>
+    </div>
+    <div>
+      <dt>{{ t('template.field.description') }}</dt>
+      <dd>{{ tpl.description if tpl.description else t('article.value.none') }}</dd>
+    </div>
+    <div>
+      <dt>{{ t('article.field.selling_price') }}</dt>
+      <dd>{{ tpl.selling_price if tpl.selling_price else t('article.value.none') }}</dd>
+    </div>
+    <div>
+      <dt>{{ t('article.field.weight') }}</dt>
+      <dd>{{ tpl.weight if tpl.weight else t('article.value.none') }}</dd>
+    </div>
+    <div>
+      <dt>{{ t('article.field.min_stock') }}</dt>
+      <dd>{{ tpl.min_stock if tpl.min_stock is not none else t('article.value.none') }}</dd>
+    </div>
+    <div>
+      <dt>{{ t('template.field.attributes') }}</dt>
+      <dd>
+        {% for a in tpl.attributes %}
+        <div>{{ a.name }}: {{ a.value_labels | join(', ') }}</div>
+        {% else %}
+        {{ t('article.value.none') }}
+        {% endfor %}
+      </dd>
+    </div>
+    <div>
+      <dt>{{ t('article.col.status') }}</dt>
+      <dd>{{ chip(t('article.status.active' if tpl.active else 'article.status.inactive'), 'active' if tpl.active else 'inactive') }}</dd>
+    </div>
+  </dl>
+</article>
 <div id="template-variants" data-popup-refresh>
 <h2>{{ t('variant.title') }}</h2>
 {% if variants %}
-<div class="overflow-auto">
-<table>
+<article class="data-card">
+<div class="data-scroll">
+<table class="data-table">
   <thead>
     <tr>
-      <th scope="col">{{ t('article.field.number') }}</th>
-      <th scope="col">{{ t('article.field.name') }}</th>
-      {% for a in tpl.attributes %}<th scope="col">{{ a.name }}</th>{% endfor %}
-      <th scope="col">{{ t('article.col.status') }}</th>
+      {{ head(t('article.field.number')) }}
+      {{ head(t('article.field.name')) }}
+      {% for a in tpl.attributes %}{{ head(a.name) }}{% endfor %}
+      {{ head(t('article.col.status')) }}
     </tr>
   </thead>
   <tbody>
     {% for v in variants %}
     <tr>
-      <td><a href="/articles/{{ v.id }}">{{ v.number }}</a></td>
+      <td class="cell-strong"><a href="/articles/{{ v.id }}">{{ v.number }}</a></td>
       <td>{{ v.name }}</td>
       {% for a in v.attributes %}
       <td>{% if a.value %}{{ a.value }}{% else %}<mark>{{ t('variant.missing') }}</mark>{% endif %}</td>
       {% endfor %}
-      <td>{{ t('article.status.active' if v.active else 'article.status.inactive') }}</td>
+      <td class="cell-status">{{ chip(t('article.status.active' if v.active else 'article.status.inactive'), 'active' if v.active else 'inactive') }}</td>
     </tr>
     {% endfor %}
   </tbody>
 </table>
 </div>
+</article>
 {% else %}
 <p>{{ t('variant.none') }}</p>
 {% endif %}

@@ -20,10 +20,19 @@ def test_attribute_and_template_pages_work_on_every_screen(
     assert fits_screen_width(admin_page)
 
     admin_page.get_by_role("button", name=t("attributes.new"), exact=True).click()
+    dialog = admin_page.locator("dialog#popup")
+    expect(dialog).to_be_visible()
     assert fits_screen_width(admin_page)
+    # An empty name keeps the pop-up open with the error; Cancel closes it without saving.
+    dialog.locator(f"button[type=submit]:has-text('{t('article.create')}')").click()
+    expect(dialog.locator("[aria-invalid=true]").first).to_be_visible()
+    dialog.get_by_role("button", name=t("article.cancel")).click()
+    expect(dialog).not_to_be_visible()
+    admin_page.get_by_role("button", name=t("attributes.new"), exact=True).click()
     admin_page.fill("#name", attribute)
     admin_page.fill("#values", "rot = rt\nblau = bl")
-    admin_page.locator(f"button[type=submit]:has-text('{t('article.create')}')").click()
+    dialog.locator(f"button[type=submit]:has-text('{t('article.create')}')").click()
+    expect(dialog).not_to_be_visible()
     expect(admin_page.get_by_text(attribute)).to_be_visible()
     expect(admin_page.get_by_text("rot (rt), blau (bl)").first).to_be_visible()
     assert fits_screen_width(admin_page)
@@ -45,6 +54,11 @@ def test_attribute_and_template_pages_work_on_every_screen(
     ).to_be_visible()
     assert fits_screen_width(admin_page)
 
+    # The list with a row (long name, chip, icons) also fits the screen.
+    admin_page.goto("/templates")
+    expect(admin_page.locator("table.data-table .chip-active")).to_be_visible()
+    assert fits_screen_width(admin_page)
+    admin_page.get_by_role("link", name=re.compile("Halter")).first.click()
     admin_page.get_by_role("link", name=t("template.delete"), exact=True).click()
     assert fits_screen_width(admin_page)
     admin_page.get_by_role("button", name=t("template.delete.button")).click()
