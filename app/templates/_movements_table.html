@@ -1,37 +1,47 @@
-{# The table of stock movements; `rows` come from app.stock.movement_rows. #}
-<div class="overflow-auto">
-<table>
+{# The table of stock movements; `rows` come from app.stock.movement_rows, `sort_links` from
+   app.stock.arranged_movements. The region is refreshed after a booking in the pop-up. #}
+{% from "_data_table.html" import head, actions_head, icon_post, chip with context %}
+<div id="movements-list" data-popup-refresh>
+{% if article is defined and current_stock is defined %}
+<p class="stock-summary">{{ article.number }} · {{ article.name }} · {{ t('stock.col.stock') }}: {{ current_stock }}</p>
+{% endif %}
+{% if rows %}
+<article class="data-card">
+<div class="data-scroll">
+<table class="data-table">
   <thead>
     <tr>
-      <th scope="col">{{ t('stock.col.date') }}</th>
-      <th scope="col">{{ t('stock.col.article') }}</th>
-      <th scope="col">{{ t('stock.col.quantity') }}</th>
-      <th scope="col">{{ t('stock.col.kind') }}</th>
-      <th scope="col">{{ t('stock.col.reason') }}</th>
-      <th scope="col">{{ t('stock.col.user') }}</th>
-      <th scope="col"></th>
+      {{ head(t('stock.col.date'), sort_links.date) }}
+      {{ head(t('stock.col.article'), sort_links.article) }}
+      {{ head(t('stock.col.quantity'), sort_links.quantity, numeric=true) }}
+      {{ head(t('stock.col.kind')) }}
+      {{ head(t('stock.col.reason')) }}
+      {{ head(t('stock.col.user')) }}
+      {{ actions_head() }}
     </tr>
   </thead>
   <tbody>
     {% for r in rows %}
     <tr>
       <td>{{ r.date }}</td>
-      <td><a href="/articles/{{ r.article_id }}">{{ r.article_number }}</a></td>
-      <td>{{ r.quantity }}</td>
-      <td>{{ t('stock.kind.' ~ r.kind) }}</td>
+      <td class="cell-strong"><a href="/articles/{{ r.article_id }}">{{ r.article_number }}</a></td>
+      <td class="num">{{ r.quantity }}</td>
+      <td class="cell-status">
+        {{ chip(t('stock.kind.' ~ r.kind), 'inactive' if r.kind == 'cancellation' else 'active') }}
+        {% if r.is_cancelled %}{{ chip(t('stock.cancelled'), 'warn') }}{% endif %}
+      </td>
       <td>{% if r.cancels_id %}{{ t('stock.reference') }} #{{ r.cancels_id }}{% else %}{{ r.reason }}{% endif %}</td>
       <td>{{ r.user }}</td>
-      <td>
-        {% if r.is_cancelled %}<span class="badge badge-inactive">{{ t('stock.cancelled') }}</span>
-        {% elif r.cancellable and can('edit') %}
-        <form method="post" action="/stock/movements/{{ r.id }}/cancel">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-          <button type="submit" class="secondary outline">{{ t('stock.cancel') }}</button>
-        </form>
-        {% endif %}
+      <td class="row-actions">
+        {% if r.cancellable and not r.is_cancelled and can('edit') %}{{ icon_post('/stock/movements/' ~ r.id ~ '/cancel', 'cancel', r.article_number) }}{% endif %}
       </td>
     </tr>
     {% endfor %}
   </tbody>
 </table>
+</div>
+</article>
+{% else %}
+<article class="empty-hint"><p>{{ empty_text or t('stock.movements.empty') }}</p></article>
+{% endif %}
 </div>

@@ -478,6 +478,19 @@
   text-decoration: none;
 }
 
+.icon-form {
+  display: inline;
+  margin: 0;
+}
+
+button.icon-btn {
+  margin-bottom: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
 .icon-btn:hover,
 .icon-btn:focus-visible {
   color: var(--mh-accent);
@@ -495,6 +508,11 @@
 .chip-active {
   background: var(--mh-success-bg);
   color: var(--mh-success-text);
+}
+
+.chip-warn {
+  background: var(--mh-danger-bg, var(--mh-neutral-bg));
+  color: var(--mh-danger-text);
 }
 
 .chip-inactive {

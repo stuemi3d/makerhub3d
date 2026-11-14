@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_form_macros.html" import popup_attrs %}
 {% set title = t('article.tile.stock') %}
 {% block title %}{{ title }} – {{ article.number }} – {{ app_name }}{% endblock %}
 {% block content %}
@@ -12,13 +13,9 @@
 <div class="page-head">
   <h1>{{ title }}</h1>
   {% if can('edit') and article.active %}
-  <div class="page-actions"><a href="/stock/new?article={{ article.id }}" role="button">{{ t('stock.new') }}</a></div>
+  <div class="page-actions"><a {{ popup_attrs('/stock/new?article=' ~ article.id) }} role="button">{{ t('stock.new') }}</a></div>
   {% endif %}
 </div>
-<p>{{ article.number }} · {{ article.name }} · {{ t('stock.col.stock') }}: {{ current_stock }}</p>
-{% if rows %}
+{% set empty_text = t('article.section.empty') %}
 {% include "_movements_table.html" %}
-{% else %}
-<p>{{ t('article.section.empty') }}</p>
-{% endif %}
 {% endblock %}
