@@ -390,7 +390,6 @@
 .data-card {
   margin: 0 0 1rem;
   padding: 0;
-  overflow: hidden;
   background: var(--mh-surface);
   border: 1px solid var(--mh-border);
   border-radius: var(--mh-radius);
@@ -398,7 +397,9 @@
 }
 
 .data-scroll {
+  position: relative; /* keeps the screen-reader-only texts inside the scroll area */
   overflow-x: auto;
+  border-radius: var(--mh-radius);
 }
 
 .data-table {
@@ -462,6 +463,7 @@
 .row-actions {
   width: 1%;
   white-space: nowrap;
+  text-align: right;
 }
 
 .icon-btn {

@@ -19,23 +19,20 @@
 <table class="data-table">
   <thead>
     <tr>
-      {{ actions_head() }}
       {{ head(t('article.field.number'), sort_links.number) }}
       {{ head(t('article.field.name'), sort_links.name) }}
+      {{ head(t('article.col.status'), sort_links.status) }}
       {{ head(t('article.field.selling_price'), sort_links.price, numeric=true) }}
       {{ head(t('articles.col.stock'), sort_links.stock, numeric=true) }}
-      {{ head(t('article.col.status'), sort_links.status) }}
+      {{ actions_head() }}
     </tr>
   </thead>
   <tbody>
     {% for a in articles %}
     <tr>
-      <td class="row-actions">
-        {{ icon_link('/articles/' ~ a.id, 'view') }}
-        {% if can('edit') %}{{ icon_link('/articles/' ~ a.id ~ '/edit', 'edit') }}{% endif %}
-      </td>
-      <td class="cell-strong"><a href="/articles/{{ a.id }}">{{ a.number }}</a></td>
+      <td class="cell-strong">{{ a.number }}</td>
       <td>{{ a.name }}</td>
+      <td class="cell-status">{{ chip(t('article.status.active' if a.active else 'article.status.inactive'), 'active' if a.active else 'inactive') }}</td>
       <td class="num cell-price">{{ a.selling_price if a.selling_price else t('table.empty_value') }}</td>
       <td class="num cell-stock">
         {{ a.stock }}
@@ -44,7 +41,10 @@
         {% if a.stock < a.min_stock %}<span class="muted stock-low">{{ t('articles.stock.low') }}</span>{% endif %}
         {% endif %}
       </td>
-      <td>{{ chip(t('article.status.active' if a.active else 'article.status.inactive'), 'active' if a.active else 'inactive') }}</td>
+      <td class="row-actions">
+        {{ icon_link('/articles/' ~ a.id, 'view') }}
+        {% if can('edit') %}{{ icon_link('/articles/' ~ a.id ~ '/edit', 'edit') }}{% endif %}
+      </td>
     </tr>
     {% endfor %}
   </tbody>
