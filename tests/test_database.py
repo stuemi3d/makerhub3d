@@ -1,5 +1,6 @@
 """Database file, migrations and the match between models and migrations."""
 
+import shutil
 import sqlite3
 from decimal import Decimal
 from pathlib import Path
@@ -35,6 +36,8 @@ def start_app() -> TestClient:
 
 
 def test_start_creates_database_file_and_tables(data_dir: Path) -> None:
+    # The shared test setup pre-fills the folder with a migrated copy; here it starts empty.
+    shutil.rmtree(data_dir)
     assert not data_dir.exists()
 
     with start_app():
@@ -48,6 +51,7 @@ def test_start_creates_database_file_and_tables(data_dir: Path) -> None:
 
 
 def test_creating_the_app_alone_does_not_touch_the_disk(data_dir: Path) -> None:
+    shutil.rmtree(data_dir)
     create_app()
 
     assert not data_dir.exists()
