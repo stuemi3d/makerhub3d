@@ -73,6 +73,9 @@ document.addEventListener("submit", (event) => {
   let closeOnPurpose = false;
   const closeDialog = () => {
     closeOnPurpose = true;
+    // Empty it right now, not only in the "close" handler (which runs a moment later): a late
+    // "settled" message in between would otherwise find content and open the pop-up again.
+    body.replaceChildren();
     if (dialog.open) dialog.close();
   };
   // A page behind a redirect (e.g. the login page after the session ended) is no form: go there.
@@ -128,6 +131,9 @@ document.addEventListener("submit", (event) => {
   // pop-up earlier would let a quick Enter send the form as a normal page.
   document.body.addEventListener("htmx:afterSettle", (event) => {
     if (event.detail.target !== body) return;
+    // "Settled" arrives a few milliseconds after the swap. When the pop-up was closed in between
+    // (Cancel, which empties it), it stays closed instead of opening again without content.
+    if (!body.firstElementChild) return;
     if (!dialog.open) {
       dialog.showModal();
       document.documentElement.classList.add("modal-is-open");
