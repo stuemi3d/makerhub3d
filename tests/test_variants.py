@@ -856,6 +856,15 @@ def test_template_with_variants_cannot_be_deleted(client: AppClient, setup: Setu
     assert len(templates()) == 1
 
 
+def test_template_delete_is_a_button_in_the_action_bar(client: AppClient, setup: Setup) -> None:
+    html = client.get(f"/templates/{setup.template_id}").text
+
+    link = f'<a href="/templates/{setup.template_id}/delete" role="button"'
+    assert link in html
+    assert html.index(link) < html.index('id="template-variants"')
+    assert DE["template.delete.blocked"] not in html
+
+
 def test_template_can_be_deleted_once_the_variants_are_gone(
     client: AppClient, setup: Setup
 ) -> None:

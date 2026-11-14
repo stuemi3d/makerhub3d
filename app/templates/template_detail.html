@@ -26,9 +26,15 @@
     <a {{ popup_attrs('/templates/' ~ tpl.id ~ '/variants/all') }} role="button" class="secondary">{{ t('variant.bulk.open') }}</a>
     {% endif %}
     {% endif %}
+    {% if not variants %}
+    <a href="/templates/{{ tpl.id }}/delete" role="button" class="secondary outline">{{ t('template.delete') }}</a>
+    {% endif %}
   </div>
   {% endif %}
 </div>
+{% if variants and can('edit') %}
+<p><small>{{ t('template.delete.blocked') }}</small></p>
+{% endif %}
 {% if saved %}
 <p role="status"><ins>{{ t('article.saved') }}</ins></p>
 {% endif %}
@@ -109,13 +115,6 @@
 </article>
 {% else %}
 <p>{{ t('variant.none') }}</p>
-{% endif %}
-{% if can('edit') %}
-{% if variants %}
-<p><small>{{ t('template.delete.blocked') }}</small></p>
-{% else %}
-<p><a href="/templates/{{ tpl.id }}/delete">{{ t('template.delete') }}</a></p>
-{% endif %}
 {% endif %}
 </div>
 </div>

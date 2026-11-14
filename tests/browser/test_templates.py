@@ -63,7 +63,7 @@ def test_attribute_and_template_pages_work_on_every_screen(
     expect(admin_page.locator("table.data-table .chip-active")).to_be_visible()
     assert fits_screen_width(admin_page)
     admin_page.get_by_role("link", name=re.compile("Halter")).first.click()
-    admin_page.get_by_role("link", name=t("template.delete"), exact=True).click()
+    admin_page.get_by_role("button", name=t("template.delete"), exact=True).click()
     assert fits_screen_width(admin_page)
     admin_page.get_by_role("button", name=t("template.delete.button")).click()
     expect(admin_page.get_by_text(t("templates.empty"))).to_be_visible()
