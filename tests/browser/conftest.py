@@ -195,3 +195,10 @@ def admin_page(login_page: Page) -> Page:
     login_page.click(f"button[type=submit]:has-text('{t('login.submit')}')")
     login_page.wait_for_url(lambda url: not url.endswith("/login"))
     return login_page
+
+
+def open_menu(page: Page) -> None:
+    """Opens the collapsed menu on the phone; on the desktop the menu is always open."""
+    toggle = page.locator("header .nav-toggle")
+    if toggle.is_visible() and toggle.get_attribute("aria-expanded") != "true":
+        toggle.click()

@@ -28,3 +28,15 @@ document.addEventListener("submit", (event) => {
   };
   for (const select of selects) select.addEventListener("change", suggest);
 })();
+
+// Phone menu: the button folds the navigation entries in and out (issue #74).
+(() => {
+  const toggle = document.querySelector(".nav-toggle");
+  const menu = document.getElementById("main-menu");
+  if (!toggle || !menu) return;
+  toggle.addEventListener("click", () => {
+    const open = toggle.getAttribute("aria-expanded") !== "true";
+    toggle.setAttribute("aria-expanded", String(open));
+    menu.classList.toggle("open", open);
+  });
+})();

@@ -247,7 +247,7 @@ Erledigte Punkte sind mit `[x]` abgehakt. Das Abhaken gehört in den Pull Reques
 Der Maintainer hat die frühere Bedingung („erst nach Alltagsnutzung von M1“) aufgehoben: Ein gemeinsamer Stil vor den weiteren Seiten spart spätere Umbauten. Übersicht und Reihenfolge im Issue #55; eine Aufgabe nach der anderen:
 
 - [x] 1/6 Design-Grundlage: Stil-Variablen, Dunkel (Standard) und Hell, Umschalter im Einstellungs-Reiter „Darstellung“ (für alle Rollen), Karten, Buttons, Chips (#73)
-- [ ] 2/6 Gesamtlayout mit Navigationsleiste oben, Handy-Menü (#74)
+- [x] 2/6 Gesamtlayout mit Navigationsleiste oben, Handy-Menü (#74)
 - [ ] 3/6 Tabellen-Baustein (sortierbar, Chips, Aktionssymbole) und Artikelübersicht (#75)
 - [ ] 4/6 Bearbeiten in Pop-ups (HTMX), zuerst Artikel anlegen und bearbeiten (#76)
 - [ ] 5/6 Artikel-Seiten im neuen Stil: Detail, Varianten, Lager, Dashboard-Kennzahlen (#77)

@@ -17,6 +17,8 @@
   };
 
   root.setAttribute("data-theme", stored());
+  // Lets the style sheet fold the phone menu only when the button can open it again.
+  root.classList.add("js");
 
   document.addEventListener("DOMContentLoaded", () => {
     const current = root.getAttribute("data-theme");
