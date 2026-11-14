@@ -348,7 +348,7 @@
   "template.field.attributes": "Merkmale",
   "template.hint.name": "Höchstens 100 Zeichen.",
   "template.hint.description": "Optional, höchstens 1000 Zeichen.",
-  "template.no_attributes": "Es gibt noch keine Merkmale.",
+  "template.no_attributes": "Es gibt noch keine Merkmale. Lege sie zuerst unter Artikel → Merkmale an.",
   "template.note": "Das ist eine Vorlage, kein Artikel: ohne Bestand, ohne Verkauf.",
   "template.delete": "Vorlage löschen",
   "template.delete.button": "Endgültig löschen",

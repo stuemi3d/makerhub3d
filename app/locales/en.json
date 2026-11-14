@@ -348,7 +348,7 @@
   "template.field.attributes": "Attributes",
   "template.hint.name": "At most 100 characters.",
   "template.hint.description": "Optional, at most 1000 characters.",
-  "template.no_attributes": "There are no attributes yet.",
+  "template.no_attributes": "There are no attributes yet. Create them first under Articles → Attributes.",
   "template.note": "This is a template, not an article: no stock, no sales.",
   "template.delete": "Delete template",
   "template.delete.button": "Delete permanently",
