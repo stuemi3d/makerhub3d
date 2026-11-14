@@ -1,15 +1,17 @@
 {% extends "base.html" %}
 {% from "_data_table.html" import head, actions_head, icon_link, chip with context %}
+{% from "_form_macros.html" import popup_attrs %}
 {% block title %}{{ t('templates.title') }} – {{ app_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
   <h1>{{ t('templates.title') }}</h1>
   <div class="page-actions">
     <a href="{{ toggle_inactive_href }}" role="button" class="secondary outline">{{ t('articles.hide_inactive' if show_inactive else 'articles.show_inactive') }}</a>
-    {% if can('edit') %}<a href="/templates/new" role="button">{{ t('templates.new') }}</a>{% endif %}
+    {% if can('edit') %}<a {{ popup_attrs('/templates/new') }} role="button">{{ t('templates.new') }}</a>{% endif %}
   </div>
 </div>
 <p>{{ t('templates.intro') }}</p>
+<div id="templates-list" data-popup-refresh>
 {% if templates %}
 <article class="data-card">
 <div class="data-scroll">
@@ -34,7 +36,7 @@
       <td class="cell-status">{{ chip(t('article.status.active' if tpl.active else 'article.status.inactive'), 'active' if tpl.active else 'inactive') }}</td>
       <td class="row-actions">
         {{ icon_link('/templates/' ~ tpl.id, 'view', subject=tpl.name) }}
-        {% if can('edit') %}{{ icon_link('/templates/' ~ tpl.id ~ '/edit', 'edit', subject=tpl.name) }}{% endif %}
+        {% if can('edit') %}{{ icon_link('/templates/' ~ tpl.id ~ '/edit', 'edit', popup=true, subject=tpl.name) }}{% endif %}
       </td>
     </tr>
     {% endfor %}
@@ -45,7 +47,8 @@
 {% else %}
 <article class="empty-hint">
   <p>{{ t('templates.empty') }}</p>
-  {% if can('edit') %}<a href="/templates/new" role="button">{{ t('templates.empty.create') }}</a>{% endif %}
+  {% if can('edit') %}<a {{ popup_attrs('/templates/new') }} role="button">{{ t('templates.empty.create') }}</a>{% endif %}
 </article>
 {% endif %}
+</div>
 {% endblock %}

@@ -1,16 +1,17 @@
-{% extends "base.html" %}
+{% extends "_popup_layout.html" if popup else "base.html" %}
 {% from "_form_macros.html" import field_attrs, feedback %}
 {% set heading = t('template.edit.title') if tpl else t('template.new.title') %}
 {% block title %}{{ heading }} – {{ app_name }}{% endblock %}
 {% block content %}
-<h1>{{ heading }}</h1>
+<h1{% if popup %} id="popup-title"{% endif %}>{{ heading }}</h1>
 {% if errors %}
 <p role="alert"><mark>{{ t('article.has_errors') }}</mark></p>
 {% endif %}
-<form method="post" action="{{ '/templates/' ~ tpl.id if tpl else '/templates/new' }}" novalidate>
+{% set action = '/templates/' ~ tpl.id if tpl else '/templates/new' %}
+<form method="post" action="{{ action }}" novalidate{% if popup %} hx-post="{{ action }}" hx-target="#popup-body" hx-swap="innerHTML"{% endif %}>
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <label for="number">{{ t('template.field.number') }}</label>
-  <input type="text" maxlength="50" autocomplete="off" {{ field_attrs('number', errors) }} value="{{ values.get('number', '') }}">
+  <input type="text" maxlength="50" autocomplete="off" {{ field_attrs('number', errors) }}{% if popup %} autofocus{% endif %} value="{{ values.get('number', '') }}">
   {{ feedback('number', errors, t, 'template.hint.') }}
   <label for="name">{{ t('template.field.name') }}</label>
   <input type="text" maxlength="100" autocomplete="off" {{ field_attrs('name', errors) }} value="{{ values.get('name', '') }}">
@@ -39,7 +40,10 @@
     <small>{{ t('template.no_attributes') }} <a href="/attributes/new">{{ t('attributes.new') }}</a></small>
     {% endfor %}
   </fieldset>
-  <button type="submit">{{ t('article.save' if tpl else 'article.create') }}</button>
+  <div class="form-actions">
+    <button type="submit">{{ t('article.save' if tpl else 'article.create') }}</button>
+    {% if popup %}<button type="button" class="secondary outline" data-popup-close>{{ t('article.cancel') }}</button>
+    {% else %}<a href="{{ '/templates/' ~ tpl.id if tpl else '/templates' }}" role="button" class="secondary outline">{{ t('article.cancel') }}</a>{% endif %}
+  </div>
 </form>
-<p><a href="{{ '/templates/' ~ tpl.id if tpl else '/templates' }}">{{ t('article.cancel') }}</a></p>
 {% endblock %}

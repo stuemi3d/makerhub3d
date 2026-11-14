@@ -3,6 +3,8 @@
 {% from "_data_table.html" import head, chip with context %}
 {% block title %}{{ tpl.name }} – {{ app_name }}{% endblock %}
 {% block content %}
+{# Everything that shows the template: refreshed after the edit pop-up was saved (app.js). #}
+<div id="template-detail" data-popup-refresh>
 <nav aria-label="breadcrumb">
   <ul>
     <li><a href="/templates">{{ t('templates.title') }}</a></li>
@@ -13,7 +15,7 @@
   <h1>{{ tpl.name }}</h1>
   {% if can('edit') %}
   <div class="page-actions">
-    <a href="/templates/{{ tpl.id }}/edit" role="button" class="secondary">{{ t('article.edit') }}</a>
+    <a {{ popup_attrs('/templates/' ~ tpl.id ~ '/edit') }} role="button" class="secondary">{{ t('article.edit') }}</a>
     <form method="post" action="/templates/{{ tpl.id }}/{{ 'deactivate' if tpl.active else 'activate' }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <button type="submit" class="secondary outline">{{ t('article.deactivate' if tpl.active else 'article.activate') }}</button>
@@ -32,7 +34,7 @@
 {% endif %}
 <p>{{ t('template.note') }}</p>
 {% if not tpl.number %}
-<p role="status"><mark>{{ t('template.number_missing') }}</mark>{% if can('edit') %} <a href="/templates/{{ tpl.id }}/edit">{{ t('template.number_add') }}</a>{% endif %}</p>
+<p role="status"><mark>{{ t('template.number_missing') }}</mark>{% if can('edit') %} <a {{ popup_attrs('/templates/' ~ tpl.id ~ '/edit') }}>{{ t('template.number_add') }}</a>{% endif %}</p>
 {% endif %}
 <article class="detail-card">
   <dl class="details">
@@ -115,5 +117,6 @@
 <p><a href="/templates/{{ tpl.id }}/delete">{{ t('template.delete') }}</a></p>
 {% endif %}
 {% endif %}
+</div>
 </div>
 {% endblock %}

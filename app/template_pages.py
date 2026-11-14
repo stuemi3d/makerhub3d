@@ -426,7 +426,8 @@ def add_template_routes(
         return read_form(request, names)
 
     def form_page(request: Request, template, values, errors, status_code=200) -> HTMLResponse:
-        return render(
+        """The template form: the whole page, or only the form for the pop-up (same template)."""
+        response = render(
             request,
             "template_form.html",
             "nav.articles",
@@ -435,7 +436,10 @@ def add_template_routes(
             values=values,
             errors=errors,
             all_attributes=all_attributes(),
+            popup=wants_popup(request),
         )
+        response.headers["Vary"] = "HX-Request"
+        return response
 
     @app.get("/templates", response_class=HTMLResponse, dependencies=view)
     def template_list(
@@ -522,6 +526,8 @@ def add_template_routes(
         )
         if errors:
             return form_page(request, None, raw, errors, status_code=422)
+        if wants_popup(request):
+            return saved_in_popup()
         # The address is built from the stored template, not from the request.
         return RedirectResponse(f"/templates/{int(template_id)}", status_code=303)
 
@@ -635,6 +641,8 @@ def add_template_routes(
         )
         if errors:
             return form_page(request, template, raw, errors, status_code=422)
+        if wants_popup(request):
+            return saved_in_popup()
         return RedirectResponse(f"/templates/{int(template['id'])}?saved=1", status_code=303)
 
     def set_active(template_id: int, actor_id: int, active: bool) -> int:
