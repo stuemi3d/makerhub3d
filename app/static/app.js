@@ -55,7 +55,11 @@ document.addEventListener("submit", (event) => {
     const link = document.querySelector(`[data-popup][href="${CSS.escape(openerHref)}"]`);
     if (link) link.focus();
   };
+  // The pop-up closes only on purpose: after saving or with the Cancel button. Escape and a
+  // click on the background do nothing, so typed input is not lost by accident.
+  let closeOnPurpose = false;
   const closeDialog = () => {
+    closeOnPurpose = true;
     if (dialog.open) dialog.close();
   };
   // A page behind a redirect (e.g. the login page after the session ended) is no form: go there.
@@ -138,17 +142,21 @@ document.addEventListener("submit", (event) => {
       .catch(() => window.location.reload());
   });
 
+  dialog.addEventListener("cancel", (event) => event.preventDefault());
   dialog.addEventListener("close", () => {
+    // Some browsers close on a second Escape despite the block above: open it again.
+    if (!closeOnPurpose) {
+      dialog.showModal();
+      return;
+    }
+    closeOnPurpose = false;
     document.documentElement.classList.remove("modal-is-open");
     body.replaceChildren();
     focusOpener();
   });
-  // Escape closes the dialog by itself. A click on the dimmed background (the dialog element
-  // around the box) or on a Cancel button closes it too.
+  // Only a Cancel button closes the dialog without saving.
   dialog.addEventListener("click", (event) => {
-    if (event.target === dialog || (event.target.closest && event.target.closest("[data-popup-close]"))) {
-      closeDialog();
-    }
+    if (event.target.closest && event.target.closest("[data-popup-close]")) closeDialog();
   });
 })();
 
