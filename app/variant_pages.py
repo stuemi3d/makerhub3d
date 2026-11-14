@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from app import audit, auth, variants
 from app.article_form import FIELD_NAMES, number_key, validate
+from app.article_pages import saved_in_popup, wants_popup
 from app.models import Article, ArticleAttributeValue, ArticleTemplate
 from app.permissions import Permission, requires
 
@@ -51,16 +52,20 @@ def add_variant_routes(
             }, fields
 
     def form_page(request: Request, template: dict, fields, values, errors, status_code=200):
-        return render(
+        response = render(
             request,
             "variant_form.html",
             "nav.articles",
             status_code=status_code,
+            popup=wants_popup(request),
             tpl=template,
             attr_fields=fields,
             values=values,
             errors=errors,
         )
+        # The same address gives a different answer for HTMX, so caches must tell them apart.
+        response.headers["Vary"] = "HX-Request"
+        return response
 
     @app.get(
         "/templates/{template_id}/variants/new", response_class=HTMLResponse, dependencies=edit
@@ -133,5 +138,7 @@ def add_variant_routes(
         )
         if errors:
             return form_page(request, template, fields, raw, errors, status_code=422)
+        if wants_popup(request):
+            return saved_in_popup()
         # The address is built from the stored article, not from the request.
         return RedirectResponse(f"/articles/{int(article_id)}", status_code=303)

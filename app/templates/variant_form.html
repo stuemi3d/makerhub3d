@@ -1,7 +1,8 @@
-{% extends "base.html" %}
+{% extends "_popup_layout.html" if popup else "base.html" %}
 {% from "_form_macros.html" import field_attrs, feedback %}
 {% block title %}{{ t('variant.new.title') }} – {{ app_name }}{% endblock %}
 {% block content %}
+{% if not popup %}
 <nav aria-label="breadcrumb">
   <ul>
     <li><a href="/templates">{{ t('templates.title') }}</a></li>
@@ -9,15 +10,17 @@
     <li>{{ t('variant.new.title') }}</li>
   </ul>
 </nav>
-<h1>{{ t('variant.new.title') }}</h1>
+{% endif %}
+<h1{% if popup %} id="popup-title"{% endif %}>{{ t('variant.new.title') }}</h1>
 <p>{{ t('variant.template') }}: <strong>{{ tpl.name }}</strong></p>
 {% if errors %}
 <p role="alert"><mark>{{ t('article.has_errors') }}</mark></p>
 {% endif %}
-<form method="post" action="/templates/{{ tpl.id }}/variants/new" novalidate>
+{% set action = '/templates/' ~ tpl.id ~ '/variants/new' %}
+<form method="post" action="{{ action }}" novalidate{% if popup %} hx-post="{{ action }}" hx-target="#popup-body" hx-swap="innerHTML"{% endif %}>
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <label for="number">{{ t('article.field.number') }}</label>
-  <input type="text" maxlength="50" autocomplete="off" {{ field_attrs('number', errors) }} value="{{ values.get('number', '') }}"{% if tpl.number %} data-number-prefix="{{ tpl.number }}"{% endif %}>
+  <input type="text" maxlength="50" autocomplete="off" {{ field_attrs('number', errors) }}{% if popup %} autofocus{% endif %} value="{{ values.get('number', '') }}"{% if tpl.number %} data-number-prefix="{{ tpl.number }}"{% endif %}>
   {% if tpl.number and not errors.get('number') %}<small id="number-hint">{{ t('variant.hint.number') }}</small>
   {% else %}{{ feedback('number', errors, t, 'article.hint.') }}{% endif %}
   <label for="name">{{ t('article.field.name') }}</label>
@@ -34,7 +37,10 @@
   <label for="min_stock">{{ t('article.field.min_stock') }}</label>
   <input type="text" inputmode="numeric" autocomplete="off" {{ field_attrs('min_stock', errors) }}{% if tpl.inherited.get('min_stock') %} placeholder="{{ t('variant.placeholder').format(value=tpl.inherited['min_stock']) }}"{% endif %} value="{{ values.get('min_stock', '') }}">
   {{ feedback('min_stock', errors, t, 'article.hint.') }}
-  <button type="submit">{{ t('article.create') }}</button>
+  <div class="form-actions">
+    <button type="submit">{{ t('article.create') }}</button>
+    {% if popup %}<button type="button" class="secondary outline" data-popup-close>{{ t('article.cancel') }}</button>
+    {% else %}<a href="/templates/{{ tpl.id }}" role="button" class="secondary outline">{{ t('article.cancel') }}</a>{% endif %}
+  </div>
 </form>
-<p><a href="/templates/{{ tpl.id }}">{{ t('article.cancel') }}</a></p>
 {% endblock %}

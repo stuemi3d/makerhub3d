@@ -8,25 +8,38 @@ document.addEventListener("submit", (event) => {
 });
 
 // Suggests the number of a new variant: template number + abbreviations of the chosen values
-// (issue #62). Stops as soon as the person has typed in the number field themselves.
+// (issue #62). Stops as soon as the person has typed in the number field themselves. The form
+// may also arrive later in the pop-up (issue #87), so every new form is set up once it is shown.
 (() => {
-  const input = document.querySelector("input[data-number-prefix]");
-  if (!input) return;
-  const selects = Array.from(document.querySelectorAll("select[name^='attr_']"));
-  let touched = input.value !== "";
-  input.addEventListener("input", () => {
-    touched = true;
-  });
-  const suggest = () => {
-    if (touched) return;
-    const parts = [input.dataset.numberPrefix];
-    for (const select of selects) {
-      const option = select.options[select.selectedIndex];
-      if (option && option.dataset.abbreviation) parts.push(option.dataset.abbreviation);
-    }
-    input.value = parts.join("-");
+  const setUp = (root) => {
+    const input = root.querySelector("input[data-number-prefix]");
+    if (!input || input.dataset.suggesting) return;
+    input.dataset.suggesting = "1";
+    const selects = Array.from(root.querySelectorAll("select[name^='attr_']"));
+    const suggestion = () => {
+      const parts = [input.dataset.numberPrefix];
+      for (const select of selects) {
+        const option = select.options[select.selectedIndex];
+        if (option && option.dataset.abbreviation) parts.push(option.dataset.abbreviation);
+      }
+      return parts.join("-");
+    };
+    // A number that is already there counts as typed, unless it is just the earlier suggestion
+    // (the form comes back with it after an error).
+    let touched = input.value !== "" && input.value !== suggestion();
+    input.addEventListener("input", () => {
+      touched = true;
+    });
+    const suggest = () => {
+      if (!touched) input.value = suggestion();
+    };
+    for (const select of selects) select.addEventListener("change", suggest);
   };
-  for (const select of selects) select.addEventListener("change", suggest);
+  setUp(document);
+  document.body.addEventListener("htmx:afterSettle", (event) => {
+    const popupBody = document.getElementById("popup-body");
+    if (popupBody && event.detail.target === popupBody) setUp(popupBody);
+  });
 })();
 
 // Phone menu: the button folds the navigation entries in and out (issue #74).

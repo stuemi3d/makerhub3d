@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_form_macros.html" import popup_attrs %}
 {% block title %}{{ tpl.name }} – {{ app_name }}{% endblock %}
 {% block content %}
 <nav aria-label="breadcrumb">
@@ -17,9 +18,9 @@
       <button type="submit" class="secondary outline">{{ t('article.deactivate' if tpl.active else 'article.activate') }}</button>
     </form>
     {% if tpl.active and tpl.attributes %}
-    <a href="/templates/{{ tpl.id }}/variants/new" role="button">{{ t('variant.new') }}</a>
+    <a {{ popup_attrs('/templates/' ~ tpl.id ~ '/variants/new') }} role="button">{{ t('variant.new') }}</a>
     {% if tpl.attributes | rejectattr("value_labels") | list | length == 0 %}
-    <a href="/templates/{{ tpl.id }}/variants/all" role="button" class="secondary">{{ t('variant.bulk.open') }}</a>
+    <a {{ popup_attrs('/templates/' ~ tpl.id ~ '/variants/all') }} role="button" class="secondary">{{ t('variant.bulk.open') }}</a>
     {% endif %}
     {% endif %}
   </div>
@@ -56,6 +57,7 @@
   <dt>{{ t('article.col.status') }}</dt>
   <dd>{{ t('article.status.active' if tpl.active else 'article.status.inactive') }}</dd>
 </dl>
+<div id="template-variants" data-popup-refresh>
 <h2>{{ t('variant.title') }}</h2>
 {% if variants %}
 <div class="overflow-auto">
@@ -92,4 +94,5 @@
 <p><a href="/templates/{{ tpl.id }}/delete">{{ t('template.delete') }}</a></p>
 {% endif %}
 {% endif %}
+</div>
 {% endblock %}

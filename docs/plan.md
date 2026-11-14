@@ -251,7 +251,7 @@ Der Maintainer hat die frühere Bedingung („erst nach Alltagsnutzung von M1“
 - [x] 3/6 Tabellen-Baustein (sortierbar, Chips, Aktionssymbole) und Artikelübersicht (#75)
 - [x] 4/6 Bearbeiten in Pop-ups (HTMX), zuerst Artikel anlegen und bearbeiten (#76)
 - [x] 5a/6 Artikel-Detail und Startseite im neuen Stil, „Bearbeiten“ im Pop-up (#77)
-- [ ] 5b/6 Varianten und Lager als Pop-ups, Lager-Listen mit dem Tabellen-Baustein (#87) – Teil A (Lager) erledigt, Teil B (Varianten) offen
+- [x] 5b/6 Varianten und Lager als Pop-ups, Lager-Listen mit dem Tabellen-Baustein (#87)
 - [ ] 6/6 Übrige Seiten im neuen Stil, Vorlagen-Detail als Karte (#78)
 - [ ] Artikel-Dashboard nach dem Vorbild von ERPNext: Von der Übersicht springt man in die jeweilige Liste (Preise, Lagerbuchungen …)
 - [ ] Feinschliff: Logo, Diagramm-Optik, echte Ein/Aus-Schalter, weitere Akzentfarben (optional)

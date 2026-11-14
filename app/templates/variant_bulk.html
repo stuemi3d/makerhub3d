@@ -1,6 +1,7 @@
-{% extends "base.html" %}
+{% extends "_popup_layout.html" if popup else "base.html" %}
 {% block title %}{{ t('variant.bulk.title') }} – {{ app_name }}{% endblock %}
 {% block content %}
+{% if not popup %}
 <nav aria-label="breadcrumb">
   <ul>
     <li><a href="/templates">{{ t('templates.title') }}</a></li>
@@ -8,17 +9,19 @@
     <li>{{ t('variant.bulk.title') }}</li>
   </ul>
 </nav>
-<h1>{{ t('variant.bulk.title') }}</h1>
+{% endif %}
+<h1{% if popup %} id="popup-title"{% endif %}>{{ t('variant.bulk.title') }}</h1>
 <p>{{ t('variant.template') }}: <strong>{{ tpl.name }}</strong></p>
 <p>{{ t('variant.bulk.intro') }}</p>
 {% if errors %}
 <p role="alert"><mark>{{ t('article.has_errors') }}</mark></p>
 {% if errors.get('combination') %}<p role="alert"><mark>{{ t(errors['combination']) }}</mark></p>{% endif %}
 {% endif %}
-<form method="post" action="/templates/{{ tpl.id }}/variants/all" novalidate>
+{% set action = '/templates/' ~ tpl.id ~ '/variants/all' %}
+<form method="post" action="{{ action }}" novalidate{% if popup %} hx-post="{{ action }}" hx-target="#popup-body" hx-swap="innerHTML"{% endif %}>
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-  <div class="overflow-auto">
-  <table>
+  <div class="data-scroll">
+  <table class="data-table">
     <thead>
       <tr>
         {% for f in attr_fields %}<th scope="col">{{ f.name }}</th>{% endfor %}
@@ -26,6 +29,7 @@
       </tr>
     </thead>
     <tbody>
+      {% set focus = namespace(done=false) %}
       {% for row in rows %}
       {% set name = 'number_' ~ row.index %}
       <tr>
@@ -34,7 +38,7 @@
           {% if row.present %}
           <em>{{ t('variant.bulk.exists') }}</em>
           {% else %}
-          <input type="text" maxlength="50" autocomplete="off" aria-label="{{ t('article.field.number') }} {{ row.labels | join(' ') }}" id="{{ name }}" name="{{ name }}"{% if errors.get(name) %} aria-invalid="true" aria-describedby="{{ name }}-error"{% endif %} value="{{ values.get(name, '') }}">
+          <input type="text" maxlength="50" autocomplete="off"{% if popup and not focus.done %}{% set focus.done = true %} autofocus{% endif %} aria-label="{{ t('article.field.number') }} {{ row.labels | join(' ') }}" id="{{ name }}" name="{{ name }}"{% if errors.get(name) %} aria-invalid="true" aria-describedby="{{ name }}-error"{% endif %} value="{{ values.get(name, '') }}">
           {% if errors.get(name) %}<small id="{{ name }}-error">{{ t(errors[name]) }}</small>{% endif %}
           {% endif %}
         </td>
@@ -44,11 +48,13 @@
   </table>
   </div>
   <p><small>{{ t('variant.bulk.hint').format(count=new_count) }}</small></p>
-  {% if new_count %}
-  <button type="submit">{{ t('variant.bulk.create') }}</button>
-  {% else %}
+  {% if not new_count %}
   <p role="status">{{ t('variant.bulk.nothing_new') }}</p>
   {% endif %}
+  <div class="form-actions">
+    {% if new_count %}<button type="submit">{{ t('variant.bulk.create') }}</button>{% endif %}
+    {% if popup %}<button type="button" class="secondary outline" data-popup-close>{{ t('article.cancel') }}</button>
+    {% else %}<a href="/templates/{{ tpl.id }}" role="button" class="secondary outline">{{ t('article.cancel') }}</a>{% endif %}
+  </div>
 </form>
-<p><a href="/templates/{{ tpl.id }}">{{ t('article.cancel') }}</a></p>
 {% endblock %}
