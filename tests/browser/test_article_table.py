@@ -30,6 +30,8 @@ def test_table_sorts_and_fits_every_screen(
     admin_page.goto("/articles")
     admin_page.evaluate(f"document.documentElement.dataset.theme = '{theme}'")
     assert fits_screen_width(admin_page)
+    # Stricter: nothing inside the table may widen the page (it scrolls inside its card).
+    assert admin_page.evaluate("document.documentElement.scrollWidth <= document.body.clientWidth")
     rows = admin_page.locator("table.data-table tbody tr")
     row = rows.filter(has_text=low)
     expect(row.locator("a.icon-btn")).to_have_count(2)

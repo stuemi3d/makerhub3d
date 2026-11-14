@@ -58,12 +58,12 @@ def add_stock(article_id: int, quantity: int) -> None:
 
 def numbers(client: AppClient, query: str = "") -> list[str]:
     html = client.get("/articles" + query).text
-    return re.findall(r'<td class="cell-strong"><a href="/articles/\d+">(.*?)</a>', html)
+    return re.findall(r'<td class="cell-strong">(.*?)</td>', html)
 
 
 def row_of(html: str, number: str) -> str:
     rows = re.findall(r"<tr>.*?</tr>", html, re.DOTALL)
-    (row,) = [r for r in rows if f">{number}</a>" in r]
+    (row,) = [r for r in rows if f'<td class="cell-strong">{number}</td>' in r]
     return row
 
 
@@ -285,12 +285,33 @@ def test_icons_have_tooltip_and_screen_reader_text_and_are_inline_graphics(
     assert "http" not in re.sub(r'xmlns="http://www.w3.org/2000/svg"', "", row)
 
 
-def test_action_column_is_the_first_one(client: AppClient) -> None:
+def test_action_column_is_the_last_one(client: AppClient) -> None:
     add_article("3D-0001")
 
     row = row_of(client.get("/articles").text, "3D-0001")
 
-    assert row.index("row-actions") < row.index("3D-0001")
+    assert row.index("cell-status") < row.index("row-actions")
+    assert row.rindex("<td") == row.index('<td class="row-actions">')
+
+
+def test_number_is_plain_text_and_status_follows_the_name(client: AppClient) -> None:
+    add_article("3D-0001", "Kabelhalter", selling_price=Decimal("12.5"))
+
+    html = client.get("/articles").text
+    row = row_of(html, "3D-0001")
+
+    assert '<td class="cell-strong">3D-0001</td>' in row
+    assert row.index("Kabelhalter") < row.index("cell-status") < row.index("cell-price")
+    heads = re.findall(r'<th scope="col"[^>]*>(.*?)</th>', html, re.DOTALL)
+    labels = [re.sub(r"<[^>]+>|\s+", " ", h).strip() for h in heads]
+    order = [
+        DE["article.field.name"],
+        DE["article.col.status"],
+        DE["article.field.selling_price"],
+        DE["articles.col.stock"],
+    ]
+    positions = [next(i for i, x in enumerate(labels) if x.startswith(o)) for o in order]
+    assert positions == sorted(positions)
 
 
 # --- Building block (case 12) -----------------------------------------------------------------

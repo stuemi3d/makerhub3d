@@ -26,7 +26,9 @@ def test_admin_deletes_an_article_with_stock_on_every_screen(
     admin_page.locator(f"button[type=submit]:has-text('{t('stock.book')}')").click()
 
     admin_page.goto("/articles")
-    admin_page.get_by_role("link", name=number, exact=True).click()
+    admin_page.locator("table.data-table tbody tr").filter(has_text=number).get_by_role(
+        "link", name=t("table.action.view")
+    ).click()
     admin_page.get_by_role("button", name=t("article.purge.button"), exact=True).click()
     expect(admin_page.locator("h1")).to_have_text(t("article.purge.title"))
     expect(admin_page.get_by_text(t("article.purge.irreversible"))).to_be_visible()
@@ -41,5 +43,5 @@ def test_admin_deletes_an_article_with_stock_on_every_screen(
     admin_page.fill("input[name=number]", number)
     submit.click()
     expect(admin_page.get_by_text(t("article.purge.done"))).to_be_visible()
-    expect(admin_page.get_by_role("link", name=number, exact=True)).to_have_count(0)
+    expect(admin_page.locator("table.data-table td.cell-strong", has_text=number)).to_have_count(0)
     assert fits_screen_width(admin_page)
