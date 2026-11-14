@@ -1,15 +1,18 @@
 {% extends "base.html" %}
 {% block title %}{{ t('articles.title') }} – {{ app_name }}{% endblock %}
 {% from "_data_table.html" import head, actions_head, icon_link, chip with context %}
+{% from "_form_macros.html" import popup_attrs %}
 {% block content %}
 <div class="page-head">
   <h1>{{ t('articles.title') }}</h1>
   <div class="page-actions">
     {% if show_inactive %}<a href="{{ toggle_inactive_href }}" role="button" class="secondary outline">{{ t('articles.hide_inactive') }}</a>
     {% else %}<a href="{{ toggle_inactive_href }}" role="button" class="secondary outline">{{ t('articles.show_inactive') }}</a>{% endif %}
-    {% if can('edit') %}<a href="/articles/new" role="button">{{ t('articles.new') }}</a>{% endif %}
+    {% if can('edit') %}<a {{ popup_attrs('/articles/new') }} role="button">{{ t('articles.new') }}</a>{% endif %}
   </div>
 </div>
+{# Refreshed after a pop-up was saved (app.js): everything that depends on the articles. #}
+<div id="articles-list" data-popup-refresh>
 {% if purged %}
 <p role="status"><ins>{{ t('article.purge.done') }}</ins></p>
 {% endif %}
@@ -43,7 +46,7 @@
       </td>
       <td class="row-actions">
         {{ icon_link('/articles/' ~ a.id, 'view') }}
-        {% if can('edit') %}{{ icon_link('/articles/' ~ a.id ~ '/edit', 'edit') }}{% endif %}
+        {% if can('edit') %}{{ icon_link('/articles/' ~ a.id ~ '/edit', 'edit', popup=true) }}{% endif %}
       </td>
     </tr>
     {% endfor %}
@@ -54,7 +57,8 @@
 {% else %}
 <article class="empty-hint">
   <p>{{ t('articles.empty') }}</p>
-  {% if can('edit') %}<a href="/articles/new" role="button">{{ t('articles.empty.create') }}</a>{% endif %}
+  {% if can('edit') %}<a {{ popup_attrs('/articles/new') }} role="button">{{ t('articles.empty.create') }}</a>{% endif %}
 </article>
 {% endif %}
+</div>
 {% endblock %}

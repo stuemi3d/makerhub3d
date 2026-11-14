@@ -6,6 +6,7 @@ sales do not exist yet; their tiles show 0 and open empty pages that later miles
 The stock tile counts the stock movements (issue #11).
 """
 
+import json
 from collections.abc import Awaitable, Callable
 from decimal import Decimal
 from urllib.parse import urlencode
@@ -98,6 +99,17 @@ def _attribute_fields(db: Session, article: Article) -> list[dict]:
     return variants.attribute_fields(db, article.template_id)
 
 
+def wants_popup(request: Request) -> bool:
+    """True when HTMX asks for the form to show it in the pop-up (without the page around it)."""
+    return request.headers.get("HX-Request") == "true"
+
+
+def saved_in_popup() -> Response:
+    """The answer to a pop-up form that was saved: no content; the page closes the pop-up and
+    refreshes its list (see app.js)."""
+    return Response(status_code=204, headers={"HX-Trigger": json.dumps({"popup-saved": {}})})
+
+
 def add_article_routes(
     app: FastAPI,
     new_session: Callable[[], Session],
@@ -173,11 +185,24 @@ def add_article_routes(
             toggle_inactive_href=list_url(chosen, not show_inactive),
         )
 
+    def form_page(request: Request, status_code: int = 200, **context) -> HTMLResponse:
+        """The article form: the whole page, or only the form for the pop-up. Both come from
+        the same template, so they cannot drift apart."""
+        response = render(
+            request,
+            "article_form.html",
+            "nav.articles",
+            status_code=status_code,
+            popup=wants_popup(request),
+            **context,
+        )
+        # The same address gives a different answer for HTMX, so caches must tell them apart.
+        response.headers["Vary"] = "HX-Request"
+        return response
+
     @app.get("/articles/new", response_class=HTMLResponse, dependencies=edit)
     def new_article_page(request: Request) -> HTMLResponse:
-        return render(
-            request, "article_form.html", "nav.articles", article=None, values={}, errors={}
-        )
+        return form_page(request, article=None, values={}, errors={})
 
     def create(actor_id: int, raw: dict[str, str]) -> tuple[dict[str, str], int | None]:
         """Saves a new article; returns the errors (empty when saved) and the new id."""
@@ -211,15 +236,9 @@ def add_article_routes(
         raw = await read_form(request, FIELD_NAMES)
         errors, article_id = await run_in_threadpool(create, request.state.user.id, raw)
         if errors:
-            return render(
-                request,
-                "article_form.html",
-                "nav.articles",
-                status_code=422,
-                article=None,
-                values=raw,
-                errors=errors,
-            )
+            return form_page(request, 422, article=None, values=raw, errors=errors)
+        if wants_popup(request):
+            return saved_in_popup()
         # The address is built from the stored article, not from the request.
         return RedirectResponse(f"/articles/{int(article_id)}", status_code=303)
 
@@ -252,15 +271,7 @@ def add_article_routes(
             current = article_view(article)
             fields = _attribute_fields(db, article)
             values.update(variants.selected_values(article))
-        return render(
-            request,
-            "article_form.html",
-            "nav.articles",
-            article=current,
-            values=values,
-            errors={},
-            attr_fields=fields,
-        )
+        return form_page(request, article=current, values=values, errors={}, attr_fields=fields)
 
     def attribute_fields_of(article_id: int) -> list[dict]:
         """The attribute fields of the article's template; empty for a normal article."""
@@ -331,16 +342,11 @@ def add_article_routes(
             change, article_id, request.state.user.id, raw, fields
         )
         if errors:
-            return render(
-                request,
-                "article_form.html",
-                "nav.articles",
-                status_code=422,
-                article=article,
-                values=raw,
-                errors=errors,
-                attr_fields=fields,
+            return form_page(
+                request, 422, article=article, values=raw, errors=errors, attr_fields=fields
             )
+        if wants_popup(request):
+            return saved_in_popup()
         return RedirectResponse(f"/articles/{int(article['id'])}?saved=1", status_code=303)
 
     def reset_to_template(article_id: int, actor_id: int, field: str) -> int:

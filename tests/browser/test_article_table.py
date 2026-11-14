@@ -1,7 +1,5 @@
 """The article table in a real browser, on desktop and phone (issue #75, test case 13)."""
 
-import re
-
 import pytest
 from playwright.sync_api import Page, expect
 
@@ -51,4 +49,6 @@ def test_table_sorts_and_fits_every_screen(
 
     row = admin_page.locator("table.data-table tbody tr").filter(has_text=low)
     row.get_by_role("link", name=t("table.action.edit")).click()
-    expect(admin_page).to_have_url(re.compile(r"/articles/\d+/edit$"))
+    # Since issue #76 the edit symbol opens a pop-up over the list (the link itself is the page).
+    expect(admin_page.locator("dialog#popup[open] h1")).to_have_text(t("article.edit.title"))
+    assert admin_page.url.split("?")[0].endswith("/articles")
