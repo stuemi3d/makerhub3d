@@ -1,21 +1,23 @@
-{% extends "base.html" %}
+{% extends "_popup_layout.html" if popup else "base.html" %}
 {% from "_form_macros.html" import field_attrs, feedback %}
 {% block title %}{{ t('stock.new') }} – {{ app_name }}{% endblock %}
 {% block content %}
+{% if not popup %}
 <nav aria-label="breadcrumb">
   <ul>
     <li><a href="/stock">{{ t('stock.title') }}</a></li>
     <li>{{ t('stock.new') }}</li>
   </ul>
 </nav>
-<h1>{{ t('stock.new') }}</h1>
+{% endif %}
+<h1{% if popup %} id="popup-title"{% endif %}>{{ t('stock.new') }}</h1>
 {% if errors %}
 <p role="alert"><mark>{{ t('stock.has_errors') }}</mark></p>
 {% endif %}
-<form method="post" action="/stock/new" novalidate>
+<form method="post" action="/stock/new" novalidate{% if popup %} hx-post="/stock/new" hx-target="#popup-body" hx-swap="innerHTML"{% endif %}>
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <label for="article_id">{{ t('stock.field.article_id') }}</label>
-  <select {{ field_attrs('article_id', errors) }}>
+  <select {{ field_attrs('article_id', errors) }}{% if popup %} autofocus{% endif %}>
     <option value="">{{ t('stock.choose') }}</option>
     {% for a in articles %}
     <option value="{{ a.id }}"{% if values.get('article_id') == a.id|string %} selected{% endif %}>{{ a.number }} · {{ a.name }}</option>
@@ -38,7 +40,10 @@
   <label for="date">{{ t('stock.field.date') }}</label>
   <input type="date" max="{{ today }}" {{ field_attrs('date', errors) }} value="{{ values.get('date', '') }}">
   {{ feedback('date', errors, t, 'stock.hint.') }}
-  <button type="submit">{{ t('stock.book') }}</button>
+  <div class="form-actions">
+    <button type="submit">{{ t('stock.book') }}</button>
+    {% if popup %}<button type="button" class="secondary outline" data-popup-close>{{ t('article.cancel') }}</button>
+    {% else %}<a href="/stock" role="button" class="secondary outline">{{ t('article.cancel') }}</a>{% endif %}
+  </div>
 </form>
-<p><a href="/stock">{{ t('article.cancel') }}</a></p>
 {% endblock %}

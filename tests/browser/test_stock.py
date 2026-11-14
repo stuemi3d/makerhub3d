@@ -45,7 +45,7 @@ def test_book_withdrawal_and_cancel_it_on_every_screen(
     expect(admin_page.locator("h1")).to_have_text(t("stock.movements.title"))
     assert fits_screen_width(admin_page)
     booking = admin_page.locator("tr", has_text=number).filter(has_text="Muster verschenkt")
-    booking.get_by_role("button", name=t("stock.cancel"), exact=True).click()
+    booking.get_by_role("button", name=t("stock.cancel")).click()
     expect(
         admin_page.locator("tr", has_text=number).filter(has_text="Muster verschenkt")
     ).to_contain_text(t("stock.cancelled"))

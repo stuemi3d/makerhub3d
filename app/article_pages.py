@@ -488,7 +488,13 @@ def add_article_routes(
         return await run_in_threadpool(purge_page, request, article_id, 422, True)
 
     @app.get("/articles/{article_id}/{section}", response_class=HTMLResponse, dependencies=view)
-    def article_section(request: Request, article_id: int, section: str) -> HTMLResponse:
+    def article_section(
+        request: Request,
+        article_id: int,
+        section: str,
+        sort: str | None = None,
+        direction: str | None = Query(None, alias="dir"),
+    ) -> HTMLResponse:
         if section not in SECTIONS:
             raise HTTPException(status_code=404)
         if section == "stock":
@@ -496,12 +502,16 @@ def add_article_routes(
             with new_session() as db:
                 rows = stock.movement_rows(db, language, article_id)
                 current_stock = stock.stock_of(db, article_id)
+            rows, links = stock.arranged_movements(
+                rows, f"/articles/{article_id}/stock", sort, direction
+            )
             return render(
                 request,
                 "article_stock.html",
                 "nav.articles",
                 article=article,
                 rows=rows,
+                sort_links=links,
                 current_stock=current_stock,
             )
         return render(

@@ -6,12 +6,12 @@ changed or deleted. A mistake is cancelled by a counter booking.
 
 import re
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app import audit, auth
+from app import audit, auth, table_sort
 from app.models import Article, StockMovement, StockMovementKind, User
 
 BOOK_FIELDS = ("article_id", "type", "quantity", "reason", "date")
@@ -58,6 +58,9 @@ class MovementRow:
     article_id: int
     article_number: str
     quantity: str
+    amount: int
+    booked_on: date
+    created_at: datetime
     kind: str
     reason: str
     cancels_id: int | None
@@ -86,6 +89,9 @@ def movement_rows(db: Session, language: str, article_id: int | None = None) -> 
             article_id=movement.article_id,
             article_number=number,
             quantity=f"{movement.quantity:+d}",
+            amount=movement.quantity,
+            booked_on=movement.booked_on,
+            created_at=movement.created_at,
             kind=movement.kind,
             reason=movement.reason,
             cancels_id=movement.cancels_id,
@@ -95,6 +101,36 @@ def movement_rows(db: Session, language: str, article_id: int | None = None) -> 
         )
         for movement, number, username in db.execute(query)
     ]
+
+
+MOVEMENT_SORT_KEYS = ("date", "article", "quantity")
+
+
+def sort_movements(rows: list[MovementRow], key: str, direction: str) -> list[MovementRow]:
+    """Sorts the movements by a column; ties keep the newest first."""
+    columns = {
+        "date": lambda row: (row.booked_on, row.created_at),
+        "article": lambda row: row.article_number.casefold(),
+        "quantity": lambda row: row.amount,
+    }
+    newest_first = sorted(rows, key=lambda row: (row.created_at, row.id), reverse=True)
+    return sorted(newest_first, key=columns[key], reverse=direction == "desc")
+
+
+def arranged_movements(
+    rows: list[MovementRow],
+    path: str,
+    sort: str | None,
+    direction: str | None,
+    keep: dict[str, str] | None = None,
+) -> tuple[list[MovementRow], dict[str, dict[str, str]]]:
+    """The rows in the order asked for in the address (default: newest first), and the header
+    links of the table. `path` and `keep` make the links stay on the page and its filter."""
+    chosen = table_sort.chosen_sort(MOVEMENT_SORT_KEYS, sort, direction)
+    if chosen:
+        rows = sort_movements(rows, *chosen)
+    links = table_sort.sort_links(path, MOVEMENT_SORT_KEYS, chosen, ("date", "desc"), keep)
+    return rows, links
 
 
 def count_movements(db: Session, article_id: int) -> int:

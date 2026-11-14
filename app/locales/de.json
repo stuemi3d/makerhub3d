@@ -252,6 +252,8 @@
   "table.empty_value": "—",
   "table.action.view": "Ansehen",
   "table.action.edit": "Bearbeiten",
+  "table.action.book": "Buchung anlegen",
+  "table.action.cancel": "Stornieren",
   "table.sort_by": "Sortieren nach",
   "table.actions": "Aktionen",
   "articles.col.stock": "Bestand",
