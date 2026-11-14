@@ -5,7 +5,7 @@ import re
 import pytest
 from playwright.sync_api import Page, expect
 
-from tests.browser.conftest import ADMIN_NAME, t
+from tests.browser.conftest import ADMIN_NAME, open_menu, t
 
 TOGGLE = "header .nav-toggle"
 MENU = "#main-menu"
@@ -78,3 +78,34 @@ def test_logout_works_from_the_bar(admin_page: Page) -> None:
         admin_page.click(TOGGLE)
     admin_page.locator("header").get_by_role("button", name=t("nav.logout")).click()
     expect(admin_page).to_have_url(re.compile(r"/login$"))
+
+
+# --- Entries must not overlap each other (follow-up to #74) -----------------------------
+
+
+def test_menu_entries_do_not_overlap(admin_page: Page) -> None:
+    open_menu(admin_page)
+    boxes = admin_page.eval_on_selector_all(
+        "#main-menu a, #main-menu button",
+        "els => els.map(e => { const r = e.getBoundingClientRect();"
+        " return {l: r.left, r: r.right, t: r.top, b: r.bottom}; })",
+    )
+    assert len(boxes) >= 8
+    for i, first in enumerate(boxes):
+        for second in boxes[i + 1 :]:
+            separate = (
+                first["r"] <= second["l"] + 0.5
+                or second["r"] <= first["l"] + 0.5
+                or first["b"] <= second["t"] + 0.5
+                or second["b"] <= first["t"] + 0.5
+            )
+            assert separate, (first, second)
+
+
+def test_desktop_bar_stays_in_one_row(admin_page: Page) -> None:
+    if is_phone(admin_page):
+        pytest.skip("on the phone the menu is a list under the button")
+    brand = admin_page.locator("header .brand").bounding_box()
+    logout = admin_page.locator("header").get_by_role("button", name=t("nav.logout"))
+    box = logout.bounding_box()
+    assert abs((box["y"] + box["height"] / 2) - (brand["y"] + brand["height"] / 2)) < 20

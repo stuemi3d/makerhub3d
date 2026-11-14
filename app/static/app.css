@@ -98,7 +98,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.25rem 1.5rem;
+  gap: 0.25rem 1rem;
 }
 .topbar .brand {
   font-weight: 700;
@@ -111,9 +111,10 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 0.25rem 1.5rem;
+  gap: 0.25rem 0.5rem;
 }
-.topbar-menu ul {
+/* Pico gives nav lists and links negative margins; they would make the entries overlap. */
+.topbar nav .topbar-menu ul {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -128,7 +129,9 @@
 }
 .topbar-menu a {
   display: block;
-  padding: 0.4rem 0.75rem;
+  margin: 0;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.85rem;
   border-radius: var(--mh-radius);
   text-decoration: none;
   color: var(--mh-text-muted);
@@ -167,7 +170,7 @@
   html.js .topbar-menu.open {
     display: flex;
   }
-  .topbar-menu ul {
+  .topbar nav .topbar-menu ul {
     flex-direction: column;
     align-items: stretch;
   }
