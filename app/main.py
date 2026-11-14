@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlencode, urlsplit
 
-from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -423,10 +423,21 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return response
 
     @app.get("/", response_class=HTMLResponse, dependencies=[requires(Permission.VIEW)])
-    def index(request: Request) -> HTMLResponse:
+    def index(
+        request: Request, sort: str | None = None, direction: str | None = Query(None, alias="dir")
+    ) -> HTMLResponse:
+        chosen = dashboard.chosen_sort(sort, direction)
         with new_session() as session:
             data = dashboard.build(session)
-        return render(request, "index.html", "nav.dashboard", data=data)
+        rows = dashboard.sort_rows(data.low_stock, *(chosen or dashboard.DEFAULT_SORT))
+        return render(
+            request,
+            "index.html",
+            "nav.dashboard",
+            data=data,
+            low_rows=rows,
+            sort_links=dashboard.sort_links(chosen),
+        )
 
     # Login is checked by the middleware above, the role by the dependency of each route.
     @app.get("/settings", response_class=HTMLResponse, dependencies=[requires(Permission.MANAGE)])

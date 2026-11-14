@@ -63,7 +63,7 @@ def test_article_detail_card_and_compact_buttons_on_every_screen(
         assert abs(box1["x"] - box2["x"]) < 2, "on the phone the fields stand below each other"
     else:
         assert box2["x"] > box1["x"] + 50, "on the desktop the fields use two columns"
-    expect(card.locator(".badge")).to_have_text(t("article.status.active"))
+    expect(card.locator(".chip")).to_have_text(t("article.status.active"))
 
     heading = admin_page.locator("h1").bounding_box()
     edit = admin_page.get_by_role("button", name=t("article.edit")).bounding_box()

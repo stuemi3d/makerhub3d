@@ -1,4 +1,6 @@
 {% extends "base.html" %}
+{% from "_data_table.html" import chip with context %}
+{% from "_form_macros.html" import popup_attrs %}
 {% block title %}{{ article.number }} – {{ app_name }}{% endblock %}
 {% macro source_note(name) %}
 {% if article.template %}
@@ -17,6 +19,8 @@
 {% endif %}
 {% endmacro %}
 {% block content %}
+{# Everything that shows the article: refreshed after the edit pop-up was saved (app.js). #}
+<div id="article-detail" data-popup-refresh>
 <nav aria-label="breadcrumb">
   <ul>
     <li><a href="/articles">{{ t('articles.title') }}</a></li>
@@ -27,7 +31,7 @@
   <h1>{{ article.number }} · {{ article.name }}</h1>
   {% if can('edit') %}
   <div class="page-actions">
-    <a href="/articles/{{ article.id }}/edit" role="button" class="secondary">{{ t('article.edit') }}</a>
+    <a {{ popup_attrs('/articles/' ~ article.id ~ '/edit') }} role="button" class="secondary">{{ t('article.edit') }}</a>
     <form method="post" action="/articles/{{ article.id }}/{{ 'deactivate' if article.active else 'activate' }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <button type="submit" class="secondary outline">{{ t('article.deactivate' if article.active else 'article.activate') }}</button>
@@ -83,9 +87,7 @@
     {% endif %}
     <div>
       <dt>{{ t('article.col.status') }}</dt>
-      <dd><span class="badge {{ 'badge-active' if article.active else 'badge-inactive' }}">
-        {{ t('article.status.active' if article.active else 'article.status.inactive') }}
-      </span></dd>
+      <dd>{{ chip(t('article.status.active' if article.active else 'article.status.inactive'), 'active' if article.active else 'inactive') }}</dd>
     </div>
   </dl>
 </article>
@@ -96,5 +98,6 @@
     <span>{{ t('article.tile.' ~ section) }}</span>
   </a>
   {% endfor %}
+</div>
 </div>
 {% endblock %}
