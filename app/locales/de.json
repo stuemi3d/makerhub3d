@@ -460,5 +460,11 @@
   "article.delete.advice": "Besser: Deaktiviere den Artikel, dann bleiben die Kalkulationen erhalten.",
   "article.delete.blocked": "Dieser Artikel hat Lagerbewegungen, Produktionen oder Verkäufe und kann deshalb nicht gelöscht werden. Du kannst ihn deaktivieren.",
   "log.action.article.variant_created": "Variante angelegt",
-  "log.action.article.deleted": "Artikel gelöscht"
+  "log.action.article.deleted": "Artikel gelöscht",
+  "appearance.title": "Darstellung",
+  "appearance.theme.legend": "Farbschema",
+  "appearance.theme.dark": "Dunkel",
+  "appearance.theme.light": "Hell",
+  "appearance.hint": "Die Wahl gilt nur für diesen Browser und wird dort gespeichert.",
+  "settings.tab.appearance": "Darstellung"
 }

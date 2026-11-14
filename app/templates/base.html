@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}{{ app_name }}{% endblock %}</title>
+  <script src="/static/theme.js"></script>
   <link rel="stylesheet" href="/static/pico.min.css">
   <link rel="stylesheet" href="/static/app.css">
   <script src="/static/app.js" defer></script>
@@ -20,7 +21,8 @@
         {% for item in nav_items if can(item.permission) %}
         <li>
           {% if item.href %}
-          <a href="{{ item.href }}"{% if item.key == current_nav %} aria-current="page"{% endif %}>{{ t(item.key) }}</a>
+          {% set href = item.fallback_href if item.fallback_href and not can('manage') else item.href %}
+          <a href="{{ href }}"{% if item.key == current_nav %} aria-current="page"{% endif %}>{{ t(item.key) }}</a>
           {% else %}
           <a aria-disabled="true" tabindex="-1" title="{{ t('nav.not_available') }}">{{ t(item.key) }}</a>
           {% endif %}

@@ -78,7 +78,7 @@ def test_admin_sees_settings_in_the_menu(client: AppClient) -> None:
 
 
 @pytest.mark.parametrize("role_client", ["employee", "reader"])
-def test_others_see_the_dashboard_but_not_the_settings_entry(
+def test_others_see_the_dashboard_and_only_the_appearance_settings_entry(
     request: pytest.FixtureRequest, role_client: str
 ) -> None:
     other = request.getfixturevalue(role_client)
@@ -86,7 +86,9 @@ def test_others_see_the_dashboard_but_not_the_settings_entry(
     response = other.get("/")
 
     assert response.status_code == 200
+    # The entry is there for everyone (issue #73), but leads others to the appearance page only.
     assert 'href="/settings"' not in nav_of(response.text)
+    assert 'href="/settings/appearance"' in nav_of(response.text)
     assert DE["nav.logout"] in response.text
 
 
@@ -222,7 +224,10 @@ def test_every_settings_page_needs_the_manage_level() -> None:
     settings_routes = [
         route
         for route in app.routes
-        if isinstance(route, APIRoute) and route.path.startswith("/settings")
+        if isinstance(route, APIRoute)
+        and route.path.startswith("/settings")
+        # The appearance page is open to every role: it only holds the browser's own theme.
+        and route.path != "/settings/appearance"
     ]
 
     assert len(settings_routes) >= 7

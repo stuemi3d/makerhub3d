@@ -113,7 +113,7 @@ Der Artikel ist der Knotenpunkt; alles andere hängt über die Artikelnummer an 
 **Oberfläche und Bedienung** (in zwei Stufen):
 
 - **Stufe 1 (laufend, Bedienung und Orientierung):** Reiter-Leiste für zusammengehörige Bereiche (Artikel · Vorlagen · Merkmale), Pfad („Artikel › A-1001“) statt „Zurück“-Links, Detailseiten als Karte, kompakte Buttons, hilfreiche Hinweise bei leeren Listen. Links zu anderen Seiten bleiben zunächst normale Textlinks.
-- **Stufe 2 (jetzt, in sechs Teilen, siehe M1b):** Gemeinsamer Stil nach dem Vorbild von Bambuddy (nachempfunden, nicht kopiert): Standardthemen **Dunkel** (Standard) und **Hell** mit Umschalter (die Wahl wird im Browser gemerkt), **eine Navigationsleiste oben** statt einer eigenen Seitenleiste (MakerHub 3D wird schon aus der Seitenleiste von Bambuddy verlinkt), Kennzahlen-Kacheln, Tabellen mit sortierbaren Spalten, Chips und Aktionssymbolen, **Bearbeiten in Pop-ups** statt auf immer neuen Seiten (HTMX). Weitere Akzentfarben sind ausdrücklich später. Das Artikel-Detail bekommt außerdem ein Dashboard nach dem Vorbild von ERPNext: Von dort springt man in die jeweilige Liste (z. B. Preise, Lagerbuchungen).
+- **Stufe 2 (jetzt, in sechs Teilen, siehe M1b):** Gemeinsamer Stil nach dem Vorbild von Bambuddy (nachempfunden, nicht kopiert): Standardthemen **Dunkel** (Standard) und **Hell** mit Umschalter im Reiter „Darstellung“ der Einstellungen (für alle Rollen erreichbar, die Wahl wird im Browser gemerkt), **eine Navigationsleiste oben** statt einer eigenen Seitenleiste (MakerHub 3D wird schon aus der Seitenleiste von Bambuddy verlinkt), Kennzahlen-Kacheln, Tabellen mit sortierbaren Spalten, Chips und Aktionssymbolen, **Bearbeiten in Pop-ups** statt auf immer neuen Seiten (HTMX). Weitere Akzentfarben sind ausdrücklich später. Das Artikel-Detail bekommt außerdem ein Dashboard nach dem Vorbild von ERPNext: Von dort springt man in die jeweilige Liste (z. B. Preise, Lagerbuchungen).
 - Optik-Feinschliff (Farben, Logo, Diagramm-Look) erst in Stufe 2.
 
 ## 6. Kalkulation im Detail
@@ -246,7 +246,7 @@ Erledigte Punkte sind mit `[x]` abgehakt. Das Abhaken gehört in den Pull Reques
 
 Der Maintainer hat die frühere Bedingung („erst nach Alltagsnutzung von M1“) aufgehoben: Ein gemeinsamer Stil vor den weiteren Seiten spart spätere Umbauten. Übersicht und Reihenfolge im Issue #55; eine Aufgabe nach der anderen:
 
-- [ ] 1/6 Design-Grundlage: Stil-Variablen, Dunkel (Standard) und Hell mit Umschalter, Karten, Buttons, Chips (#73)
+- [x] 1/6 Design-Grundlage: Stil-Variablen, Dunkel (Standard) und Hell, Umschalter im Einstellungs-Reiter „Darstellung“ (für alle Rollen), Karten, Buttons, Chips (#73)
 - [ ] 2/6 Gesamtlayout mit Navigationsleiste oben, Handy-Menü (#74)
 - [ ] 3/6 Tabellen-Baustein (sortierbar, Chips, Aktionssymbole) und Artikelübersicht (#75)
 - [ ] 4/6 Bearbeiten in Pop-ups (HTMX), zuerst Artikel anlegen und bearbeiten (#76)
