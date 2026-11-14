@@ -248,7 +248,7 @@ Der Maintainer hat die frühere Bedingung („erst nach Alltagsnutzung von M1“
 
 - [x] 1/6 Design-Grundlage: Stil-Variablen, Dunkel (Standard) und Hell, Umschalter im Einstellungs-Reiter „Darstellung“ (für alle Rollen), Karten, Buttons, Chips (#73)
 - [x] 2/6 Gesamtlayout mit Navigationsleiste oben, Handy-Menü (#74)
-- [ ] 3/6 Tabellen-Baustein (sortierbar, Chips, Aktionssymbole) und Artikelübersicht (#75)
+- [x] 3/6 Tabellen-Baustein (sortierbar, Chips, Aktionssymbole) und Artikelübersicht (#75)
 - [ ] 4/6 Bearbeiten in Pop-ups (HTMX), zuerst Artikel anlegen und bearbeiten (#76)
 - [ ] 5/6 Artikel-Seiten im neuen Stil: Detail, Varianten, Lager, Dashboard-Kennzahlen (#77)
 - [ ] 6/6 Übrige Seiten im neuen Stil, Vorlagen-Detail als Karte (#78)

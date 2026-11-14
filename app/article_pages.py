@@ -8,8 +8,9 @@ The stock tile counts the stock movements (issue #11).
 
 from collections.abc import Awaitable, Callable
 from decimal import Decimal
+from urllib.parse import urlencode
 
-from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import select
@@ -24,6 +25,61 @@ from app.settings_form import format_decimal
 
 # Order of the tiles on the detail page. The counts are 0 until M2 to M4 bring the data.
 SECTIONS = ("calculations", "productions", "stock", "sales", "analysis")
+
+
+SORT_KEYS = ("number", "name", "price", "stock", "status")
+
+
+def chosen_sort(sort: str | None, direction: str | None) -> tuple[str, str] | None:
+    """The sort from the address, or None (default order) if it is missing or invalid."""
+    if sort is None:
+        return None
+    if sort not in SORT_KEYS or direction not in (None, "asc", "desc"):
+        return None
+    return sort, direction or "asc"
+
+
+def list_url(chosen: tuple[str, str] | None, inactive: bool) -> str:
+    """The list address with the chosen sorting kept, with or without inactive articles."""
+    params = {"inactive": "1"} if inactive else {}
+    if chosen:
+        params["sort"], params["dir"] = chosen
+    return "/articles" + ("?" + urlencode(params) if params else "")
+
+
+def sort_links(chosen: tuple[str, str] | None, inactive: bool) -> dict[str, dict[str, str]]:
+    """Per column: where a click leads and the aria-sort state. A click on the sorted column
+    reverses it; the default order (no choice) counts as number ascending."""
+    current = chosen or ("number", "asc")
+    links = {}
+    for key in SORT_KEYS:
+        active = key == current[0]
+        next_dir = "desc" if active and current[1] == "asc" else "asc"
+        params = {"inactive": "1"} if inactive else {}
+        params.update(sort=key, dir=next_dir)
+        links[key] = {
+            "href": "/articles?" + urlencode(params),
+            "aria": ("ascending" if current[1] == "asc" else "descending") if active else "none",
+        }
+    return links
+
+
+def sort_articles(items: list[dict], key: str, direction: str) -> list[dict]:
+    """Sorts the rows; ties keep the number order. Articles without a price stay at the end,
+    whichever the direction."""
+    reverse = direction == "desc"
+    if key == "number":
+        return sorted(items, key=lambda item: item["number"].casefold(), reverse=reverse)
+    if key == "price":
+        priced = [item for item in items if item["price_value"] is not None]
+        unpriced = [item for item in items if item["price_value"] is None]
+        return sorted(priced, key=lambda item: item["price_value"], reverse=reverse) + unpriced
+    column = {
+        "name": lambda item: item["name"].casefold(),
+        "stock": lambda item: item["stock"],
+        "status": lambda item: item["active"],
+    }[key]
+    return sorted(items, key=column, reverse=reverse)
 
 
 def _stored_values(article: Article) -> dict[str, object]:
@@ -85,14 +141,27 @@ def add_article_routes(
 
     @app.get("/articles", response_class=HTMLResponse, dependencies=view)
     def article_list(
-        request: Request, inactive: str | None = None, purged: str | None = None
+        request: Request,
+        inactive: str | None = None,
+        purged: str | None = None,
+        sort: str | None = None,
+        direction: str | None = Query(None, alias="dir"),
     ) -> HTMLResponse:
         show_inactive = inactive == "1"
+        chosen = chosen_sort(sort, direction)
         with new_session() as db:
             query = select(Article).order_by(Article.number_key)
             if not show_inactive:
                 query = query.where(Article.active.is_(True))
-            items = [article_view(article) for article in db.scalars(query)]
+            articles = list(db.scalars(query))
+            levels = stock.stock_levels(db, [article.id for article in articles])
+            items = []
+            for article in articles:
+                item = article_view(article)
+                item["stock"] = levels[article.id]
+                item["price_value"] = variants.effective(article, "selling_price")
+                items.append(item)
+        items = sort_articles(items, *(chosen or ("number", "asc")))
         return render(
             request,
             "articles.html",
@@ -100,6 +169,8 @@ def add_article_routes(
             articles=items,
             show_inactive=show_inactive,
             purged=purged == "1",
+            sort_links=sort_links(chosen, show_inactive),
+            toggle_inactive_href=list_url(chosen, not show_inactive),
         )
 
     @app.get("/articles/new", response_class=HTMLResponse, dependencies=edit)

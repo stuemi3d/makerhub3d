@@ -1,11 +1,12 @@
 {% extends "base.html" %}
 {% block title %}{{ t('articles.title') }} – {{ app_name }}{% endblock %}
+{% from "_data_table.html" import head, actions_head, icon_link, chip with context %}
 {% block content %}
 <div class="page-head">
   <h1>{{ t('articles.title') }}</h1>
   <div class="page-actions">
-    {% if show_inactive %}<a href="/articles" role="button" class="secondary outline">{{ t('articles.hide_inactive') }}</a>
-    {% else %}<a href="/articles?inactive=1" role="button" class="secondary outline">{{ t('articles.show_inactive') }}</a>{% endif %}
+    {% if show_inactive %}<a href="{{ toggle_inactive_href }}" role="button" class="secondary outline">{{ t('articles.hide_inactive') }}</a>
+    {% else %}<a href="{{ toggle_inactive_href }}" role="button" class="secondary outline">{{ t('articles.show_inactive') }}</a>{% endif %}
     {% if can('edit') %}<a href="/articles/new" role="button">{{ t('articles.new') }}</a>{% endif %}
   </div>
 </div>
@@ -13,28 +14,43 @@
 <p role="status"><ins>{{ t('article.purge.done') }}</ins></p>
 {% endif %}
 {% if articles %}
-<div class="overflow-auto">
-<table>
+<article class="data-card">
+<div class="data-scroll">
+<table class="data-table">
   <thead>
     <tr>
-      <th scope="col">{{ t('article.field.number') }}</th>
-      <th scope="col">{{ t('article.field.name') }}</th>
-      <th scope="col">{{ t('article.field.selling_price') }}</th>
-      <th scope="col">{{ t('article.col.status') }}</th>
+      {{ actions_head() }}
+      {{ head(t('article.field.number'), sort_links.number) }}
+      {{ head(t('article.field.name'), sort_links.name) }}
+      {{ head(t('article.field.selling_price'), sort_links.price, numeric=true) }}
+      {{ head(t('articles.col.stock'), sort_links.stock, numeric=true) }}
+      {{ head(t('article.col.status'), sort_links.status) }}
     </tr>
   </thead>
   <tbody>
     {% for a in articles %}
     <tr>
-      <td><a href="/articles/{{ a.id }}">{{ a.number }}</a></td>
+      <td class="row-actions">
+        {{ icon_link('/articles/' ~ a.id, 'view') }}
+        {% if can('edit') %}{{ icon_link('/articles/' ~ a.id ~ '/edit', 'edit') }}{% endif %}
+      </td>
+      <td class="cell-strong"><a href="/articles/{{ a.id }}">{{ a.number }}</a></td>
       <td>{{ a.name }}</td>
-      <td>{{ a.selling_price if a.selling_price else t('article.value.none') }}</td>
-      <td>{{ t('article.status.active' if a.active else 'article.status.inactive') }}</td>
+      <td class="num cell-price">{{ a.selling_price if a.selling_price else t('table.empty_value') }}</td>
+      <td class="num cell-stock">
+        {{ a.stock }}
+        {% if a.min_stock %}
+        <meter class="stock-meter" min="0" max="{{ a.min_stock }}" low="{{ a.min_stock }}" optimum="{{ a.min_stock }}" value="{{ [a.stock, 0]|max }}"></meter>
+        {% if a.stock < a.min_stock %}<span class="muted stock-low">{{ t('articles.stock.low') }}</span>{% endif %}
+        {% endif %}
+      </td>
+      <td>{{ chip(t('article.status.active' if a.active else 'article.status.inactive'), 'active' if a.active else 'inactive') }}</td>
     </tr>
     {% endfor %}
   </tbody>
 </table>
 </div>
+</article>
 {% else %}
 <article class="empty-hint">
   <p>{{ t('articles.empty') }}</p>
