@@ -29,6 +29,8 @@ Diese Datei gilt für jede Claude-Code-Sitzung in diesem Repository. Der vollst�
 
 **Ausnahme:** Reine Doku- oder Organisationsaufgaben ohne Programmcode (z. B. Plan, Regeln, Vorlagen, Issues) brauchen keine test-bezogenen Schritte – Schritt 2 (Testfall-Freigabe), Schritt 4 (Tests zuerst schreiben) und Schritt 5 (Testlauf) entfallen dann. Unter „Testfälle“ steht im PR, dass es keinen Code und deshalb keine automatisierten Tests gibt. Das unabhängige Review (Schritt 6) läuft immer.
 
+Erledigt ein Pull Request einen Punkt der Meilensteine in `docs/plan.md` (Abschnitt 10), hakst du ihn dort im selben PR ab (`[x]`).
+
 Halte jeden Pull Request klein. Wird eine Aufgabe größer als gedacht: stoppen, Vorschlag zur Aufteilung machen.
 
 ## Browser-Tests (Playwright)
