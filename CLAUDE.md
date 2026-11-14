@@ -29,6 +29,22 @@ Diese Datei gilt für jede Claude-Code-Sitzung in diesem Repository. Der vollst�
 
 **Ausnahme:** Reine Doku- oder Organisationsaufgaben ohne Programmcode (z. B. Plan, Regeln, Vorlagen, Issues) brauchen keine test-bezogenen Schritte – Schritt 2 (Testfall-Freigabe), Schritt 4 (Tests zuerst schreiben) und Schritt 5 (Testlauf) entfallen dann. Unter „Testfälle“ steht im PR, dass es keinen Code und deshalb keine automatisierten Tests gibt. Das unabhängige Review (Schritt 6) läuft immer.
 
+**Schnellspur für reine Oberflächen-Änderungen:** Sie gilt nur, wenn **alle** Punkte zutreffen. Im Zweifel gilt der volle Ablauf.
+
+- Die Änderung betrifft nur das Aussehen: CSS, Abstände, Farben, Größen, Anordnung und Texte. Texte stehen ausschließlich in den Übersetzungsdateien, ohne HTML-Markup. Texte zu Löschen, Rechten oder Sicherheit sind ausgenommen.
+- In Templates (`*.html`) dürfen nur CSS-Klassen, Attribute fürs Aussehen und statische Elemente ohne Funktion geändert oder verschoben werden. **Nicht erlaubt:** Änderungen an `<form>`, `<input>`, `<button>`, `hx-*`-Attributen, `csrf_token`, Jinja-Anweisungen (`{% %}`) und Ausdrücken (`{{ }}`), Verschieben von Blöcken in oder aus Rollen-Bedingungen, `|safe`, neue externe Ressourcen (Schrift, CDN, Skript).
+- Es ändert sich außerdem nichts an Routen, Rechten und Login, Datenbank und Modellen, Berechnungen, Uploads, Abhängigkeiten und `.github/workflows/`.
+- Der Maintainer hat die Änderungen ausdrücklich gewünscht (Chat oder Issue). Mehrere Wünsche dürfen in einem Sammel-Issue und einem Pull Request stehen, solange der Pull Request klein bleibt; sonst aufteilen.
+
+In der Schnellspur gilt:
+
+- Du prüfst vor dem Commit selbst, ob alle Punkte zutreffen. Fällt dir beim Umsetzen etwas Nichtoptisches auf, stoppst du und wechselst für diesen Teil in den vollen Ablauf (Testfälle im Issue, Freigabe abwarten) oder trennst ihn in einen eigenen Pull Request ab.
+- Schritt 2 entfällt: keine Testfall-Freigabe vorab. Das Issue nennt nur die gewünschten Änderungen.
+- Schritt 4 entfällt, außer ein Browser-Test wird angepasst oder ergänzt (dann zuerst der Test, dann die Änderung). Das ist nötig, wenn Layout oder Bedienung (z. B. Handy-Ansicht) an der Änderung hängt. Schritt 5 bleibt vollständig: `uv run pytest`, `ruff` und die Browser-Tests müssen grün sein.
+- Das Review (Schritt 6) läuft wie üblich einmal pro Pull Request, auch wenn er mehrere Wünsche bündelt, mit der vollständigen Sicherheits-Checkliste. Zusätzlich prüft der Subagent, ob der Diff nur Erlaubtes enthält; findet er Logik, Formulare oder Rechte, werden diese Teile abgetrennt und im vollen Ablauf umgesetzt.
+- Im Pull Request steht „Schnellspur“, dazu eine Liste der geänderten Dateien nach Art (CSS, Template, Übersetzung). Unter „Testfälle“ steht, dass nur bestehende Tests laufen (angepasste oder ergänzte Browser-Tests werden genannt). Unter „Achtung“ steht „Keine heiklen Änderungen.“
+- Merge weiterhin nur durch den Maintainer.
+
 Erledigt ein Pull Request einen Punkt der Meilensteine in `docs/plan.md` (Abschnitt 10), hakst du ihn dort im selben PR ab (`[x]`).
 
 Halte jeden Pull Request klein. Wird eine Aufgabe größer als gedacht: stoppen, Vorschlag zur Aufteilung machen.
