@@ -14,7 +14,7 @@ def delete_template(page: Page, name: str) -> None:
     """Removes the template again: the browser tests share one database."""
     page.goto("/templates")
     page.get_by_role("link", name=f"{t('table.action.view')} {name}").click()
-    page.get_by_role("link", name=t("template.delete"), exact=True).click()
+    page.get_by_role("button", name=t("template.delete"), exact=True).click()
     page.get_by_role("button", name=t("template.delete.button")).click()
     expect(page.get_by_role("cell", name=name, exact=True)).to_have_count(0)
 
