@@ -7,6 +7,8 @@
   <script src="/static/theme.js"></script>
   <link rel="stylesheet" href="/static/pico.min.css">
   <link rel="stylesheet" href="/static/app.css">
+  {# HTMX (issue #76); its safety settings are in app.js. #}
+  <script src="/static/htmx.min.js" defer></script>
   <script src="/static/app.js" defer></script>
 </head>
 <body>
@@ -53,5 +55,9 @@
     {% if user and area %}{% include "_area_tabs.html" %}{% endif %}
     {% block content %}{% endblock %}
   </main>
+  {% if user and not user.must_change_password %}
+  {# Pop-up for forms (issue #76): filled by HTMX, opened and closed by app.js. #}
+  <dialog id="popup" aria-labelledby="popup-title"><article id="popup-body"></article></dialog>
+  {% endif %}
 </body>
 </html>

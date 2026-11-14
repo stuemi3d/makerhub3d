@@ -1,17 +1,18 @@
-{% extends "base.html" %}
+{% extends "_popup_layout.html" if popup else "base.html" %}
 {% from "_form_macros.html" import field_attrs, feedback %}
 {% set heading = article.number if article else t('article.new.title') %}
 {% block title %}{{ heading }} – {{ app_name }}{% endblock %}
 {% block content %}
 {% set inherited = article.inherited if article else {} %}
-<h1>{{ t('article.edit.title') if article else t('article.new.title') }}</h1>
+<h1{% if popup %} id="popup-title"{% endif %}>{{ t('article.edit.title') if article else t('article.new.title') }}</h1>
 {% if errors %}
 <p role="alert"><mark>{{ t('article.has_errors') }}</mark></p>
 {% endif %}
-<form method="post" action="{{ '/articles/' ~ article.id if article else '/articles/new' }}" novalidate>
+{% set action = '/articles/' ~ article.id if article else '/articles/new' %}
+<form method="post" action="{{ action }}" novalidate{% if popup %} hx-post="{{ action }}" hx-target="#popup-body" hx-swap="innerHTML"{% endif %}>
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <label for="number">{{ t('article.field.number') }}</label>
-  <input type="text" maxlength="50" autocomplete="off" {{ field_attrs('number', errors) }} value="{{ values.get('number', '') }}">
+  <input type="text" maxlength="50" autocomplete="off" {{ field_attrs('number', errors) }}{% if popup %} autofocus{% endif %} value="{{ values.get('number', '') }}">
   {{ feedback('number', errors, t, 'article.hint.') }}
   <label for="name">{{ t('article.field.name') }}</label>
   <input type="text" maxlength="100" autocomplete="off" {{ field_attrs('name', errors) }} value="{{ values.get('name', '') }}">
@@ -30,7 +31,10 @@
   <label for="min_stock">{{ t('article.field.min_stock') }}</label>
   <input type="text" inputmode="numeric" autocomplete="off" {{ field_attrs('min_stock', errors) }}{% if inherited.get('min_stock') %} placeholder="{{ t('variant.placeholder').format(value=inherited['min_stock']) }}"{% endif %} value="{{ values.get('min_stock', '') }}">
   {{ feedback('min_stock', errors, t, 'article.hint.') }}
-  <button type="submit">{{ t('article.save' if article else 'article.create') }}</button>
+  <div class="form-actions">
+    <button type="submit">{{ t('article.save' if article else 'article.create') }}</button>
+    {% if popup %}<button type="button" class="secondary outline" data-popup-close>{{ t('article.cancel') }}</button>
+    {% else %}<a href="{{ '/articles/' ~ article.id if article else '/articles' }}" role="button" class="secondary outline">{{ t('article.cancel') }}</a>{% endif %}
+  </div>
 </form>
-<p><a href="{{ '/articles/' ~ article.id if article else '/articles' }}">{{ t('article.cancel') }}</a></p>
 {% endblock %}

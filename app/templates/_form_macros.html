@@ -7,3 +7,8 @@ id="{{ name }}" name="{{ name }}"{% if errors.get(name) %} aria-invalid="true" a
 {% else %}<small id="{{ name }}-hint">{{ t(hint_prefix ~ name) }}</small>
 {% endif %}
 {%- endmacro %}
+{# Makes a link open its page in the pop-up (issue #76). The href stays, so
+   without JavaScript, or with "open in new tab", the link opens the normal page. #}
+{% macro popup_attrs(href) -%}
+href="{{ href }}" hx-get="{{ href }}" hx-target="#popup-body" hx-swap="innerHTML" data-popup
+{%- endmacro %}

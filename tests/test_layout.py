@@ -91,9 +91,9 @@ def test_pico_css_is_served_from_the_project_not_from_a_foreign_server(
 
     assert "/static/pico.min.css" in links
     assert all(link.startswith("/") and not link.startswith("//") for link in links)
-    # Scripts only from the app itself (issue #39 added one), never from a foreign server.
+    # Scripts only from the app itself (issue #39 and #76 added some), never from a foreign server.
     scripts = re.findall(r'<script\b[^>]*src="([^"]+)"', html)
-    assert scripts == ["/static/theme.js", "/static/app.js"]
+    assert scripts == ["/static/theme.js", "/static/htmx.min.js", "/static/app.js"]
     assert len(re.findall(r"<script\b", html)) == len(scripts)
     css = client.get("/static/pico.min.css")
     assert css.status_code == 200

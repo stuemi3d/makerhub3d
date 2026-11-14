@@ -17,7 +17,8 @@ def test_article_list_form_and_detail_work_on_every_screen(
     expect(admin_page.locator("h1")).to_have_text(t("articles.title"))
     assert fits_screen_width(admin_page)
 
-    admin_page.get_by_role("button", name=t("articles.new"), exact=True).click()
+    # The page behind the "new" button (it opens as a pop-up in the list, see test_popups.py).
+    admin_page.goto("/articles/new")
     assert fits_screen_width(admin_page)
     admin_page.fill("#number", number)
     admin_page.fill("#name", "Kabelhalter mit einem ziemlich langen Namen zum Testen der Breite")

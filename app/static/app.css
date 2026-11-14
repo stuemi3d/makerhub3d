@@ -512,3 +512,37 @@
 .stock-low {
   color: var(--mh-danger-text);
 }
+
+/* Pop-up (issue #76): Pico's dialog is the dimmed full-screen layer, the article is the box.
+   On the phone the box uses the whole width; long forms scroll inside the box. */
+dialog#popup article {
+  width: 100%;
+  max-width: 34rem;
+  max-height: calc(100vh - 2rem);
+  max-height: calc(100dvh - 2rem);
+  margin: 1rem;
+  overflow-y: auto;
+}
+
+dialog#popup h1 {
+  margin-bottom: 1rem;
+  font-size: 1.25rem;
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.form-actions :is(button, [role="button"]) {
+  width: auto;
+  margin: 0;
+}
+
+@media (max-width: 575px) {
+  dialog#popup article {
+    max-width: none;
+    margin: 0.5rem;
+  }
+}
