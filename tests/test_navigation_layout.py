@@ -72,14 +72,12 @@ def test_article_detail_shows_the_fields_in_a_card(client: AppClient) -> None:
 def test_status_is_a_coloured_label(client: AppClient) -> None:
     article_id = make_article(client)
     html = client.get(f"/articles/{article_id}").text
-    assert re.search(
-        rf'<span class="badge badge-active">\s*{DE["article.status.active"]}\s*</span>', html
-    )
+    assert re.search(rf'<span class="chip chip-active">{DE["article.status.active"]}</span>', html)
 
     client.post(f"/articles/{article_id}/deactivate", data={})
     html = client.get(f"/articles/{article_id}").text
     assert re.search(
-        rf'<span class="badge badge-inactive">\s*{DE["article.status.inactive"]}\s*</span>', html
+        rf'<span class="chip chip-inactive">{DE["article.status.inactive"]}</span>', html
     )
 
 

@@ -33,7 +33,7 @@ def low_list(html: str) -> list[str]:
     """Article numbers in the list 'below minimum stock', top to bottom."""
     section = re.search(r'<section id="low-stock".*?</section>', html, re.DOTALL)
     assert section, "no low-stock section"
-    return re.findall(r'<td data-label="number"><a [^>]*>(.*?)</a>', section.group(0))
+    return re.findall(r'<td class="cell-strong">(.*?)</td>', section.group(0))
 
 
 def section_html(html: str) -> str:
@@ -101,8 +101,8 @@ def test_article_below_minimum_is_listed_with_details(client: AppClient) -> None
     assert low_list(client.get("/").text) == ["A-1"]
     assert "Kabelhalter" in section
     assert f'href="/articles/{article_id}/stock"' in section
-    assert re.search(r'<td data-label="stock"[^>]*>3</td>', section)
-    assert re.search(r'<td data-label="min_stock"[^>]*>5</td>', section)
+    assert re.search(r'<td class="num cell-stock">3</td>', section)
+    assert re.search(r'<td class="num cell-min">5</td>', section)
 
 
 def test_stock_equal_to_minimum_is_not_listed(client: AppClient) -> None:

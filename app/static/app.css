@@ -546,3 +546,46 @@ dialog#popup h1 {
     margin: 0.5rem;
   }
 }
+
+/* Article detail and dashboard in the new style (issue #77): same cards as the tables. */
+.detail-card,
+.stat {
+  background: var(--mh-surface);
+  border: 1px solid var(--mh-border);
+  border-radius: var(--mh-radius);
+  box-shadow: none;
+}
+
+.detail-card {
+  margin: 0 0 1rem;
+}
+
+.details dt,
+.stat-label {
+  color: var(--mh-text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.tile {
+  background: var(--mh-surface);
+  border-color: var(--mh-border);
+  color: var(--mh-text);
+}
+
+.tile:hover {
+  border-color: var(--mh-accent);
+  background: var(--mh-surface-raised);
+}
+
+.tile:focus-visible {
+  outline: 2px solid var(--mh-accent);
+  outline-offset: 2px;
+}
+
+.tile-count {
+  color: var(--mh-accent);
+  font-weight: 600;
+}
