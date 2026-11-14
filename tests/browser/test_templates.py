@@ -4,7 +4,7 @@ import re
 
 from playwright.sync_api import Page, expect
 
-from tests.browser.conftest import t
+from tests.browser.conftest import open_menu, t
 from tests.browser.test_pages import fits_screen_width
 
 
@@ -13,6 +13,7 @@ def test_attribute_and_template_pages_work_on_every_screen(
 ) -> None:
     attribute = f"Farbe-{viewport_name}"
     template = f"Halter-{viewport_name} mit einem ziemlich langen Namen zum Testen der Breite"
+    open_menu(admin_page)
     admin_page.locator("header nav").get_by_text(t("nav.articles"), exact=True).click()
     admin_page.get_by_role("link", name=t("attributes.title"), exact=True).click()
     expect(admin_page.locator("h1")).to_have_text(t("attributes.title"))

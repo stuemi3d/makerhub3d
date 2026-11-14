@@ -87,22 +87,91 @@
 }
 
 /* Small additions to Pico CSS. */
-.main-nav {
-  flex-wrap: wrap;
+/* Top navigation bar (issue #74): one bar, no sidebar. On the phone the menu folds away
+   behind a button; without JavaScript it simply stays open. */
+.topbar {
+  background: var(--mh-surface);
+  border-bottom: 1px solid var(--mh-border);
+  margin-bottom: 1rem;
 }
-
-.main-nav a[aria-disabled="true"] {
+.topbar nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 1.5rem;
+}
+.topbar .brand {
+  font-weight: 700;
+  color: var(--mh-text-strong);
+  text-decoration: none;
+}
+.topbar-menu {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem 1.5rem;
+}
+.topbar-menu ul {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.topbar-menu li {
+  margin: 0;
+  padding: 0;
+}
+.topbar-menu a {
+  display: block;
+  padding: 0.4rem 0.75rem;
+  border-radius: var(--mh-radius);
+  text-decoration: none;
+  color: var(--mh-text-muted);
+}
+.topbar-menu a:hover {
+  color: var(--mh-text-strong);
+  background: var(--mh-neutral-bg);
+}
+.topbar-menu a[aria-current="page"] {
+  color: var(--mh-on-accent);
+  background: var(--mh-accent-solid);
+}
+.topbar-menu a[aria-disabled="true"] {
   opacity: 0.5;
   cursor: not-allowed;
 }
-
+.topbar-menu a[aria-disabled="true"]:hover {
+  color: var(--mh-text-muted);
+  background: none;
+}
+.nav-toggle {
+  display: none;
+  width: auto;
+  margin: 0 0 0 auto;
+}
 @media (max-width: 767px) {
-  header nav {
+  html.js .nav-toggle {
+    display: inline-block;
+  }
+  html.js .topbar-menu {
+    display: none;
+    flex-basis: 100%;
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
+  }
+  html.js .topbar-menu.open {
+    display: flex;
+  }
+  .topbar-menu ul {
+    flex-direction: column;
+    align-items: stretch;
   }
 }
-
 .logout {
   margin: 0;
 }

@@ -10,37 +10,44 @@
   <script src="/static/app.js" defer></script>
 </head>
 <body>
-  <header class="container">
+  <header class="container-fluid topbar">
     <nav aria-label="{{ t('nav.label') }}">
-      <ul>
-        <li><strong>{{ app_name }}</strong></li>
-      </ul>
+      {% if user and not user.must_change_password %}
+      <a class="brand" href="/">{{ app_name }}</a>
+      {% else %}
+      <strong class="brand">{{ app_name }}</strong>
+      {% endif %}
       {% if user %}
-      <ul class="main-nav">
-        {% if not user.must_change_password %}
-        {% for item in nav_items if can(item.permission) %}
-        <li>
-          {% if item.href %}
-          {% set href = item.fallback_href if item.fallback_href and not can('manage') else item.href %}
-          <a href="{{ href }}"{% if item.key == current_nav %} aria-current="page"{% endif %}>{{ t(item.key) }}</a>
-          {% else %}
-          <a aria-disabled="true" tabindex="-1" title="{{ t('nav.not_available') }}">{{ t(item.key) }}</a>
+      <button type="button" class="nav-toggle secondary outline" aria-expanded="false" aria-controls="main-menu">{{ t('nav.menu') }}</button>
+      <div id="main-menu" class="topbar-menu">
+        <ul class="main-nav">
+          {% if not user.must_change_password %}
+          {% for item in nav_items if can(item.permission) %}
+          <li>
+            {% if item.href %}
+            {% set href = item.fallback_href if item.fallback_href and not can('manage') else item.href %}
+            <a href="{{ href }}"{% if item.key == current_nav %} aria-current="page"{% endif %}>{{ t(item.key) }}</a>
+            {% else %}
+            <a aria-disabled="true" tabindex="-1" title="{{ t('nav.not_available') }}">{{ t(item.key) }}</a>
+            {% endif %}
+          </li>
+          {% endfor %}
           {% endif %}
-        </li>
-        {% endfor %}
-        {% endif %}
-        <li><a href="/account" title="{{ t('nav.account') }}"{% if request.url.path == '/account' %} aria-current="page"{% endif %}>{{ user.username }}</a></li>
-        <li>
-          <form method="post" action="/logout" class="logout">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <button type="submit" class="secondary outline">{{ t('nav.logout') }}</button>
-          </form>
-        </li>
-      </ul>
+        </ul>
+        <ul class="user-nav">
+          <li><a href="/account" title="{{ t('nav.account') }}"{% if request.url.path == '/account' %} aria-current="page"{% endif %}>{{ user.username }}</a></li>
+          <li>
+            <form method="post" action="/logout" class="logout">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button type="submit" class="secondary outline">{{ t('nav.logout') }}</button>
+            </form>
+          </li>
+        </ul>
+      </div>
       {% endif %}
     </nav>
   </header>
-  <main class="container">
+  <main class="container-fluid">
     {% set path = request.url.path %}
     {% set area = 'articles' if path == '/articles' or path.startswith('/articles/') else 'templates' if path == '/templates' or path.startswith('/templates/') else 'attributes' if path == '/attributes' or path.startswith('/attributes/') else none %}
     {% if user and area %}{% include "_area_tabs.html" %}{% endif %}

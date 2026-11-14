@@ -466,5 +466,6 @@
   "appearance.theme.dark": "Dark",
   "appearance.theme.light": "Light",
   "appearance.hint": "The choice applies to this browser only and is stored there.",
-  "settings.tab.appearance": "Appearance"
+  "settings.tab.appearance": "Appearance",
+  "nav.menu": "Menu"
 }

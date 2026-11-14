@@ -466,5 +466,6 @@
   "appearance.theme.dark": "Dunkel",
   "appearance.theme.light": "Hell",
   "appearance.hint": "Die Wahl gilt nur für diesen Browser und wird dort gespeichert.",
-  "settings.tab.appearance": "Darstellung"
+  "settings.tab.appearance": "Darstellung",
+  "nav.menu": "Menü"
 }

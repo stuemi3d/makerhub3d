@@ -5,7 +5,7 @@ import re
 import pytest
 from playwright.sync_api import Error, Page, expect
 
-from tests.browser.conftest import ADMIN_NAME, ADMIN_PASSWORD, LiveServer, t
+from tests.browser.conftest import ADMIN_NAME, ADMIN_PASSWORD, LiveServer, open_menu, t
 
 LOGIN_BUTTON = f"button[type=submit]:has-text('{t('login.submit')}')"
 PROTECTED_PATHS = [
@@ -50,6 +50,7 @@ def test_all_pages_open_through_the_navigation(admin_page: Page) -> None:
         (t("nav.dashboard"), "/", t("nav.dashboard")),
     ]
     for link_text, path, heading in steps:
+        open_menu(admin_page)
         admin_page.locator("header, main").get_by_role(
             "link", name=link_text, exact=True
         ).first.click()
@@ -106,6 +107,7 @@ def test_pages_fit_the_screen_width(admin_page: Page, path: str) -> None:
 
 
 def test_every_navigation_entry_is_visible_on_screen(admin_page: Page) -> None:
+    open_menu(admin_page)
     width = admin_page.viewport_size["width"]
     entries = [t(key) for key in ("nav.dashboard", "nav.articles", "nav.calculation")]
     entries += [t(key) for key in ("nav.production", "nav.stock", "nav.analysis")]

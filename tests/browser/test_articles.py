@@ -2,7 +2,7 @@
 
 from playwright.sync_api import Page, expect
 
-from tests.browser.conftest import t
+from tests.browser.conftest import open_menu, t
 from tests.browser.test_pages import fits_screen_width
 
 SECTIONS = ["calculations", "productions", "stock", "sales", "analysis"]
@@ -12,6 +12,7 @@ def test_article_list_form_and_detail_work_on_every_screen(
     admin_page: Page, viewport_name: str
 ) -> None:
     number = f"3D-B-{viewport_name}"
+    open_menu(admin_page)
     admin_page.locator("header nav").get_by_text(t("nav.articles"), exact=True).click()
     expect(admin_page.locator("h1")).to_have_text(t("articles.title"))
     assert fits_screen_width(admin_page)
