@@ -1,3 +1,91 @@
+/* Design basis (issue #73): every colour, radius and size comes from the --mh-* variables
+   below, one set per theme. Nothing else in this file or in the templates may use a fixed
+   colour. The variables are mapped onto Pico's own variables further down. */
+:root[data-theme="dark"] {
+  --mh-bg: #12161d;
+  --mh-surface: #1a1f2a;
+  --mh-surface-raised: #222836;
+  --mh-border: #2d3445;
+  --mh-text: #e6e9ef;
+  --mh-text-strong: #ffffff;
+  --mh-text-muted: #98a1b3;
+  --mh-accent: #7aa7ff;
+  --mh-accent-solid: #3563d1;
+  --mh-accent-hover: #2c55b8;
+  --mh-on-accent: #ffffff;
+  --mh-success-bg: #1d3a2a;
+  --mh-success-text: #56d364;
+  --mh-neutral-bg: #2a3040;
+  --mh-danger-text: #ff8b8b;
+  --mh-focus: rgba(122, 167, 255, 0.45);
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  --mh-bg: #f4f6fa;
+  --mh-surface: #ffffff;
+  --mh-surface-raised: #ffffff;
+  --mh-border: #d9dee8;
+  --mh-text: #1c2230;
+  --mh-text-strong: #0b1020;
+  --mh-text-muted: #5b6475;
+  --mh-accent: #1d4ed8;
+  --mh-accent-solid: #2563eb;
+  --mh-accent-hover: #1d4ed8;
+  --mh-on-accent: #ffffff;
+  --mh-success-bg: #dff3e4;
+  --mh-success-text: #14602b;
+  --mh-neutral-bg: #e8ebf1;
+  --mh-danger-text: #b42318;
+  --mh-focus: rgba(37, 99, 235, 0.35);
+  color-scheme: light;
+}
+
+/* Same weight as Pico's own theme blocks, and later in the cascade, so these values win. */
+:root[data-theme] {
+  --mh-radius: 0.5rem;
+  --pico-border-radius: var(--mh-radius);
+  --pico-background-color: var(--mh-bg);
+  --pico-color: var(--mh-text);
+  --pico-h1-color: var(--mh-text-strong);
+  --pico-h2-color: var(--mh-text-strong);
+  --pico-h3-color: var(--mh-text-strong);
+  --pico-h4-color: var(--mh-text-strong);
+  --pico-muted-color: var(--mh-text-muted);
+  --pico-muted-border-color: var(--mh-border);
+  --pico-primary: var(--mh-accent);
+  --pico-primary-background: var(--mh-accent-solid);
+  --pico-primary-hover-background: var(--mh-accent-hover);
+  --pico-primary-hover: var(--mh-accent);
+  --pico-primary-underline: var(--mh-focus);
+  --pico-primary-focus: var(--mh-focus);
+  --pico-primary-inverse: var(--mh-on-accent);
+  --pico-secondary: var(--mh-text-muted);
+  --pico-secondary-hover: var(--mh-text);
+  --pico-card-background-color: var(--mh-surface);
+  --pico-card-border-color: var(--mh-border);
+  --pico-card-sectioning-background-color: var(--mh-surface-raised);
+  --pico-form-element-background-color: var(--mh-surface-raised);
+  --pico-form-element-border-color: var(--mh-border);
+  --pico-form-element-color: var(--mh-text);
+  --pico-form-element-focus-color: var(--mh-accent);
+  --pico-form-element-active-border-color: var(--mh-accent);
+  --pico-form-element-placeholder-color: var(--mh-text-muted);
+  --pico-form-element-spacing-vertical: 0.5rem;
+  --pico-form-element-spacing-horizontal: 0.75rem;
+  --pico-table-border-color: var(--mh-border);
+  --pico-del-color: var(--mh-danger-text);
+  --pico-mark-background-color: var(--mh-neutral-bg);
+  --pico-mark-color: var(--mh-text);
+  --pico-ins-color: var(--mh-success-text);
+}
+
+/* Compact buttons everywhere (like Bambuddy). */
+:root :is(button, [role="button"], [type="submit"], [type="button"]) {
+  padding: 0.3rem 0.8rem;
+  font-size: 0.8rem;
+}
+
 /* Small additions to Pico CSS. */
 .main-nav {
   flex-wrap: wrap;
@@ -152,13 +240,13 @@
 }
 
 .badge-active {
-  background: rgba(46, 160, 67, 0.2);
-  color: #56d364;
+  background: var(--mh-success-bg);
+  color: var(--mh-success-text);
 }
 
 .badge-inactive {
-  background: rgba(139, 148, 158, 0.2);
-  color: var(--pico-muted-color);
+  background: var(--mh-neutral-bg);
+  color: var(--mh-text-muted);
 }
 
 .area-tabs a[aria-current="page"] {

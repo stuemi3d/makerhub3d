@@ -460,5 +460,11 @@
   "article.delete.advice": "Better: deactivate the article, then the calculations are kept.",
   "article.delete.blocked": "This article has stock movements, productions or sales, so it cannot be deleted. You can deactivate it.",
   "log.action.article.variant_created": "Variant created",
-  "log.action.article.deleted": "Article deleted"
+  "log.action.article.deleted": "Article deleted",
+  "appearance.title": "Appearance",
+  "appearance.theme.legend": "Colour scheme",
+  "appearance.theme.dark": "Dark",
+  "appearance.theme.light": "Light",
+  "appearance.hint": "The choice applies to this browser only and is stored there.",
+  "settings.tab.appearance": "Appearance"
 }

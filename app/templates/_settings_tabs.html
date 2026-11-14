@@ -1,8 +1,11 @@
 <nav aria-label="{{ t('settings.tabs') }}" class="settings-tabs">
   <ul>
+    {% if can('manage') %}
     <li><a href="/settings"{% if settings_tab == 'values' %} aria-current="page"{% endif %}>{{ t('settings.tab.values') }}</a></li>
     <li><a href="/settings/users"{% if settings_tab == 'users' %} aria-current="page"{% endif %}>{{ t('settings.tab.users') }}</a></li>
     <li><a href="/settings/backups"{% if settings_tab == 'backups' %} aria-current="page"{% endif %}>{{ t('settings.tab.backups') }}</a></li>
     <li><a href="/settings/log"{% if settings_tab == 'log' %} aria-current="page"{% endif %}>{{ t('settings.tab.log') }}</a></li>
+    {% endif %}
+    <li><a href="/settings/appearance"{% if settings_tab == 'appearance' %} aria-current="page"{% endif %}>{{ t('settings.tab.appearance') }}</a></li>
   </ul>
 </nav>

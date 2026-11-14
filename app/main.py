@@ -50,7 +50,13 @@ NAV_ITEMS = (
     {"key": "nav.production", "href": None, "permission": Permission.VIEW},
     {"key": "nav.stock", "href": "/stock", "permission": Permission.VIEW},
     {"key": "nav.analysis", "href": None, "permission": Permission.VIEW},
-    {"key": "nav.settings", "href": "/settings", "permission": Permission.MANAGE},
+    # Open to everyone (issue #73): others only reach the appearance page, not the admin pages.
+    {
+        "key": "nav.settings",
+        "href": "/settings",
+        "fallback_href": "/settings/appearance",
+        "permission": Permission.VIEW,
+    },
 )
 
 SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
@@ -436,6 +442,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             saved=saved == "1",
             roundings=list(Rounding),
         )
+
+    # The theme lives in the browser only (issue #73), so every role may open this page.
+    @app.get(
+        "/settings/appearance",
+        response_class=HTMLResponse,
+        dependencies=[requires(Permission.VIEW)],
+    )
+    def appearance_page(request: Request) -> HTMLResponse:
+        return render(request, "appearance.html", "nav.settings")
 
     @app.post("/settings", response_class=HTMLResponse, dependencies=[requires(Permission.MANAGE)])
     async def save_settings(request: Request) -> Response:

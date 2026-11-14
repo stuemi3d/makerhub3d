@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}{{ t('appearance.title') }} – {{ app_name }}{% endblock %}
+{% block content %}
+{% set settings_tab = 'appearance' %}
+{% include "_settings_tabs.html" %}
+<h1>{{ t('appearance.title') }}</h1>
+<form>
+  <fieldset>
+    <legend><strong>{{ t('appearance.theme.legend') }}</strong></legend>
+    <label for="theme-dark"><input type="radio" id="theme-dark" name="theme" value="dark" checked> {{ t('appearance.theme.dark') }}</label>
+    <label for="theme-light"><input type="radio" id="theme-light" name="theme" value="light"> {{ t('appearance.theme.light') }}</label>
+    <small>{{ t('appearance.hint') }}</small>
+  </fieldset>
+</form>
+{% endblock %}
