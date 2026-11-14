@@ -2,6 +2,7 @@
 {% block title %}{{ t('two_factor.setup.title') }} – {{ app_name }}{% endblock %}
 {% block content %}
 <h1>{{ t('two_factor.setup.title') }}</h1>
+<article class="detail-card">
 {% if failed %}
 <p role="alert"><mark>{{ t('two_factor.setup.failed') }}</mark></p>
 {% endif %}
@@ -22,4 +23,5 @@
   <button type="submit">{{ t('two_factor.setup.submit') }}</button>
 </form>
 <p><a href="/account">{{ t('two_factor.setup.cancel') }}</a></p>
+</article>
 {% endblock %}

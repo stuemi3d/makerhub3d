@@ -9,7 +9,7 @@ id="{{ name }}" name="{{ name }}"{% if errors.get(name) %} aria-invalid="true" a
 {% endif %}
 {%- endmacro %}
 {% block content %}
-<article class="auth-box">
+<article class="auth-box detail-card">
   <h1>{{ t('setup.title') }}</h1>
   <p>{{ t('setup.intro') }}</p>
   {% if errors %}

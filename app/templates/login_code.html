@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ t('login_code.title') }} – {{ app_name }}{% endblock %}
 {% block content %}
-<article class="auth-box">
+<article class="auth-box detail-card">
   <h1>{{ t('login_code.title') }}</h1>
   {% if failed %}
   <p role="alert"><mark>{{ t('login_code.failed') }}</mark></p>
