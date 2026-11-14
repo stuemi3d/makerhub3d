@@ -578,6 +578,11 @@ dialog#popup h1 {
   margin: 0 0 1rem;
 }
 
+.auth-box.detail-card {
+  /* Login, code entry and setup: the card stays centered (the card margin comes later). */
+  margin: 2rem auto;
+}
+
 .card-title {
   font-size: 1.1rem;
   margin: 0 0 0.5rem;

@@ -2,6 +2,7 @@
 {% block title %}{{ t('two_factor.codes.title') }} – {{ app_name }}{% endblock %}
 {% block content %}
 <h1>{{ t('two_factor.codes.title') }}</h1>
+<article class="detail-card">
 <p role="status"><ins>{{ t('two_factor.codes.saved') }}</ins></p>
 <p><mark>{{ t('two_factor.codes.warning') }}</mark></p>
 <ul class="recovery-codes">
@@ -10,4 +11,5 @@
   {% endfor %}
 </ul>
 <p><a href="/account" role="button">{{ t('two_factor.codes.done') }}</a></p>
+</article>
 {% endblock %}

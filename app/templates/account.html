@@ -15,8 +15,8 @@
 {% if errors %}
 <p role="alert"><mark>{{ t('account.has_errors') }}</mark></p>
 {% endif %}
-<section>
-  <h2>{{ t('account.password.title') }}</h2>
+<article class="detail-card">
+  <h2 class="card-title">{{ t('account.password.title') }}</h2>
   <form method="post" action="/account/password" novalidate>
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <label for="current_password">{{ t('account.field.current_password') }}</label>
@@ -30,9 +30,9 @@
     {{ feedback('password_repeat', errors, t, 'account.hint.') }}
     <button type="submit">{{ t('account.password.submit') }}</button>
   </form>
-</section>
-<section>
-  <h2>{{ t('two_factor.title') }}</h2>
+</article>
+<article class="detail-card">
+  <h2 class="card-title">{{ t('two_factor.title') }}</h2>
   {% if two_factor.enabled %}
   <p><strong>{{ t('two_factor.status.on') }}</strong></p>
   <p>{{ t('two_factor.codes_left').format(count=two_factor.codes_left) }}</p>
@@ -68,5 +68,5 @@
     <button type="submit">{{ t('two_factor.setup.start') }}</button>
   </form>
   {% endif %}
-</section>
+</article>
 {% endblock %}
