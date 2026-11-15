@@ -2,22 +2,22 @@
    below, one set per theme. Nothing else in this file or in the templates may use a fixed
    colour. The variables are mapped onto Pico's own variables further down. */
 :root[data-theme="dark"] {
-  --mh-bg: #12161d;
-  --mh-surface: #1a1f2a;
-  --mh-surface-raised: #222836;
-  --mh-border: #2d3445;
-  --mh-text: #e6e9ef;
+  --mh-bg: #181c20;
+  --mh-surface: #262c32;
+  --mh-surface-raised: #2b3238;
+  --mh-border: #38404a;
+  --mh-text: #e5e7eb;
   --mh-text-strong: #ffffff;
-  --mh-text-muted: #98a1b3;
-  --mh-accent: #7aa7ff;
-  --mh-accent-solid: #3563d1;
-  --mh-accent-hover: #2c55b8;
+  --mh-text-muted: #9ca3af;
+  --mh-accent: #60a5fa;
+  --mh-accent-solid: #2563eb;
+  --mh-accent-hover: #1d4ed8;
   --mh-on-accent: #ffffff;
   --mh-success-bg: #1d3a2a;
   --mh-success-text: #56d364;
-  --mh-neutral-bg: #2a3040;
+  --mh-neutral-bg: #343b43;
   --mh-danger-text: #ff8b8b;
-  --mh-focus: rgba(122, 167, 255, 0.45);
+  --mh-focus: rgba(96, 165, 250, 0.45);
   color-scheme: dark;
 }
 
@@ -44,6 +44,9 @@
 /* Same weight as Pico's own theme blocks, and later in the cascade, so these values win. */
 :root[data-theme] {
   --mh-radius: 0.5rem;
+  /* Compact basis size like Bambuddy (14 px); Pico would grow the text on wide screens. */
+  --pico-font-size: 87.5%;
+  --pico-typography-spacing-vertical: 1rem;
   --pico-border-radius: var(--mh-radius);
   --pico-background-color: var(--mh-bg);
   --pico-color: var(--mh-text);
@@ -83,7 +86,19 @@
 /* Compact buttons everywhere (like Bambuddy). */
 :root :is(button, [role="button"], [type="submit"], [type="button"]) {
   padding: 0.3rem 0.8rem;
-  font-size: 0.8rem;
+  font-size: 0.9rem;
+}
+
+/* Smaller headings than Pico's defaults. */
+:root h1 {
+  font-size: 1.6rem;
+  margin-bottom: 1rem;
+}
+:root h2 {
+  font-size: 1.25rem;
+}
+:root h3 {
+  font-size: 1.1rem;
 }
 
 /* Small additions to Pico CSS. */
@@ -131,7 +146,7 @@
   display: block;
   margin: 0;
   padding: 0.4rem 0.5rem;
-  font-size: 0.85rem;
+  font-size: 1.05rem; /* keeps the bar as large as before the smaller base size */
   border-radius: var(--mh-radius);
   text-decoration: none;
   color: var(--mh-text-muted);
@@ -234,10 +249,36 @@
   line-height: 1.2;
 }
 
-/* Tabs for the area Articles / Templates / Attributes. */
-.area-tabs ul {
-  padding-left: 0;
+/* Tabs for the area Articles / Templates / Attributes: a flat row with a thin line below;
+   the open tab is marked with a straight line in the accent colour. */
+.area-tabs {
+  display: block;
+}
+.area-tabs ul,
+.area-tabs ul:first-of-type {
+  display: flex;
   flex-wrap: wrap;
+  gap: 0.25rem;
+  margin: 0 0 1rem;
+  padding: 0;
+  border-bottom: 1px solid var(--mh-border);
+}
+.area-tabs li {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.area-tabs ul li a {
+  display: block;
+  margin: 0 0 -1px;
+  padding: 0.5rem 0.9rem;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  color: var(--mh-text-muted);
+  text-decoration: none;
+}
+.area-tabs ul li a:hover {
+  color: var(--mh-text-strong);
 }
 
 /* Heading row: title on the left, small buttons on the right. */
@@ -308,7 +349,7 @@
   display: inline-block;
   padding: 0.1rem 0.6rem;
   border-radius: 1rem;
-  font-size: 0.8rem;
+  font-size: 0.9rem;
 }
 
 .badge-active {
@@ -321,9 +362,10 @@
   color: var(--mh-text-muted);
 }
 
-.area-tabs a[aria-current="page"] {
-  border-bottom: 2px solid currentColor;
-  font-weight: bold;
+.area-tabs ul li a[aria-current="page"] {
+  border-bottom-color: var(--mh-accent-solid);
+  color: var(--mh-text-strong);
+  font-weight: 600;
 }
 
 /* Dashboard key figures: one column on the phone, three on wide screens. */
@@ -370,7 +412,7 @@
   width: auto;
   margin: 0;
   padding: 0.1rem 0.5rem;
-  font-size: 0.75rem;
+  font-size: 0.85rem;
 }
 
 /* Table building block (issue #75): a card with a header in small capitals, sortable columns,
@@ -410,7 +452,7 @@
 
 .data-table th,
 .data-table td {
-  padding: 0.6rem 0.9rem;
+  padding: 0.5rem 0.9rem;
   background: transparent;
   border-bottom: 1px solid var(--mh-border);
   vertical-align: middle;
@@ -423,7 +465,7 @@
 .data-table thead th {
   background: var(--mh-surface-raised);
   color: var(--mh-text-muted);
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -457,7 +499,7 @@
 
 .muted {
   color: var(--mh-text-muted);
-  font-size: 0.8rem;
+  font-size: 0.9rem;
 }
 
 .row-actions {
@@ -501,7 +543,7 @@ button.icon-btn {
   display: inline-block;
   padding: 0.1rem 0.6rem;
   border-radius: 1rem;
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   white-space: nowrap;
 }
 
@@ -591,7 +633,7 @@ dialog#popup h1 {
 .details dt,
 .stat-label {
   color: var(--mh-text-muted);
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
