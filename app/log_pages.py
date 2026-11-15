@@ -17,12 +17,11 @@ from app.permissions import Permission, requires
 from app.settings_form import DECIMAL_FIELDS, format_decimal
 
 PAGE_SIZE = 50
-_DECIMAL_NAMES = {field.name for field in DECIMAL_FIELDS} | {"selling_price", "weight"}
+_DECIMAL_NAMES = {field.name for field in DECIMAL_FIELDS} | {"selling_price"}
 _ARTICLE_FIELDS = {
     "number",
     "name",
     "selling_price",
-    "weight",
     "min_stock",
     "template",
     "attribute_value",

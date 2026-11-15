@@ -293,7 +293,6 @@ def test_the_suggested_number_can_be_saved_or_replaced(client: AppClient) -> Non
                 "number": number,
                 "name": number,
                 "selling_price": "",
-                "weight": "",
                 "min_stock": "",
                 f"attr_{colour_id}": str(values["blau"]),
                 f"attr_{size_id}": str(values["mittel"]),

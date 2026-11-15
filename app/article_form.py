@@ -12,7 +12,7 @@ _MAX_INPUT_LENGTH = 20
 NUMBER_MAX_LENGTH = 50
 NAME_MAX_LENGTH = 100
 MAX_MIN_STOCK = 1_000_000
-FIELD_NAMES = ("number", "name", "selling_price", "weight", "min_stock")
+FIELD_NAMES = ("number", "name", "selling_price", "min_stock")
 
 
 @dataclass(frozen=True)
@@ -20,14 +20,10 @@ class DecimalField:
     name: str
     max_decimals: int
     max_value: Decimal
-    # A weight of 0 would make a piece cost nothing when costs are split.
     allow_zero: bool
 
 
-DECIMAL_FIELDS = (
-    DecimalField("selling_price", 2, Decimal("100000"), allow_zero=True),
-    DecimalField("weight", 2, Decimal("1000"), allow_zero=False),
-)
+DECIMAL_FIELDS = (DecimalField("selling_price", 2, Decimal("100000"), allow_zero=True),)
 
 
 def number_key(number: str) -> str:
@@ -69,7 +65,7 @@ def _parse_whole(raw: str) -> tuple[int | None, str | None]:
 
 
 def validate_defaults(raw: dict[str, str]) -> tuple[dict[str, object], dict[str, str]]:
-    """Checks selling price, weight and minimum stock, which articles and templates share."""
+    """Checks selling price and minimum stock, which articles and templates share."""
     values: dict[str, object] = {}
     errors: dict[str, str] = {}
 

@@ -88,7 +88,7 @@ def test_pop_up_is_only_the_form_and_the_page_still_works(client: AppClient, edi
     assert "<html" not in popup.text and "topbar" not in popup.text and "<form" in popup.text
     assert "<html" in page.text and "topbar" in page.text
     assert "HX-Request" in popup.headers["vary"]
-    for field in ("number", "name", "description", "selling_price", "weight", "min_stock"):
+    for field in ("number", "name", "description", "selling_price", "min_stock"):
         assert f'name="{field}"' in popup.text and f'name="{field}"' in page.text
     assert 'name="attr_1"' in popup.text
     assert "hx-post" in popup.text and "hx-post" not in page.text

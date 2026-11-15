@@ -17,7 +17,7 @@ EN = json.loads((APP_DIR / "locales" / "en.json").read_text(encoding="utf-8"))
 
 
 def article_form(number: str, name: str = "Kabelhalter") -> dict[str, str]:
-    return {"number": number, "name": name, "selling_price": "", "weight": "", "min_stock": ""}
+    return {"number": number, "name": name, "selling_price": "", "min_stock": ""}
 
 
 @pytest.mark.parametrize("number", ["123456", "123456 ", "V-ABC", "v-abc"])

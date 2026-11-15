@@ -133,7 +133,6 @@ def add_article_routes(
             "number": article.number,
             "name": article.name,
             "selling_price": shown(variants.effective(article, "selling_price")),
-            "weight": shown(variants.effective(article, "weight")),
             "min_stock": variants.effective(article, "min_stock"),
             "active": article.active,
             "template": None if template is None else {"id": template.id, "name": template.name},

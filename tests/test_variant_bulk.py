@@ -93,7 +93,7 @@ def test_confirming_creates_four_articles_with_the_values(client: AppClient, set
     article = article_by_number(f"{prefix}-ro-l")
     assert article.template_id == setup.template_id
     assert article.active is True
-    # Price, weight and minimum stock are inherited, not copied.
+    # Price and minimum stock are inherited, not copied.
     assert article.selling_price is None
     assert value_texts(article.id) == {"Farbe": "rot", "Größe": "L"}
     with db() as session:

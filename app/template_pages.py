@@ -43,8 +43,8 @@ NAME_LIMIT = 50
 VALUE_LIMIT = 50
 ABBREVIATION_LIMIT = 10
 DESCRIPTION_LIMIT = 1000
-TEMPLATE_FIELDS = ("number", "name", "description", "selling_price", "weight", "min_stock")
-DEFAULT_FIELDS = ("selling_price", "weight", "min_stock")
+TEMPLATE_FIELDS = ("number", "name", "description", "selling_price", "min_stock")
+DEFAULT_FIELDS = ("selling_price", "min_stock")
 
 
 def key_of(text: str) -> str:
@@ -398,7 +398,6 @@ def add_template_routes(
             "description": template.description,
             "selling_price": shown(template.selling_price),
             "price_value": template.selling_price,
-            "weight": shown(template.weight),
             "min_stock": template.min_stock,
             "active": template.active,
             "attributes": template_attributes(db, template.id),
