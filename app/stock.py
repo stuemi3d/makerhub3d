@@ -7,12 +7,18 @@ changed or deleted. A mistake is cancelled by a counter booking.
 import re
 from dataclasses import dataclass
 from datetime import date, datetime
+from threading import Lock
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app import audit, auth, table_sort
 from app.models import Article, StockMovement, StockMovementKind, User
+
+# Checking the stock (or whether a print is taken) and booking must not overlap, or two bookings
+# could together push the stock below zero. One lock for all bookings (also productions) is
+# enough: the app runs as one process with one database. Callers hold it around the transaction.
+booking_lock = Lock()
 
 BOOK_FIELDS = ("article_id", "type", "quantity", "reason", "date")
 MAX_REASON = 200
