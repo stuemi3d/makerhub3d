@@ -500,5 +500,10 @@
   "bambuddy.error.forbidden": "The key lacks a right for this request:",
   "bambuddy.error.server_error": "Bambuddy reports an error.",
   "bambuddy.error.bad_response": "Bambuddy returned unexpected data. Is the address right and the version current?",
-  "log.action.bambuddy.changed": "Bambuddy connection changed"
+  "log.action.bambuddy.changed": "Bambuddy connection changed",
+  "bambuddy.status.ready": "Set up",
+  "bambuddy.status.not_ready": "Not set up",
+  "bambuddy.status.missing_url": "The address is missing.",
+  "bambuddy.status.missing_key": "The access key is missing.",
+  "bambuddy.status.missing_both": "Address and access key are missing."
 }

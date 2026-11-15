@@ -20,6 +20,22 @@ KEY_CHANGED = "(neu gesetzt)"
 KEY_REMOVED = "(entfernt)"
 
 
+def missing_parts(url: str, has_key: bool) -> str | None:
+    """Translation key of what is missing for the status, or None if it is set up."""
+    if not url and not has_key:
+        return "bambuddy.status.missing_both"
+    if not url:
+        return "bambuddy.status.missing_url"
+    if not has_key:
+        return "bambuddy.status.missing_key"
+    return None
+
+
+def connection_is_set_up(db: Session) -> bool:
+    row = db.get(BambuddyConnection, 1)
+    return row is not None and missing_parts(row.url, row.api_key_encrypted is not None) is None
+
+
 def add_bambuddy_routes(
     app: FastAPI,
     new_session: Callable[[], Session],
@@ -44,6 +60,8 @@ def add_bambuddy_routes(
             "nav.settings",
             status_code=status_code,
             has_key=has_key,
+            missing=missing_parts(url, has_key),
+            address=url,
             can_store_key=cipher is not None,
             **context,
         )
