@@ -3,6 +3,10 @@
 {% block title %}{{ t('production.title') }} – {{ app_name }}{% endblock %}
 {% block content %}
 {% set can_choose = can('edit') and view == 'open' and rows and not prints.not_set_up and not prints.error %}
+{% if not prints.not_set_up %}
+{% set active = view %}
+{% include "_production_tabs.html" %}
+{% endif %}
 <div class="page-head">
   <h1>{{ t('production.title') }}</h1>
   {% if can_choose %}
@@ -13,7 +17,7 @@
   </div>
   {% endif %}
 </div>
-<p><small>{{ t('production.intro') }}</small></p>
+<p><small>{{ t('production.intro') }}{% if can_choose %} {{ t('production.create.hint') }}{% endif %}</small></p>
 {% if error %}<p role="alert"><mark>{{ t(error) }}</mark></p>{% endif %}
 {% if prints.not_set_up %}
 <article class="empty-hint">
@@ -21,8 +25,6 @@
   {% if can('manage') %}<a href="/settings/bambuddy" role="button">{{ t('production.to_settings') }}</a>{% endif %}
 </article>
 {% else %}
-{% set active = view %}
-{% include "_production_tabs.html" %}
 {% if prints.error %}
 <p role="alert"><span class="chip chip-warn">{{ t(prints.error[0]) }}</span>{% if prints.error[1] %} <code>{{ prints.error[1] }}</code>{% endif %}</p>
 {% else %}
@@ -30,8 +32,7 @@
 {% if rows %}
 {% if can_choose %}
 {# The ticked prints go to the form for a new production; the boxes and the button belong to this form from afar, so that the buttons of the rows can have forms of their own #}
-<form id="select-form" method="get" action="/production/new"></form>
-<p><small>{{ t('production.create.hint') }}</small></p>
+<form id="select-form" method="get" action="/production/new" hx-get="/production/new" hx-target="#popup-body" hx-swap="innerHTML" data-popup></form>
 {% endif %}
 <article class="data-card">
 <div class="data-scroll">

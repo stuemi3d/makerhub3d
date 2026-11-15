@@ -56,7 +56,11 @@ def test_the_button_sits_in_the_head_and_the_hint_above_the_list(
     assert "page-actions" in html
     actions = re.search(r'<div class="page-actions">.*?</div>', html, re.S).group(0)
     assert "data-requires-checked" in actions
-    assert html.index("page-actions") < html.index('class="data-card"')
+    assert (
+        html.index('class="area-tabs"')
+        < html.index("page-actions")
+        < html.index('class="data-card"')
+    )
     # The hint is plain text between the tabs and the table, not next to the button.
     hint = html.index(DE["production.create.hint"])
     assert html.index('class="area-tabs"') < hint < html.index('class="data-card"')

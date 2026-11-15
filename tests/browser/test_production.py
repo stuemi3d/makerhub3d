@@ -132,7 +132,9 @@ def test_booking_and_cancelling_work_on_every_screen(
     admin_page.goto("/production")
     admin_page.locator("tr.print-row").first.locator("input[name=prints]").check()
     admin_page.get_by_role("button", name=t("production.create"), exact=True).click()
-    expect(admin_page.locator("h1")).to_have_text(t("production.new.title"))
+    # The form opens in the pop-up over the list of prints
+    expect(admin_page.locator("#popup h1")).to_have_text(t("production.new.title"))
+    expect(admin_page.locator("#popup")).to_be_visible()
     assert fits_screen_width(admin_page)
 
     admin_page.select_option("#article_1", label=f"{number} · Halter")
@@ -141,6 +143,8 @@ def test_booking_and_cancelling_work_on_every_screen(
     expect(admin_page.locator(".preview-total")).to_be_visible()
     assert fits_screen_width(admin_page)
     admin_page.get_by_role("button", name=t("production.book"), exact=True).click()
+    # Booked: the pop-up is gone and the list of productions shows the message
+    expect(admin_page.locator("#popup")).not_to_be_visible()
     expect(admin_page.locator("[role=status]")).to_contain_text(t("production.booked"))
     # The browser tests share one database: look for the row of this test's article only.
     row = admin_page.locator("tr.production-row").filter(has_text=number)
@@ -179,7 +183,7 @@ def test_the_create_button_waits_for_a_chosen_print(admin_page: Page, fake_bambu
 
 
 SCROLLERS = """
-() => [...document.querySelectorAll('main *')].filter((e) => {
+() => [...document.querySelectorAll('#popup *')].filter((e) => {
   const overflow = getComputedStyle(e).overflowX;
   return (overflow === 'auto' || overflow === 'scroll') && e.scrollWidth > e.clientWidth + 1;
 }).length
@@ -202,7 +206,8 @@ def test_the_form_has_no_sideways_scrolling_and_a_wide_article_choice(
     admin_page.goto("/production")
     admin_page.locator("input[name=prints]").first.check()
     admin_page.get_by_role("button", name=t("production.create"), exact=True).click()
-    expect(admin_page.locator("h1")).to_have_text(t("production.new.title"))
+    expect(admin_page.locator("#popup h1")).to_have_text(t("production.new.title"))
+    expect(admin_page.locator("#popup")).to_be_visible()
 
     before = admin_page.locator("#article_1").bounding_box()["width"]
     assert admin_page.evaluate(SCROLLERS) == 0
@@ -219,3 +224,77 @@ def test_the_form_has_no_sideways_scrolling_and_a_wide_article_choice(
     assert admin_page.evaluate(SCROLLERS) == 0
     assert fits_screen_width(admin_page)
     assert abs(after - before) <= 2
+
+
+def test_the_popup_keeps_the_ticks_when_cancelled(admin_page: Page, fake_bambuddy: str) -> None:
+    connect(admin_page, fake_bambuddy)
+    admin_page.goto("/production")
+    admin_page.locator("input[name=prints]").first.check()
+    admin_page.get_by_role("button", name=t("production.create"), exact=True).click()
+    expect(admin_page.locator("#popup h1")).to_have_text(t("production.new.title"))
+
+    admin_page.locator("#popup").get_by_role("button", name=t("article.cancel"), exact=True).click()
+
+    expect(admin_page.locator("#popup")).not_to_be_visible()
+    expect(admin_page.locator("input[name=prints]").first).to_be_checked()
+    expect(admin_page.locator("[data-selected-text]")).to_have_text(f"1 {t('production.selected')}")
+
+
+def click_and_wait(page: Page, button) -> None:
+    """Clicks a button of the pop-up form and waits until the answer is swapped in, so that
+    typing on goes into the new form and not into one that is about to be replaced."""
+    with page.expect_response(
+        lambda r: r.url.endswith("/production/new") and r.request.method == "POST"
+    ):
+        button.click()
+    page.wait_for_function(
+        "() => !document.querySelector('.htmx-request, .htmx-swapping, .htmx-settling')"
+    )
+
+
+def test_the_preview_keeps_working_after_the_same_article_was_chosen_twice(
+    admin_page: Page, fake_bambuddy: str, viewport_name: str
+) -> None:
+    connect(admin_page, fake_bambuddy)
+    number = f"PRD-DUP-{viewport_name}"
+    admin_page.goto("/articles/new")
+    admin_page.fill("#number", number)
+    admin_page.fill("#name", "Halter")
+    admin_page.locator(f"button[type=submit]:has-text('{t('article.create')}')").click()
+    expect(admin_page.locator("h1")).to_contain_text("Halter")
+    admin_page.goto("/production")
+    admin_page.locator("input[name=prints]").first.check()
+    admin_page.get_by_role("button", name=t("production.create"), exact=True).click()
+    popup = admin_page.locator("#popup")
+    preview = popup.get_by_role("button", name=t("production.preview"), exact=True)
+    label = f"{number} · Halter"
+    total = popup.locator(".preview-total")
+    error = popup.locator("#article_2-error")
+
+    popup.locator("#article_1").select_option(label=label)
+    popup.locator("#quantity_1").fill("2")
+    click_and_wait(admin_page, preview)
+    expect(total).to_be_visible()
+    # The same article in a second row: a message at that row
+    popup.locator("#article_2").select_option(label=label)
+    popup.locator("#quantity_2").fill("3")
+    click_and_wait(admin_page, preview)
+    expect(error).to_be_visible()
+    expect(total).to_have_count(0)
+    # Changing again and again keeps answering (and the message stays while it is true)
+    for quantity in ("4", "5", "6"):
+        popup.locator("#quantity_1").fill(quantity)
+        click_and_wait(admin_page, preview)
+        expect(error).to_be_visible()
+    # Emptying the second row: the old cost numbers of the first preview must not count
+    popup.locator("#article_2").select_option(value="")
+    popup.locator("#quantity_2").fill("")
+    click_and_wait(admin_page, preview)
+    expect(total).to_be_visible()
+    expect(error).to_have_count(0)
+    for quantity in ("7", "8"):
+        popup.locator("#quantity_1").fill(quantity)
+        click_and_wait(admin_page, preview)
+        expect(total).to_be_visible()
+        expect(popup.locator("#quantity_1")).to_have_value(quantity)
+    assert fits_screen_width(admin_page)

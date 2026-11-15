@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import print_list, production, production_form, production_view, stock
+from app.article_pages import wants_popup
 from app.models import Article
 from app.permissions import Permission, requires
 from app.two_factor import Cipher
@@ -155,11 +156,22 @@ def add_production_routes(
             total_text, lines = preview
             for line in lines:
                 result_rows[line["n"] - 1].update(alloc=line["alloc"], per_piece=line["per_piece"])
+        # The split columns belong to a successful preview, or to a booking that was refused
+        # because of the split itself (then the typed values stay); after any other error or
+        # after adding a row they would be out of date
+        split_refused = any(key == "alloc" or key.startswith("alloc_") for key in errors)
+        show_alloc = preview is not None or (
+            draft.action == "book"
+            and split_refused
+            and any((text or "").strip() for text in draft.allocs)
+        )
         return render(
             request,
             "production_new.html",
             "nav.production",
             status_code=status_code,
+            popup=wants_popup(request),
+            show_alloc=show_alloc,
             prints=prints,
             draft=draft,
             shown_prints=shown,
@@ -169,7 +181,7 @@ def add_production_routes(
             errors=errors,
             preview_total=total_text,
             previewed=preview is not None,
-            preview_key=preview_key,
+            preview_key=(preview_key or draft.preview_key) if show_alloc else "",
             today=date.today().isoformat(),
         )
 
@@ -262,7 +274,11 @@ def add_production_routes(
             )
         if production_id is None:
             return form_page(request, draft, prints, 422, errors)
-        return RedirectResponse("/production/list?booked=1", status_code=303)
+        target = "/production/list?booked=1"
+        if wants_popup(request):
+            # The page behind the pop-up is the list of prints: go to the productions
+            return Response(status_code=204, headers={"HX-Redirect": target})
+        return RedirectResponse(target, status_code=303)
 
     @app.post("/production/new", response_class=HTMLResponse, dependencies=edit_right)
     async def create_production(request: Request) -> Response:
