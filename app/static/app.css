@@ -204,12 +204,6 @@
   margin: 2rem auto;
 }
 
-.settings-tabs ul {
-  padding-left: 0;
-  /* Four tabs do not fit next to each other on a phone. */
-  flex-wrap: wrap;
-}
-
 .qr-code img {
   display: block;
   width: 100%;
@@ -249,13 +243,16 @@
   line-height: 1.2;
 }
 
-/* Tabs for the area Articles / Templates / Attributes: a flat row with a thin line below;
+/* Tabs for the areas Articles / Templates / Attributes and for Settings (and the log): a flat row with a thin line below;
    the open tab is marked with a straight line in the accent colour. */
-.area-tabs {
+.area-tabs,
+.settings-tabs {
   display: block;
 }
 .area-tabs ul,
-.area-tabs ul:first-of-type {
+.area-tabs ul:first-of-type,
+.settings-tabs ul,
+.settings-tabs ul:first-of-type {
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem;
@@ -263,12 +260,14 @@
   padding: 0;
   border-bottom: 1px solid var(--mh-border);
 }
-.area-tabs li {
+.area-tabs li,
+.settings-tabs li {
   margin: 0;
   padding: 0;
   list-style: none;
 }
-.area-tabs ul li a {
+.area-tabs ul li a,
+.settings-tabs ul li a {
   display: block;
   margin: 0 0 -1px;
   padding: 0.5rem 0.9rem;
@@ -277,7 +276,8 @@
   color: var(--mh-text-muted);
   text-decoration: none;
 }
-.area-tabs ul li a:hover {
+.area-tabs ul li a:hover,
+.settings-tabs ul li a:hover {
   color: var(--mh-text-strong);
 }
 
@@ -362,7 +362,8 @@
   color: var(--mh-text-muted);
 }
 
-.area-tabs ul li a[aria-current="page"] {
+.area-tabs ul li a[aria-current="page"],
+.settings-tabs ul li a[aria-current="page"] {
   border-bottom-color: var(--mh-accent-solid);
   color: var(--mh-text-strong);
   font-weight: 600;
