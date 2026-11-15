@@ -56,7 +56,8 @@ def good_handler(request: httpx2.Request) -> httpx2.Response:
 
 
 def save(client: AppClient, **form: str):
-    data = {"url": URL, "api_key": KEY, **form}
+    # The form always sends the start date (issue #119)
+    data = {"url": URL, "api_key": KEY, "prints_from": "2026-01-01", **form}
     return client.post("/settings/bambuddy", data=data, follow_redirects=False)
 
 

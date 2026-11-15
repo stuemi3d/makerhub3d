@@ -692,3 +692,12 @@ main .detail-card:not(.auth-box) > form [type="submit"] {
   margin: 0.25rem 0;
   overflow-wrap: anywhere;
 }
+
+/* Failed prints in the production list */
+.print-failed td {
+  color: var(--mh-danger-text);
+}
+
+.print-failed td.cell-strong {
+  font-weight: 600;
+}

@@ -14,10 +14,10 @@ def test_status_block_fits_and_shows_both_states(admin_page: Page) -> None:
     expect(block).to_be_visible()
     assert fits_screen_width(admin_page)
 
-    admin_page.fill("#url", "http://bambuddy.example.com:8000")
+    admin_page.fill("#url", "http://127.0.0.1:9")
     admin_page.fill("#api_key", "test-key-nur-fuer-tests")
     admin_page.locator("main form[action='/settings/bambuddy'] button[type=submit]").click()
     expect(block).to_contain_text(t("bambuddy.status.ready"))
-    expect(block).to_contain_text("http://bambuddy.example.com:8000")
+    expect(block).to_contain_text("http://127.0.0.1:9")
     expect(admin_page.locator(".settings-tabs .status-dot-on")).to_be_visible()
     assert fits_screen_width(admin_page)

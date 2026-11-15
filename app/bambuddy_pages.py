@@ -1,6 +1,8 @@
 """Settings tab for the Bambuddy connection (issue #117): address, key, connection test."""
 
+import re
 from collections.abc import Callable
+from datetime import date
 
 import httpx2
 from fastapi import FastAPI, Request, Response
@@ -31,6 +33,17 @@ def missing_parts(url: str, has_key: bool) -> str | None:
     return None
 
 
+def parse_prints_from(text: str) -> date | None:
+    """The start date from the form (YYYY-MM-DD, not in the future), or None if invalid."""
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", text):
+        return None
+    try:
+        value = date.fromisoformat(text)
+    except ValueError:
+        return None
+    return value if value <= date.today() else None
+
+
 def connection_is_set_up(db: Session) -> bool:
     row = db.get(BambuddyConnection, 1)
     return row is not None and missing_parts(row.url, row.api_key_encrypted is not None) is None
@@ -49,7 +62,11 @@ def add_bambuddy_routes(
         with new_session() as db:
             row = db.get(BambuddyConnection, 1)
             url, has_key = row.url, row.api_key_encrypted is not None
-        context.setdefault("values", {"url": url})
+            prints_from = row.prints_from
+        context.setdefault(
+            "values",
+            {"url": url, "prints_from": (prints_from or date.today()).isoformat()},
+        )
         context.setdefault("errors", {})
         context.setdefault("saved", False)
         context.setdefault("test_error", None)
@@ -60,6 +77,7 @@ def add_bambuddy_routes(
             "nav.settings",
             status_code=status_code,
             has_key=has_key,
+            today=date.today().isoformat(),
             missing=missing_parts(url, has_key),
             address=url,
             can_store_key=cipher is not None,
@@ -72,7 +90,7 @@ def add_bambuddy_routes(
 
     @app.post("/settings/bambuddy", response_class=HTMLResponse, dependencies=manage)
     async def save_bambuddy(request: Request) -> Response:
-        raw = await read_form(request, ("url", "api_key"))
+        raw = await read_form(request, ("url", "api_key", "prints_from"))
         url = raw.get("url", "").strip()
         api_key = raw.get("api_key", "").strip()
         errors: dict[str, str] = {}
@@ -82,13 +100,38 @@ def add_bambuddy_routes(
             errors["api_key"] = "settings.error.too_long"
         elif api_key and cipher is None:
             errors["api_key"] = "bambuddy.error.no_cipher"
+        prints_from_text = raw.get("prints_from", "").strip()
+        with new_session() as db:
+            stored_from = db.get(BambuddyConnection, 1).prints_from
+        prints_from = stored_from
+        if prints_from_text or stored_from is not None:
+            # Empty is only fine the first time: then the day starts today.
+            prints_from = parse_prints_from(prints_from_text)
+            if prints_from is None:
+                errors["prints_from"] = "bambuddy.error.prints_from"
+        else:
+            prints_from = date.today()
         if errors:
             # The key is never sent back to the browser.
-            return show(request, status_code=422, values={"url": url}, errors=errors)
+            return show(
+                request,
+                status_code=422,
+                values={"url": url, "prints_from": prints_from_text},
+                errors=errors,
+            )
         url = url.rstrip("/")
         with new_session() as db, db.begin():
             row = db.get(BambuddyConnection, 1)
             changes = audit.field_changes({"url": row.url}, {"url": url})
+            if prints_from != row.prints_from:
+                changes.append(
+                    {
+                        "field": "prints_from",
+                        "old": row.prints_from.isoformat() if row.prints_from else "",
+                        "new": prints_from.isoformat(),
+                    }
+                )
+                row.prints_from = prints_from
             if url != row.url and not api_key and row.api_key_encrypted is not None:
                 # A new address must not receive the old key.
                 row.api_key_encrypted = None
