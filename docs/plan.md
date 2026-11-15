@@ -69,14 +69,14 @@ Der Artikel ist der Knotenpunkt; alles andere hängt über die Artikelnummer an 
 | Artikelvorlage | Vorlagennummer, Name, Beschreibung, Merkmale (z. B. Farbe, Größe; jeder Merkmalswert mit Kürzel), Standardwerte für Preis, Gewichtung und Mindestbestand, aktiv | nur Vorlage: kein Bestand, kein Verkauf |
 | Artikel | Artikelnummer, Bezeichnung, optional Vorlage + Merkmalswerte (= Variante), Soll-Verkaufspreis, Gewichtung, Mindestbestand, aktiv | Artikelnummer = Schlüssel zur Rechnungs-Software |
 | Kalkulation (optional) | Artikel oder Vorlage, Datum, „maßgeblich“-Kennzeichen, Materialzeilen (Spule/Durchschnitt/frei, Gramm, Preis/kg), Druckzeit, Teile pro Platte, Drucker, Ausschussquote %, Rüstzeit pro Platte (Min.), Nacharbeit pro Stück (Min.), Zusatzteile pro Stück, Gewinnaufschlag %, Ergebnis pro Stück (Selbstkosten ohne/mit Arbeitszeit, Verkaufspreis-Vorschlag) | Spule aus Bambuddy (nur gelesen) |
-| Produktion | Datum, Notiz, Gesamtkosten, storniert | – |
-| Produktion – Drucke | Produktion, Material-, Strom-, Verschleißkosten als Wert, Status (erfolgreich/fehlgeschlagen) | Bambuddy-Archiv-ID |
+| Produktion | Datum, Notiz, Gesamtkosten, Arbeitszeit (Minuten), Stundensatz und Arbeitskosten als Wert, storniert | – |
+| Produktion – Drucke | Produktion, Material-, Strom-, Maschinenkosten als Wert (der Verschleiß steckt im Druckerstundensatz und wird nicht aus Bambuddy übernommen), Status (erfolgreich/fehlgeschlagen) | Bambuddy-Archiv-ID |
 | Produktion – Ergebnis | Produktion, Artikel, gute Stück, Gewichtung, zugeteilte Kosten, Kennzeichen „aufgeteilt“ | – |
 | Lagerbewegung | Artikel, Datum, Menge (+/−), Art (Produktion, Verkauf, Korrektur, Storno), Bezug | Produktion oder Verkauf |
 | Verkauf | Artikel, Datum, Menge, Preis pro Stück, Quelle (Hand, RechnungsFee, Haben) | Rechnungsnummer bzw. externe ID |
 | Ignoriert | Bambuddy-Archiv-ID, Datum | nicht relevante Drucke ausblenden |
 | Gerät | Typ (Drucker/Trockner), Name, Anschaffungsdatum und -wert, Nutzungsjahre, Wartungsaufschlag, Druckstunden/Jahr bzw. Leistung (W) und Trocknungsstunden/Jahr | Drucker aus Bambuddy übernehmbar |
-| Einstellungen | Strompreis (eigen oder aus Bambuddy), Arbeits-Stundensatz, Standard-Ausschussquote, Standard-Gewinnaufschlag, Rundung, Spulen-Kategorie für „geschäftlich“, Abweichungsschwelle | – |
+| Einstellungen | Strompreis (eigen oder aus Bambuddy), Arbeits-Stundensatz, Druckerstundensatz (vorläufig ein Wert, später aus den Geräten in M3), Standard-Ausschussquote, Standard-Gewinnaufschlag, Rundung, Spulen-Kategorie für „geschäftlich“, Abweichungsschwelle | – |
 | Benutzer, Änderungsprotokoll | siehe Sicherheit | – |
 
 **Vorlagen und Varianten:** Eine Vorlage beschreibt z. B. „Halter A“ mit dem Merkmal Farbe; jede Variante („Halter A rot“, `123456-rt`) ist ein vollwertiger Artikel mit eigener Artikelnummer und eigenem Bestand. Artikel ohne Varianten brauchen keine Vorlage. Preis, Gewichtung, Mindestbestand und Kalkulation erbt die Variante von der Vorlage und kann sie überschreiben.
@@ -158,7 +158,7 @@ Druckerstundensatz = Anschaffungswert ÷ (Nutzungsjahre × Druckstunden pro Jahr
 
 ## 7. Auswertung und Dashboard
 
-- **Pro Artikel:** kalkulierte vs. tatsächliche Kosten pro Stück, Ø Verkaufspreis, Gewinn pro Stück (€ und %) und effektiver Stundenlohn – berechnet wie in Abschnitt 6 (Schritte 9 und 10), aber mit tatsächlichen Werten: echter Verkaufspreis und tatsächliche Produktionskosten statt Kalkulation; produziert / verkauft / Bestand, Fehldruck-Anteil; Diagramm „Kosten pro Stück über die Zeit“; Warnung bei Abweichung über X % (Standard 15 %).
+- **Pro Artikel:** kalkulierte vs. tatsächliche Kosten pro Stück, Ø Verkaufspreis, Gewinn pro Stück (€ und %) und effektiver Stundenlohn – berechnet wie in Abschnitt 6 (Schritte 9 und 10), aber mit tatsächlichen Werten: echter Verkaufspreis und tatsächliche Produktionskosten statt Kalkulation (für „ohne Arbeitszeit“ werden die Arbeitskosten der Produktion herausgerechnet); produziert / verkauft / Bestand, Fehldruck-Anteil; Diagramm „Kosten pro Stück über die Zeit“; Warnung bei Abweichung über X % (Standard 15 %).
 - **Pro Vorlage:** alle Varianten nebeneinander.
 - **Gesamt (Zeitraum wählbar):** Umsatz, Kosten der verkauften Teile, Rohgewinn, Top/Flop, Lagerwert, Ladenhüter, Fehldruckkosten, CSV-Export.
 - **Kosten verkaufter Teile:** gleitender Durchschnitt; FIFO später umschaltbar.
@@ -261,6 +261,8 @@ Der Maintainer hat die frühere Bedingung („erst nach Alltagsnutzung von M1“
 
 - [x] Bambuddy-Client: Archiv-Liste, Archiv-Detail, Spulen, Drucker, Strompreis; Einstellungen mit Adresse, Schlüssel und Verbindungstest (#117)
 - [x] Seite Produktion: Drucke auswählen, Ergebnis-Artikel, Kostenaufteilung mit Vorschau, Fehldrucke, Ignorieren (#119, #127)
+- [ ] Produktion: Arbeitskosten erfassen (Arbeitszeit × Stundensatz, Teil der Gesamtkosten) (#134)
+- [ ] Produktion: Maschinenkosten = Druckstunden × Druckerstundensatz (zunächst ein Wert in den Einstellungen) statt Verschleiß aus Bambuddy (#135)
 - [x] Dashboard: Liste „Noch nicht zugeordnet“ (Drucke aus dem Bambuddy-Archiv, die weder in einer Produktion stehen noch ignoriert sind) (#119, #129)
 - [ ] Artikel-Detail: Produktionen und Kosten pro Stück, Links zu Bambuddy
 
@@ -287,6 +289,6 @@ Der Maintainer hat die frühere Bedingung („erst nach Alltagsnutzung von M1“
 - ~~Reicht beim Bambuddy-Key das Recht „Status lesen“ für Archiv und Spulen?~~ Ja: Archiv, Spulen, Drucker und Einstellungen sind mit einem nur lesenden Key abrufbar (geprüft in #117).
 - Liefern die APIs der Rechnungs-Software den Bezahlt-Status? (Prüfung zu Beginn von M5)
 - Risiko: Bambuddy entwickelt sich sehr schnell → Anbindung in einem einzigen Baustein, Tests mit aufgezeichneten Antworten, Verbindungstest in den Einstellungen.
-- **Umfang der tatsächlichen Kosten** (M2/M4): Eine Produktion erfasst bisher nur Material-, Strom- und Verschleißkosten, keine Arbeitszeit und keine Zusatzteile. Gewinn und effektiver Stundenlohn mit tatsächlichen Werten (Abschnitt 7) sind so nicht berechenbar, und der Vergleich kalkuliert ↔ tatsächlich vergleicht unterschiedliche Kostenumfänge. *Vorschlag:* Arbeitszeit und Zusatzteile werden beim Anlegen einer Produktion aus der maßgeblichen Kalkulation vorbelegt und können dort angepasst werden; die Abweichungswarnung vergleicht nur Druckkosten mit Druckkosten.
+- ~~**Umfang der tatsächlichen Kosten** (M2/M4)~~ Entschieden (Maintainer): Eine Produktion erfasst Material-, Strom- und **Maschinenkosten** (Druckstunden × Druckerstundensatz; der Verschleiß aus Bambuddy entfällt, weil er schon im Druckerstundensatz steckt, #135) sowie **Arbeitskosten** (Arbeitszeit × Stundensatz, #134). **Zusatzteile** sind in der Produktion noch nicht enthalten und bleiben offen (M3, Kalkulation); die Abweichungswarnung vergleicht deshalb bis dahin nur Druckkosten mit Druckkosten.
 - **Verkaufspreis bei einer Kalkulation an einer Vorlage** (M3): Schritt 8 in Abschnitt 6 geht vom Soll-Verkaufspreis eines Artikels aus; eine Kalkulation an einer Vorlage hat aber keinen Artikel, und für diesen Fall ist kein Preis festgelegt. *Vorschlag:* Es gilt der Standardpreis der Vorlage; ein Wert am Artikel überschreibt ihn.
 - **Druckerstundensatz mit Trocknung** (M3): Die Formel in Abschnitt 6 enthält den Trocknungsaufschlag noch nicht, und die Gerätekosten eines Trockners pro Jahr sind nicht festgelegt. *Vorschlag:* Druckerstundensatz = Anschaffungswert ÷ (Nutzungsjahre × Druckstunden pro Jahr) × (1 + Wartungsaufschlag ÷ 100) + Trocknungsaufschlag; Gerätekosten eines Trockners pro Jahr = Anschaffungswert ÷ Nutzungsjahre × (1 + Wartungsaufschlag ÷ 100).
