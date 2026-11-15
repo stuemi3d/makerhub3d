@@ -16,7 +16,7 @@ from app.main import create_app
 from app.models import BambuddyConnection, ChangeLogEntry
 from tests.auth import EMPLOYEE_NAME, READER_NAME, AppClient, add_user, client_as, signed_in_client
 
-TEST_2FA_KEY = "x" * 40
+TEST_SECRET_KEY = "x" * 40
 KEY = "test-key-nur-fuer-tests"
 URL = "http://bambuddy.example.com:8000"
 FIXTURES = Path(__file__).resolve().parent / "fixtures" / "bambuddy"
@@ -27,7 +27,7 @@ DE = json.loads((ROOT / "app" / "locales" / "de.json").read_text(encoding="utf-8
 @pytest.fixture(autouse=True)
 def two_factor_key(monkeypatch: pytest.MonkeyPatch) -> None:
     # The Bambuddy key is stored encrypted with the app's key.
-    monkeypatch.setenv("MAKERHUB_2FA_KEY", TEST_2FA_KEY)
+    monkeypatch.setenv("MAKERHUB_SECRET_KEY", TEST_SECRET_KEY)
 
 
 def stored() -> BambuddyConnection:
@@ -136,7 +136,7 @@ def test_invalid_url_is_refused_and_nothing_is_stored(client: AppClient, url: st
 def test_without_the_app_key_the_bambuddy_key_cannot_be_stored(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.delenv("MAKERHUB_2FA_KEY")
+    monkeypatch.delenv("MAKERHUB_SECRET_KEY")
     with signed_in_client(create_app()) as client:
         response = save(client)
         assert response.status_code == 422
@@ -250,7 +250,7 @@ def test_connection_test_reports_an_unreadable_key(
     client: AppClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     save(client)
-    monkeypatch.setenv("MAKERHUB_2FA_KEY", "y" * 40)
+    monkeypatch.setenv("MAKERHUB_SECRET_KEY", "y" * 40)
     with signed_in_client(create_app()) as other_start:
         page = other_start.post("/settings/bambuddy/test", data={})
     assert DE["bambuddy.error.key_unreadable"] in page.text

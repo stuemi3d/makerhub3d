@@ -65,8 +65,13 @@ def parse_timezone(raw: str) -> str:
 MIN_TWO_FACTOR_KEY_LENGTH = 32
 
 
-def parse_two_factor_key(raw: str) -> str | None:
-    """The key for the two-factor secrets (issue #30); None when not set."""
+SECRET_KEY_VARIABLE = "MAKERHUB_SECRET_KEY"  # noqa: S105 (a variable name, not a secret)
+# The first name of the same key (issue #30); still understood so existing setups keep working.
+LEGACY_KEY_VARIABLE = "MAKERHUB_2FA_KEY"
+
+
+def parse_two_factor_key(raw: str, variable: str = LEGACY_KEY_VARIABLE) -> str | None:
+    """The key for encrypting stored secrets (two-factor, Bambuddy key); None when not set."""
     key = raw.strip()
     if not key:
         return None
@@ -74,7 +79,7 @@ def parse_two_factor_key(raw: str) -> str | None:
     if len(key) < MIN_TWO_FACTOR_KEY_LENGTH or not usable:
         # The message never contains the value itself.
         raise ConfigError(
-            "MAKERHUB_2FA_KEY is invalid: expected at least 32 characters without spaces, "
+            f"{variable} is invalid: expected at least 32 characters without spaces, "
             "e.g. the output of: openssl rand -hex 32"
         )
     return key
@@ -94,7 +99,8 @@ class Settings:
     insecure_cookies: bool = False
     # Time zone for showing times; times are stored in UTC.
     timezone: str = DEFAULT_TIMEZONE
-    # Key for the two-factor secrets; None = two-factor login cannot be set up.
+    # Key for encrypting stored secrets (two-factor secrets, Bambuddy key); None = those
+    # features cannot store secrets. Read from MAKERHUB_SECRET_KEY or the older MAKERHUB_2FA_KEY.
     # Not part of repr(), so it never shows up in error messages or logs.
     two_factor_key: str | None = field(default=None, repr=False)
 
@@ -106,6 +112,12 @@ class Settings:
     def backup_dir(self) -> Path:
         return self.data_dir / "backups"
 
+    @staticmethod
+    def _secret_key_from_env() -> str | None:
+        if os.environ.get(SECRET_KEY_VARIABLE, "").strip():
+            return parse_two_factor_key(os.environ[SECRET_KEY_VARIABLE], SECRET_KEY_VARIABLE)
+        return parse_two_factor_key(os.environ.get(LEGACY_KEY_VARIABLE, ""))
+
     @classmethod
     def from_env(cls) -> "Settings":
         return cls(
@@ -116,5 +128,5 @@ class Settings:
                 os.environ.get("MAKERHUB_INSECURE_COOKIES", "")
             ),
             timezone=parse_timezone(os.environ.get("MAKERHUB_TIMEZONE", "")),
-            two_factor_key=parse_two_factor_key(os.environ.get("MAKERHUB_2FA_KEY", "")),
+            two_factor_key=cls._secret_key_from_env(),
         )

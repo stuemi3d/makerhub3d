@@ -2,8 +2,8 @@
 
 Agreed in issues #8 and #30: one 30-second step before or after is accepted, every code works
 only once, 10 one-time recovery codes, secrets are stored encrypted with the key from
-MAKERHUB_2FA_KEY. This module holds the building blocks; the login and account flows are in
-app/auth.py.
+MAKERHUB_SECRET_KEY (older name: MAKERHUB_2FA_KEY). This module holds the building blocks;
+the login and account flows are in app/auth.py.
 """
 
 import base64

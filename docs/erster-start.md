@@ -85,7 +85,7 @@ Mit Zwei-Faktor-Anmeldung braucht man zusätzlich zum Passwort einen 6-stelligen
 
 ### Schlüssel einrichten (einmalig, Admin)
 
-Die Zwei-Faktor-Geheimnisse werden verschlüsselt gespeichert. Den Schlüssel dafür erzeugst du einmal auf dem Server:
+Gespeicherte Geheimnisse (die Zwei-Faktor-Einrichtungen und der Zugangsschlüssel zu Bambuddy) werden verschlüsselt abgelegt. Den Schlüssel dafür erzeugst du einmal auf dem Server. Zwei-Faktor-Anmeldung selbst bleibt freiwillig; der Schlüssel wird aber für den Bambuddy-Zugang gebraucht:
 
 ```
 openssl rand -hex 32
@@ -94,10 +94,12 @@ openssl rand -hex 32
 Die Ausgabe (64 Zeichen) trägst du in die `.env` ein und startest die App neu:
 
 ```
-MAKERHUB_2FA_KEY=<die Ausgabe von oben>
+MAKERHUB_SECRET_KEY=<die Ausgabe von oben>
 ```
 
-Bewahre eine Kopie des Schlüssels sicher auf (z. B. im Passwort-Manager), getrennt von der Datensicherung. Ohne Schlüssel bietet „Mein Konto“ das Einrichten nicht an.
+(Der ältere Name `MAKERHUB_2FA_KEY` funktioniert weiterhin; wenn beide gesetzt sind, gilt `MAKERHUB_SECRET_KEY`.)
+
+Bewahre eine Kopie des Schlüssels sicher auf (z. B. im Passwort-Manager), getrennt von der Datensicherung. Ohne Schlüssel bietet „Mein Konto“ das Einrichten nicht an, und der Bambuddy-Zugangsschlüssel lässt sich nicht speichern.
 
 ### Einrichten (jeder Benutzer selbst)
 

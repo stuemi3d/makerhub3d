@@ -265,7 +265,7 @@ class User(Base):
     active: Mapped[bool] = mapped_column(Boolean, server_default=true())
     # Set for initial passwords given by an admin; the user must change it first (issue #32).
     must_change_password: Mapped[bool] = mapped_column(Boolean, server_default=false())
-    # Two-factor login (issue #30): the secret is encrypted with MAKERHUB_2FA_KEY.
+    # Two-factor login (issue #30): the secret is encrypted with MAKERHUB_SECRET_KEY.
     # Set = two-factor login is on.
     totp_secret: Mapped[str | None] = mapped_column(Text)
     # Secret shown during setup, until the user confirms it with a first code.
