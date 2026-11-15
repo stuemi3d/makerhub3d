@@ -554,7 +554,6 @@
   "bambuddy.hint.prints_from": "Nur Drucke ab diesem Tag erscheinen in MakerHub; ältere Drucke werden nicht gelesen. Beim ersten Einrichten ist es heute. Ein früheres Datum holt ältere Drucke als „offen“ herein.",
   "bambuddy.error.prints_from": "Bitte ein gültiges Datum eingeben, nicht in der Zukunft.",
   "dashboard.open.title": "Noch nicht zugeordnet",
-  "dashboard.open.count": "Offene Drucke",
   "dashboard.open.ok": "Alles zugeordnet: Kein Druck wartet auf eine Produktion.",
   "dashboard.open.not_set_up": "Bambuddy ist noch nicht eingerichtet.",
   "dashboard.open.unavailable": "Die Drucke aus Bambuddy sind gerade nicht abrufbar.",

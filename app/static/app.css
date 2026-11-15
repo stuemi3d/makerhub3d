@@ -439,6 +439,26 @@
   box-shadow: none;
 }
 
+/* Head of a card: title on the left, a small button on the right. */
+.card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--mh-border);
+}
+
+.card-head h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.card-head [role="button"] {
+  margin: 0;
+}
+
 .data-scroll {
   position: relative; /* keeps the screen-reader-only texts inside the scroll area */
   overflow-x: auto;

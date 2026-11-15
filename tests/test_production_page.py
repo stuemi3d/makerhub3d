@@ -341,47 +341,87 @@ def test_refused_or_failing_bambuddy_is_named(client: AppClient, status: int, ke
 # --- Cases 14-16: dashboard --------------------------------------------------------------------
 
 
-def test_dashboard_counts_the_open_prints_and_links_to_the_list(client: AppClient) -> None:
+def open_block(client: AppClient) -> str:
+    html = client.get("/").text
+    return re.search(r'<section id="open-prints".*?</section>', html, re.S).group(0)
+
+
+def test_dashboard_shows_one_card_with_a_table_and_the_count(client: AppClient) -> None:
     prepared(client, SAMPLE)
     ignore(client, 3)
 
-    html = client.get("/").text
+    block = open_block(client)
 
-    block = re.search(r'<section id="open-prints".*?</section>', html, re.S).group(0)
-    assert re.search(r'class="stat-value open-count">\s*2\s*<', block)
+    assert block.count('class="data-card') == 1
+    assert re.search(r'open-count">\s*2\s*<', block)
+    assert "<table" in block and "<ul" not in block
+    # The big tile of the first version is gone.
+    assert 'class="stat' not in block
+    headers = re.findall(r"<th\b.*?</th>", block, re.S)
+    assert len(headers) == 3
+    for key in ("production.col.date", "production.col.name", "production.col.status"):
+        assert any(DE[key] in header for header in headers)
     assert "Neuer Druck" in block and "Fehldruck" in block
     assert "Alter Druck" not in block
-    assert 'href="/production"' in block
+
+
+def test_dashboard_rows_are_the_newest_first_and_failed_ones_are_red(client: AppClient) -> None:
+    prepared(client, SAMPLE)
+
+    rows = re.findall(r'<tr class="open-row[^"]*".*?</tr>', open_block(client), re.S)
+
+    assert ["Neuer Druck" in rows[0], "Fehldruck" in rows[1], "Alter Druck" in rows[2]] == [
+        True
+    ] * 3
+    assert "print-failed" in rows[1]
+    assert "print-failed" not in rows[0] and "print-failed" not in rows[2]
+    assert DE["production.status.failed"] in rows[1]
+
+
+def test_the_button_sits_in_the_head_of_the_card(client: AppClient) -> None:
+    prepared(client, SAMPLE)
+
+    block = open_block(client)
+
+    head = re.search(r'<div class="card-head">.*?</div>', block, re.S).group(0)
+    assert DE["dashboard.open.link"] in head
+    assert 'href="/production?view=open"' in head
+    assert DE["dashboard.open.title"] in head
+    assert block.index(head) < block.index("<table")
 
 
 def test_dashboard_says_when_everything_is_assigned(client: AppClient) -> None:
     prepared(client, SAMPLE[:1])
     ignore(client, 5)
 
-    block = re.search(r'<section id="open-prints".*?</section>', client.get("/").text, re.S)
+    block = open_block(client)
 
-    assert DE["dashboard.open.ok"] in block.group(0)
+    assert DE["dashboard.open.ok"] in block
+    assert "<table" not in block
 
 
 def test_dashboard_shows_only_the_latest_open_prints(client: AppClient) -> None:
     prepared(client, [raw(n, f"2026-11-15T{n:02d}:00:00") for n in range(20, 9, -1)])
 
-    block = re.search(r'<section id="open-prints".*?</section>', client.get("/").text, re.S)
+    block = open_block(client)
 
-    assert re.search(r'open-count">\s*11\s*<', block.group(0))
-    assert block.group(0).count("<li") <= 5
+    assert re.search(r'open-count">\s*11\s*<', block)
+    assert block.count('<tr class="open-row') == 5
+    assert "Druck 20" in block and "Druck 16" in block and "Druck 15" not in block
 
 
 def test_dashboard_still_works_without_or_with_a_broken_bambuddy(client: AppClient) -> None:
     page = client.get("/")
     assert page.status_code == 200
     assert DE["dashboard.open.not_set_up"] in page.text
+    assert "<table" not in open_block(client)
 
     set_up(client)
     answer_with(client, lambda request: httpx2.Response(500))
     page = client.get("/")
     assert page.status_code == 200
     assert DE["dashboard.open.unavailable"] in page.text
+    assert "<table" not in open_block(client)
     assert "Traceback" not in page.text
 
 

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}{{ t('nav.dashboard') }} – {{ app_name }}{% endblock %}
-{% from "_data_table.html" import head, actions_head, icon_link with context %}
+{% from "_data_table.html" import head, actions_head, icon_link, chip with context %}
 {% from "_form_macros.html" import popup_attrs %}
 {% block content %}
 <h1>{{ t('nav.dashboard') }}</h1>
@@ -19,24 +19,38 @@
   </article>
 </div>
 <section id="open-prints">
-  <h2>{{ t('dashboard.open.title') }}</h2>
-  {% if open_prints.state == 'not_set_up' %}
-  <article class="empty-hint"><p>{{ t('dashboard.open.not_set_up') }}</p></article>
-  {% elif open_prints.state == 'unavailable' %}
-  <article class="empty-hint"><p>{{ t('dashboard.open.unavailable') }}</p></article>
-  {% elif open_prints.count == 0 %}
-  <article class="empty-hint"><p>{{ t('dashboard.open.ok') }}</p></article>
-  {% else %}
-  <article class="stat">
-    <p class="stat-label">{{ t('dashboard.open.count') }}</p>
-    <p class="stat-value open-count">{{ open_prints.count }}</p>
+  {% if open_prints.state == 'ok' and open_prints.count > 0 %}
+  <article class="data-card">
+    <div class="card-head">
+      <h2>{{ t('dashboard.open.title') }} <span class="chip chip-inactive open-count">{{ open_prints.count }}</span></h2>
+      <a href="/production?view=open" role="button" class="secondary">{{ t('dashboard.open.link') }}</a>
+    </div>
+    <div class="data-scroll">
+    <table class="data-table">
+      <thead>
+        <tr>
+          {{ head(t('production.col.date')) }}
+          {{ head(t('production.col.name')) }}
+          {{ head(t('production.col.status')) }}
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in open_prints.latest %}
+        <tr class="open-row{% if p.failed %} print-failed{% endif %}">
+          <td>{{ p.when }}</td>
+          <td class="cell-strong">{{ p.name }}</td>
+          <td>{{ chip(t('production.status.' ~ p.status) if p.status in ('completed', 'failed', 'printing', 'cancelled') else p.status, 'warn' if p.failed else ('active' if p.status == 'completed' else 'inactive')) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
   </article>
-  <ul>
-    {% for p in open_prints.latest %}
-    <li>{{ p.when }} · {{ p.name }}{% if p.failed %} <span class="chip chip-warn">{{ t('production.status.failed') }}</span>{% endif %}</li>
-    {% endfor %}
-  </ul>
-  <a href="/production" role="button" class="secondary">{{ t('dashboard.open.link') }}</a>
+  {% else %}
+  <h2>{{ t('dashboard.open.title') }}</h2>
+  <article class="empty-hint">
+    <p>{{ t('dashboard.open.' ~ ('ok' if open_prints.state == 'ok' else open_prints.state)) }}</p>
+  </article>
   {% endif %}
 </section>
 <section id="low-stock">
