@@ -2,8 +2,16 @@
 {% from "_data_table.html" import head, actions_head, chip with context %}
 {% block title %}{{ t('production.title') }} – {{ app_name }}{% endblock %}
 {% block content %}
+{% set can_choose = can('edit') and view == 'open' and rows and not prints.not_set_up and not prints.error %}
 <div class="page-head">
   <h1>{{ t('production.title') }}</h1>
+  {% if can_choose %}
+  <div class="page-actions">
+    <span class="selected-count" data-selected-text="{{ t('production.selected') }}" aria-live="polite"></span>
+    {# Switched on by the script once a print is ticked; without the script the server answers that no print was picked #}
+    <button type="submit" form="select-form" data-requires-checked>{{ t('production.create') }}</button>
+  </div>
+  {% endif %}
 </div>
 <p><small>{{ t('production.intro') }}</small></p>
 {% if error %}<p role="alert"><mark>{{ t(error) }}</mark></p>{% endif %}
@@ -15,16 +23,15 @@
 {% else %}
 {% set active = view %}
 {% include "_production_tabs.html" %}
-{% set can_choose = can('edit') and view == 'open' %}
 {% if prints.error %}
 <p role="alert"><span class="chip chip-warn">{{ t(prints.error[0]) }}</span>{% if prints.error[1] %} <code>{{ prints.error[1] }}</code>{% endif %}</p>
 {% else %}
 {% if prints.truncated %}<p role="status"><mark>{{ t('production.truncated') }}</mark></p>{% endif %}
 {% if rows %}
 {% if can_choose %}
-{# The chosen prints go to the form for a new production; the boxes belong to this form from afar, so that the buttons of the rows can have forms of their own #}
+{# The ticked prints go to the form for a new production; the boxes and the button belong to this form from afar, so that the buttons of the rows can have forms of their own #}
 <form id="select-form" method="get" action="/production/new"></form>
-<div class="form-actions"><button type="submit" form="select-form">{{ t('production.create') }}</button> <small>{{ t('production.create.hint') }}</small></div>
+<p><small>{{ t('production.create.hint') }}</small></p>
 {% endif %}
 <article class="data-card">
 <div class="data-scroll">

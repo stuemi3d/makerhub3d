@@ -21,84 +21,62 @@
   <input type="hidden" name="preview_key" value="{{ preview_key or draft.preview_key }}">
   {% for archive_id in draft.ids %}<input type="hidden" name="prints" value="{{ archive_id }}">{% endfor %}
   <h2>{{ t('production.detail.prints') }}</h2>
-  <article class="data-card">
-  <div class="data-scroll">
-  <table class="data-table">
-    <thead>
-      <tr>
-        <th scope="col">{{ t('production.col.date') }}</th>
-        <th scope="col">{{ t('production.col.name') }}</th>
-        <th scope="col" class="num">{{ t('production.col.material') }}</th>
-        <th scope="col" class="num">{{ t('production.col.electricity') }}</th>
-        <th scope="col" class="num">{{ t('production.col.wear') }}</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for p in shown_prints %}
-      <tr class="form-print{% if p.row.failed %} print-failed{% endif %}">
-        <td>{{ p.row.when }}</td>
-        <td class="cell-strong">{{ p.row.name }}</td>
-        {% for part in ('material', 'electricity', 'wear') %}
-        <td class="num">
-          <input type="text" inputmode="decimal" autocomplete="off" name="cost_{{ part }}_{{ p.row.archive_id }}" id="cost_{{ part }}_{{ p.row.archive_id }}" value="{{ p[part] }}" aria-label="{{ t('production.col.' ~ part) }}: {{ p.row.name }}">
-          {{ err('cost_' ~ part ~ '_' ~ p.row.archive_id) }}
-        </td>
-        {% endfor %}
-      </tr>
+  {% for p in shown_prints %}
+  <div class="form-block print-block{% if p.row.failed %} print-failed{% endif %}">
+    <div class="form-block-head">
+      <strong>{{ p.row.name }}</strong>
+      <span>{{ p.row.when }}{% if p.row.failed %} <span class="chip chip-warn">{{ t('production.status.failed') }}</span>{% endif %}</span>
+    </div>
+    <div class="field-grid">
+      {% for part in ('material', 'electricity', 'wear') %}
+      <div>
+        <label for="cost_{{ part }}_{{ p.row.archive_id }}">{{ t('production.col.' ~ part) }}</label>
+        <input type="text" inputmode="decimal" autocomplete="off" name="cost_{{ part }}_{{ p.row.archive_id }}" id="cost_{{ part }}_{{ p.row.archive_id }}" value="{{ p[part] }}">
+        {{ err('cost_' ~ part ~ '_' ~ p.row.archive_id) }}
+      </div>
       {% endfor %}
-    </tbody>
-  </table>
+    </div>
   </div>
-  </article>
+  {% endfor %}
 
   <h2>{{ t('production.detail.articles') }}</h2>
-  <article class="data-card">
-  <div class="data-scroll">
-  <table class="data-table">
-    <thead>
-      <tr>
-        <th scope="col">{{ t('production.col.article') }}</th>
-        <th scope="col" class="num">{{ t('production.col.quantity') }}</th>
-        <th scope="col" class="num">{{ t('production.col.weight') }}</th>
-        {% if previewed or draft.preview_key %}
-        <th scope="col" class="num">{{ t('production.col.alloc') }}</th>
-        <th scope="col" class="num">{{ t('production.col.per_piece') }}</th>
-        {% endif %}
-      </tr>
-    </thead>
-    <tbody>
-      {% for r in result_rows %}
-      <tr class="form-article">
-        <td>
-          <select name="article_{{ r.n }}" id="article_{{ r.n }}" aria-label="{{ t('production.col.article') }} {{ r.n }}">
-            <option value="">{{ t('production.choose') }}</option>
-            {% for a in articles %}
-            <option value="{{ a.id }}"{% if r.article == a.id|string %} selected{% endif %}>{{ a.label }}</option>
-            {% endfor %}
-          </select>
-          {{ err('article_' ~ r.n) }}
-        </td>
-        <td class="num">
-          <input type="text" inputmode="numeric" autocomplete="off" name="quantity_{{ r.n }}" id="quantity_{{ r.n }}" value="{{ r.quantity }}" aria-label="{{ t('production.col.quantity') }} {{ r.n }}">
-          {{ err('quantity_' ~ r.n) }}
-        </td>
-        <td class="num">
-          <input type="text" inputmode="decimal" autocomplete="off" name="weight_{{ r.n }}" id="weight_{{ r.n }}" value="{{ r.weight }}" aria-label="{{ t('production.col.weight') }} {{ r.n }}">
-          {{ err('weight_' ~ r.n) }}
-        </td>
-        {% if previewed or draft.preview_key %}
-        <td class="num">
-          <input type="text" inputmode="decimal" autocomplete="off" name="alloc_{{ r.n }}" id="alloc_{{ r.n }}" value="{{ r.alloc }}" aria-label="{{ t('production.col.alloc') }} {{ r.n }}">
-          {{ err('alloc_' ~ r.n) }}
-        </td>
-        <td class="num">{{ r.per_piece }}</td>
-        {% endif %}
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  {% for r in result_rows %}
+  <div class="form-block result-block">
+    <div class="field-grid">
+      <div class="field-wide">
+        <label for="article_{{ r.n }}">{{ t('production.col.article') }}</label>
+        <select name="article_{{ r.n }}" id="article_{{ r.n }}">
+          <option value="">{{ t('production.choose') }}</option>
+          {% for a in articles %}
+          <option value="{{ a.id }}"{% if r.article == a.id|string %} selected{% endif %}>{{ a.label }}</option>
+          {% endfor %}
+        </select>
+        {{ err('article_' ~ r.n) }}
+      </div>
+      <div>
+        <label for="quantity_{{ r.n }}">{{ t('production.col.quantity') }}</label>
+        <input type="text" inputmode="numeric" autocomplete="off" name="quantity_{{ r.n }}" id="quantity_{{ r.n }}" value="{{ r.quantity }}">
+        {{ err('quantity_' ~ r.n) }}
+      </div>
+      <div>
+        <label for="weight_{{ r.n }}">{{ t('production.col.weight') }}</label>
+        <input type="text" inputmode="decimal" autocomplete="off" name="weight_{{ r.n }}" id="weight_{{ r.n }}" value="{{ r.weight }}">
+        {{ err('weight_' ~ r.n) }}
+      </div>
+      {% if previewed or draft.preview_key %}
+      <div>
+        <label for="alloc_{{ r.n }}">{{ t('production.col.alloc') }}</label>
+        <input type="text" inputmode="decimal" autocomplete="off" name="alloc_{{ r.n }}" id="alloc_{{ r.n }}" value="{{ r.alloc }}">
+        {{ err('alloc_' ~ r.n) }}
+      </div>
+      <div>
+        <span class="field-label">{{ t('production.col.per_piece') }}</span>
+        <output class="field-static">{{ r.per_piece or t('table.empty_value') }}</output>
+      </div>
+      {% endif %}
+    </div>
   </div>
-  </article>
+  {% endfor %}
   {% if previewed %}
   <p class="preview-total"><strong>{{ t('production.preview.total') }}: {{ preview_total }}</strong> <small>{{ t('production.preview.hint') }}</small></p>
   {% endif %}

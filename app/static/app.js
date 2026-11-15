@@ -189,3 +189,22 @@ if (window.htmx) {
     includeIndicatorStyles: false,
   });
 }
+
+// Page Production (issue #132): the button "create production" works once a print is chosen,
+// and the number of chosen prints is shown. Without this script the button stays clickable and
+// the server answers "no print chosen" itself.
+(() => {
+  const button = document.querySelector("[data-requires-checked]");
+  if (!button) return;
+  const boxes = Array.from(document.querySelectorAll("input[name='prints'][form='select-form']"));
+  const label = document.querySelector("[data-selected-text]");
+  const update = () => {
+    const count = boxes.filter((box) => box.checked).length;
+    button.disabled = count === 0;
+    if (label) label.textContent = count ? `${count} ${label.dataset.selectedText}` : "";
+  };
+  for (const box of boxes) box.addEventListener("change", update);
+  // Also when the browser brings the page back with the boxes as they were (back button)
+  window.addEventListener("pageshow", update);
+  update();
+})();
