@@ -1,0 +1,9 @@
+{# Tabs of the production page; `active` is a print view name or "productions". #}
+<nav aria-label="{{ t('production.views') }}" class="area-tabs">
+  <ul>
+    {% for v in ('open', 'assigned', 'ignored') %}
+    <li><a href="/production?view={{ v }}"{% if v == active %} aria-current="page"{% endif %}>{{ t('production.view.' ~ v) }}</a></li>
+    {% endfor %}
+    <li><a href="/production/list"{% if active == 'productions' %} aria-current="page"{% endif %}>{{ t('production.tab.list') }}</a></li>
+  </ul>
+</nav>

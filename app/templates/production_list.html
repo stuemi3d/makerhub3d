@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% from "_data_table.html" import head, actions_head, chip with context %}
+{% block title %}{{ t('production.tab.list') }} – {{ app_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>{{ t('production.title') }}</h1>
+</div>
+{% set active = 'productions' %}
+{% include "_production_tabs.html" %}
+{% if booked %}<p role="status"><ins>{{ t('production.booked') }}</ins></p>{% endif %}
+{% if cancelled %}<p role="status"><ins>{{ t('production.cancelled_done') }}</ins></p>{% endif %}
+{% if rows %}
+<article class="data-card">
+<div class="data-scroll">
+<table class="data-table">
+  <thead>
+    <tr>
+      {{ head(t('production.col.date'), sort_links.date) }}
+      {{ head(t('production.col.note')) }}
+      {{ head(t('production.col.prints'), numeric=true) }}
+      {{ head(t('production.col.articles')) }}
+      {{ head(t('production.col.cost'), sort_links.cost, numeric=true) }}
+      {{ head(t('production.col.state')) }}
+      {{ actions_head() }}
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in rows %}
+    <tr class="production-row{% if r.cancelled %} production-cancelled{% endif %}" data-id="{{ r.id }}">
+      <td><a href="/production/{{ r.id }}">{{ r.date }}</a></td>
+      <td>{{ r.note }}</td>
+      <td class="num">{{ r.print_count }}</td>
+      <td>{{ r.articles }}</td>
+      <td class="num">{{ r.cost_text }}</td>
+      <td>{{ chip(t('production.state.cancelled') if r.cancelled else t('production.state.active'), 'inactive' if r.cancelled else 'active') }}</td>
+      <td class="row-actions">
+        {% if can('edit') and not r.cancelled %}<a href="/production/{{ r.id }}/cancel" role="button" class="secondary outline">{{ t('production.cancel') }}</a>{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+</article>
+{% else %}
+<article class="empty-hint"><p>{{ t('production.list.empty') }}</p></article>
+{% endif %}
+{% endblock %}

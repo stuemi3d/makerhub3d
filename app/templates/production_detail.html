@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% from "_data_table.html" import head, chip with context %}
+{% block title %}{{ t('production.detail.title') }} {{ item.id }} – {{ app_name }}{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb">
+  <ul>
+    <li><a href="/production/list">{{ t('production.tab.list') }}</a></li>
+    <li>{{ t('production.detail.title') }} #{{ item.id }}</li>
+  </ul>
+</nav>
+<div class="page-head">
+  <h1>{{ t('production.detail.title') }} #{{ item.id }}</h1>
+  <div class="page-actions">
+    {% if can('edit') and not item.cancelled %}<a href="/production/{{ item.id }}/cancel" role="button" class="secondary outline">{{ t('production.cancel') }}</a>{% endif %}
+  </div>
+</div>
+<article class="detail-card">
+  <p>
+    {{ chip(t('production.state.cancelled') if item.cancelled else t('production.state.active'), 'inactive' if item.cancelled else 'active') }}
+    {{ t('production.col.date') }}: {{ item.date }} · {{ t('production.col.cost') }}: {{ item.total }}
+  </p>
+  {% if item.note %}<p>{{ t('production.col.note') }}: {{ item.note }}</p>{% endif %}
+</article>
+<h2>{{ t('production.detail.prints') }}</h2>
+<article class="data-card">
+<div class="data-scroll">
+<table class="data-table">
+  <thead>
+    <tr>
+      {{ head(t('production.col.name')) }}
+      {{ head(t('production.col.status')) }}
+      {{ head(t('production.col.material'), numeric=true) }}
+      {{ head(t('production.col.electricity'), numeric=true) }}
+      {{ head(t('production.col.wear'), numeric=true) }}
+      {{ head(t('production.col.print_total'), numeric=true) }}
+    </tr>
+  </thead>
+  <tbody>
+    {% for p in item.prints %}
+    <tr class="detail-print{% if p.failed %} print-failed{% endif %}">
+      <td class="cell-strong">#{{ p.archive_id }}</td>
+      <td>{{ chip(t('production.status.failed') if p.failed else t('production.status.completed'), 'warn' if p.failed else 'active') }}</td>
+      <td class="num">{{ p.material }}</td>
+      <td class="num">{{ p.electricity }}</td>
+      <td class="num">{{ p.wear }}</td>
+      <td class="num">{{ p.total }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+</article>
+<h2>{{ t('production.detail.articles') }}</h2>
+<article class="data-card">
+<div class="data-scroll">
+<table class="data-table">
+  <thead>
+    <tr>
+      {{ head(t('production.col.article')) }}
+      {{ head(t('production.col.quantity'), numeric=true) }}
+      {{ head(t('production.col.weight'), numeric=true) }}
+      {{ head(t('production.col.alloc'), numeric=true) }}
+      {{ head(t('production.col.per_piece'), numeric=true) }}
+      {{ head(t('production.col.split')) }}
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in item.results %}
+    <tr class="detail-article">
+      <td class="cell-strong"><a href="/articles/{{ r.article_id }}">{{ r.number }}</a> {{ r.name }}</td>
+      <td class="num">{{ r.quantity }}</td>
+      <td class="num">{{ r.weight }}</td>
+      <td class="num">{{ r.cost }}</td>
+      <td class="num">{{ r.per_piece }}</td>
+      <td>{% if r.split %}{{ chip(t('production.split'), 'inactive') }}{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+</article>
+{% endblock %}

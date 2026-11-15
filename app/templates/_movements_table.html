@@ -30,7 +30,7 @@
         {{ chip(t('stock.kind.' ~ r.kind), 'inactive' if r.kind == 'cancellation' else 'active') }}
         {% if r.is_cancelled %}{{ chip(t('stock.cancelled'), 'warn') }}{% endif %}
       </td>
-      <td>{% if r.cancels_id %}{{ t('stock.reference') }} #{{ r.cancels_id }}{% else %}{{ r.reason }}{% endif %}</td>
+      <td>{% if r.production_id %}<a href="/production/{{ r.production_id }}">{{ t('production.link') }} #{{ r.production_id }}</a>{% elif r.cancels_id %}{{ t('stock.reference') }} #{{ r.cancels_id }}{% else %}{{ r.reason }}{% endif %}</td>
       <td>{{ r.user }}</td>
       <td class="row-actions">
         {% if r.cancellable and not r.is_cancelled and can('edit') %}{{ icon_post('/stock/movements/' ~ r.id ~ '/cancel', 'cancel', r.article_number) }}{% endif %}

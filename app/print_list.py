@@ -42,6 +42,10 @@ class PrintRow:
     wear_cost: str | None
     state: str
     production_id: int | None
+    # The same costs as numbers (for the form of a production)
+    material_value: Decimal | None = None
+    electricity_value: Decimal | None = None
+    wear_value: Decimal | None = None
 
 
 @dataclass(frozen=True)
@@ -92,6 +96,9 @@ def _row(archive: Archive, language: str, assigned: dict[int, int], ignored: set
         wear_cost=_money(archive.wear_cost, language),
         state=state,
         production_id=assigned.get(archive.id),
+        material_value=archive.material_cost,
+        electricity_value=archive.energy_cost,
+        wear_value=archive.wear_cost,
     )
 
 

@@ -260,8 +260,8 @@ Der Maintainer hat die frühere Bedingung („erst nach Alltagsnutzung von M1“
 **M2 – Bambuddy-Anbindung und Produktion**
 
 - [x] Bambuddy-Client: Archiv-Liste, Archiv-Detail, Spulen, Drucker, Strompreis; Einstellungen mit Adresse, Schlüssel und Verbindungstest (#117)
-- [ ] Seite Produktion: Drucke auswählen, Ergebnis-Artikel, Kostenaufteilung mit Vorschau, Fehldrucke, Ignorieren
-- [ ] Dashboard: Liste „Noch nicht zugeordnet“ (Drucke aus dem Bambuddy-Archiv, die weder in einer Produktion stehen noch ignoriert sind)
+- [x] Seite Produktion: Drucke auswählen, Ergebnis-Artikel, Kostenaufteilung mit Vorschau, Fehldrucke, Ignorieren (#119, #127)
+- [x] Dashboard: Liste „Noch nicht zugeordnet“ (Drucke aus dem Bambuddy-Archiv, die weder in einer Produktion stehen noch ignoriert sind) (#119, #129)
 - [ ] Artikel-Detail: Produktionen und Kosten pro Stück, Links zu Bambuddy
 
 **M3 – Kalkulation**
