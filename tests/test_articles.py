@@ -44,7 +44,6 @@ def article_form(**overrides: str) -> dict[str, str]:
         "number": "3D-0001",
         "name": "Kabelhalter",
         "selling_price": "",
-        "weight": "",
         "min_stock": "",
     }
     form.update(overrides)
@@ -162,11 +161,10 @@ def test_price_accepts_comma_and_dot(client: AppClient, price: str, stored: str 
 
 
 def test_values_are_stored_as_exact_decimals(client: AppClient) -> None:
-    create(client, selling_price="12,90", weight="2,5", min_stock="4")
+    create(client, selling_price="12,90", min_stock="4")
 
     article = articles()[0]
     assert article.selling_price == Decimal("12.90")
-    assert article.weight == Decimal("2.5")
     assert article.min_stock == 4
 
 
@@ -179,9 +177,6 @@ def test_values_are_stored_as_exact_decimals(client: AppClient) -> None:
         ("selling_price", "abc", "article.error.number"),
         ("selling_price", "1e3", "article.error.number"),
         ("selling_price", "99999999", "article.error.too_large"),
-        ("weight", "-2", "article.error.negative"),
-        ("weight", "0", "article.error.zero"),
-        ("weight", "2,555", "article.error.decimals"),
         ("min_stock", "-1", "article.error.negative"),
         ("min_stock", "2,5", "article.error.whole"),
         ("min_stock", "abc", "article.error.number"),
@@ -290,7 +285,7 @@ def test_articles_cannot_be_deleted(client: AppClient) -> None:
 
 
 def test_detail_shows_fields_and_five_tiles_with_count(client: AppClient) -> None:
-    create(client, selling_price="12,9", weight="2", min_stock="5")
+    create(client, selling_price="12,9", min_stock="5")
     article_id = articles()[0].id
 
     html = client.get(f"/articles/{article_id}").text

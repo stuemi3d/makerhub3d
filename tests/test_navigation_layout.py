@@ -23,7 +23,6 @@ def make_article(client: AppClient, number: str = "3D-0001", name: str = "Kabelh
             "number": number,
             "name": name,
             "selling_price": "12,90",
-            "weight": "",
             "min_stock": "",
         },
         follow_redirects=False,
@@ -65,7 +64,7 @@ def test_article_detail_shows_the_fields_in_a_card(client: AppClient) -> None:
     assert card, "the fields must be inside a card"
     for text in ("3D-0001", "Kabelhalter", "12,90", DE["article.field.number"]):
         assert text in card.group(1), text
-    for label in ("selling_price", "weight", "min_stock"):
+    for label in ("selling_price", "min_stock"):
         assert DE[f"article.field.{label}"] in card.group(1)
 
 
@@ -151,7 +150,6 @@ def test_area_tabs_are_also_on_detail_pages(client: AppClient) -> None:
             "name": "Halter A",
             "description": "",
             "selling_price": "",
-            "weight": "",
             "min_stock": "",
         },
     )
@@ -191,7 +189,6 @@ def test_template_detail_has_a_path_back_to_the_list(client: AppClient) -> None:
             "name": "Halter A",
             "description": "",
             "selling_price": "",
-            "weight": "",
             "min_stock": "",
         },
     )
@@ -211,7 +208,6 @@ def test_back_links_at_the_page_end_are_gone(client: AppClient) -> None:
             "name": "Halter A",
             "description": "",
             "selling_price": "",
-            "weight": "",
             "min_stock": "",
         },
     )

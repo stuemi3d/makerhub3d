@@ -1,6 +1,6 @@
 """Variants of templates (issue #49): inheriting values and the attribute values of a variant.
 
-A variant is an article that points to a template. Price, weight and minimum stock that are
+A variant is an article that points to a template. Price and minimum stock that are
 empty on the variant are taken from the template; an own value wins. Nothing here is
 specific to a page, so pages for creating and editing variants share it.
 """
@@ -29,7 +29,7 @@ def template_number_taken(db: Session, number_key: str) -> bool:
     )
 
 
-INHERITED_FIELDS = ("selling_price", "weight", "min_stock")
+INHERITED_FIELDS = ("selling_price", "min_stock")
 
 
 def effective(article: Article, field: str):

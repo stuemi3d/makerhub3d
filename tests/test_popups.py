@@ -99,7 +99,7 @@ def test_pop_up_content_is_only_the_form_and_the_page_is_complete(client: AppCli
         assert "topbar" in page.text
         assert "HX-Request" in popup.headers["vary"]
         # The same form: the same fields; only the pop-up form sends itself with HTMX.
-        for field in ("number", "name", "selling_price", "weight", "min_stock"):
+        for field in ("number", "name", "selling_price", "min_stock"):
             assert f'name="{field}"' in popup.text
             assert f'name="{field}"' in page.text
         assert "hx-post" in popup.text

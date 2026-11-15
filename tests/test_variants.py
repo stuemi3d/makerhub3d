@@ -66,7 +66,7 @@ def make_setup(client: AppClient, **template_overrides: str) -> Setup:
     make_attribute(client, "Farbe", "rot\nblau")
     make_attribute(client, "Größe", "M\nL")
     colour, size = attributes()
-    form = {"selling_price": "10,00", "weight": "2", "min_stock": "5"}
+    form = {"selling_price": "10,00", "min_stock": "5"}
     form.update(template_overrides)
     make_template(client, **{f"attr_{colour.id}": "1", f"attr_{size.id}": "1"}, **form)
     with db() as session:
@@ -79,7 +79,6 @@ def variant_form(setup: Setup, colour: str | None = "rot", size: str | None = "L
         "number": "3D-0042-RT",
         "name": "Halter A rot L",
         "selling_price": "",
-        "weight": "",
         "min_stock": "",
     }
     if colour is not None:
@@ -170,12 +169,11 @@ def test_form_lists_the_values_of_the_template(client: AppClient, setup: Setup) 
 
 
 def test_variant_may_have_own_values_from_the_start(client: AppClient, setup: Setup) -> None:
-    make_variant(client, setup, selling_price="12,50", weight="3", min_stock="2")
+    make_variant(client, setup, selling_price="12,50", min_stock="2")
 
     article = article_by_number("3D-0042-RT")
-    assert (str(article.selling_price), str(article.weight), article.min_stock) == (
+    assert (str(article.selling_price), article.min_stock) == (
         "12.50",
-        "3",
         2,
     )
 
@@ -221,7 +219,6 @@ def test_article_number_of_a_normal_article_is_taken_too(client: AppClient, setu
             "number": "3D-0042-RT",
             "name": "Alt",
             "selling_price": "",
-            "weight": "",
             "min_stock": "",
         },
     )
@@ -336,7 +333,6 @@ def test_variant_shows_inherited_values_and_marks_them(client: AppClient, setup:
 
     for label, value in (
         ("article.field.selling_price", "10,00"),
-        ("article.field.weight", "2,00"),
         ("article.field.min_stock", "5"),
     ):
         row = row_of(html, DE[label])
@@ -356,12 +352,11 @@ def test_variant_with_own_price_says_own_value(client: AppClient, setup: Setup) 
     assert DE["variant.own"] in row
     assert DE["variant.inherited"] not in row
     # The others are still inherited
-    assert DE["variant.inherited"] in row_of(html, DE["article.field.weight"])
     assert DE["variant.inherited"] in row_of(html, DE["article.field.min_stock"])
 
 
 def test_reset_to_template_value_removes_the_own_value(client: AppClient, setup: Setup) -> None:
-    make_variant(client, setup, selling_price="12,50", weight="3", min_stock="1")
+    make_variant(client, setup, selling_price="12,50", min_stock="1")
     article_id = article_by_number("3D-0042-RT").id
 
     response = client.post(f"/articles/{article_id}/reset/selling_price", data={})
@@ -369,7 +364,7 @@ def test_reset_to_template_value_removes_the_own_value(client: AppClient, setup:
     assert response.status_code == 200
     article = article_by_number("3D-0042-RT")
     assert article.selling_price is None
-    assert str(article.weight) == "3"  # others untouched
+    assert article.min_stock == 1  # others untouched
     row = row_of(client.get(f"/articles/{article_id}").text, DE["article.field.selling_price"])
     assert "10,00" in row
     assert DE["variant.inherited"] in row
@@ -384,7 +379,7 @@ def test_reset_button_only_where_there_is_an_own_value(client: AppClient, setup:
     html = client.get(f"/articles/{article_id}").text
 
     assert f'action="/articles/{article_id}/reset/selling_price"' in html
-    assert f'action="/articles/{article_id}/reset/weight"' not in html
+    assert f'action="/articles/{article_id}/reset/min_stock"' not in html
     assert DE["variant.reset"] in html
 
 
@@ -397,7 +392,6 @@ def test_reset_is_refused_for_normal_articles_and_unknown_fields(
             "number": "A-1",
             "name": "Normal",
             "selling_price": "4,00",
-            "weight": "",
             "min_stock": "",
         },
     )
@@ -407,7 +401,7 @@ def test_reset_is_refused_for_normal_articles_and_unknown_fields(
 
     assert client.post(f"/articles/{normal_id}/reset/selling_price", data={}).status_code == 404
     assert client.post(f"/articles/{variant_id}/reset/number", data={}).status_code == 404
-    assert client.post("/articles/999/reset/weight", data={}).status_code == 404
+    assert client.post("/articles/999/reset/min_stock", data={}).status_code == 404
     assert str(article_by_number("A-1").selling_price) == "4.00"
     assert str(article_by_number("3D-0042-RT").selling_price) == "12.50"
 
@@ -427,7 +421,6 @@ def test_template_change_reaches_only_variants_without_own_value(
             "name": "Halter A",
             "description": "",
             "selling_price": "11,00",
-            "weight": "2",
             "min_stock": "5",
             f"attr_{setup.colour_id}": "1",
             f"attr_{setup.size_id}": "1",
@@ -507,7 +500,6 @@ def test_edit_form_of_a_normal_article_has_no_variant_parts(client: AppClient) -
             "number": "A-1",
             "name": "Normal",
             "selling_price": "",
-            "weight": "",
             "min_stock": "",
         },
     )
@@ -569,7 +561,6 @@ def add_third_attribute(client: AppClient, setup: Setup) -> int:
             "name": "Halter A",
             "description": "",
             "selling_price": "10,00",
-            "weight": "2",
             "min_stock": "5",
             f"attr_{setup.colour_id}": "1",
             f"attr_{setup.size_id}": "1",
@@ -652,7 +643,6 @@ def test_attribute_in_use_by_variants_cannot_be_removed_from_the_template(
             "name": "Halter A",
             "description": "",
             "selling_price": "",
-            "weight": "",
             "min_stock": "",
             f"attr_{setup.colour_id}": "1",  # size is removed
         },
@@ -671,7 +661,6 @@ def test_unused_attribute_can_still_be_removed(client: AppClient, setup: Setup) 
             "name": "Halter A",
             "description": "",
             "selling_price": "",
-            "weight": "",
             "min_stock": "",
             f"attr_{setup.colour_id}": "1",
         },
@@ -723,7 +712,6 @@ def test_normal_articles_are_unchanged(client: AppClient) -> None:
             "number": "A-1",
             "name": "Normal",
             "selling_price": "4,00",
-            "weight": "",
             "min_stock": "",
         },
     )
@@ -1093,10 +1081,9 @@ def test_new_variant_form_shows_template_values_as_placeholders(
     html = client.get(f"/templates/{setup.template_id}/variants/new").text
 
     assert placeholder_of(html, "selling_price") == "10,00 (von Vorlage)"
-    assert placeholder_of(html, "weight") == "2,00 (von Vorlage)"
     assert placeholder_of(html, "min_stock") == "5 (von Vorlage)"
     # Only a hint: the fields stay empty and so keep inheriting.
-    assert [value_of(html, f) for f in ("selling_price", "weight", "min_stock")] == ["", "", ""]
+    assert [value_of(html, f) for f in ("selling_price", "min_stock")] == ["", ""]
 
 
 def test_saving_without_input_still_inherits_and_own_input_wins(
@@ -1110,11 +1097,11 @@ def test_saving_without_input_still_inherits_and_own_input_wins(
 
 
 def test_no_placeholder_for_a_field_the_template_has_no_value_for(client: AppClient) -> None:
-    setup = make_setup(client, selling_price="", weight="", min_stock="")
+    setup = make_setup(client, selling_price="", min_stock="")
 
     html = client.get(f"/templates/{setup.template_id}/variants/new").text
 
-    assert [placeholder_of(html, f) for f in ("selling_price", "weight", "min_stock")] == [None] * 3
+    assert [placeholder_of(html, f) for f in ("selling_price", "min_stock")] == [None] * 2
 
 
 def test_edit_form_of_a_variant_shows_placeholders_only_for_empty_fields(
@@ -1126,7 +1113,6 @@ def test_edit_form_of_a_variant_shows_placeholders_only_for_empty_fields(
     html = client.get(f"/articles/{article_id}/edit").text
 
     assert value_of(html, "selling_price") == "15,00"
-    assert placeholder_of(html, "weight") == "2,00 (von Vorlage)"
     assert placeholder_of(html, "min_stock") == "5 (von Vorlage)"
 
 

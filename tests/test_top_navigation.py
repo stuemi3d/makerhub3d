@@ -48,7 +48,7 @@ def test_bar_spans_the_full_width(client: AppClient) -> None:
 def test_articles_entry_is_current_on_list_and_detail_pages(client: AppClient) -> None:
     response = client.post(
         "/articles/new",
-        data={"number": "3D-0001", "name": "Halter", "selling_price": "", "weight": ""},
+        data={"number": "3D-0001", "name": "Halter", "selling_price": ""},
         follow_redirects=False,
     )
     article_url = response.headers["location"].split("?")[0]

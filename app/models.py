@@ -90,13 +90,11 @@ class Article(Base):
     name: Mapped[str] = mapped_column(String(100))
     # Euro per piece; empty = no target price set
     selling_price: Mapped[Decimal | None] = mapped_column(DecimalText)
-    # Share when production costs are split between articles (plan, section 4)
-    weight: Mapped[Decimal | None] = mapped_column(DecimalText)
     # Pieces; empty = no minimum
     min_stock: Mapped[int | None] = mapped_column(Integer)
     active: Mapped[bool] = mapped_column(Boolean, server_default=true())
     created_at: Mapped[datetime] = mapped_column(DateTime)
-    # Set for a variant (issue #49): the template it belongs to. Price, weight and minimum
+    # Set for a variant (issue #49): the template it belongs to. Price and minimum
     # stock that are empty here are inherited from the template.
     template_id: Mapped[int | None] = mapped_column(ForeignKey("article_templates.id"))
     # The attribute values of a variant as text ("attribute id:value id", sorted), so that the
@@ -291,7 +289,6 @@ class ArticleTemplate(Base):
     description: Mapped[str] = mapped_column(Text, server_default="")
     # Defaults that variants inherit; empty = not set (same meaning as for articles)
     selling_price: Mapped[Decimal | None] = mapped_column(DecimalText)
-    weight: Mapped[Decimal | None] = mapped_column(DecimalText)
     min_stock: Mapped[int | None] = mapped_column(Integer)
     active: Mapped[bool] = mapped_column(Boolean, server_default=true())
     created_at: Mapped[datetime] = mapped_column(DateTime)

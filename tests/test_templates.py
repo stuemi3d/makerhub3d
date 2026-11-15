@@ -113,7 +113,6 @@ def template_form(client: AppClient, **overrides: str) -> dict[str, str]:
         "name": "Halter A",
         "description": "",
         "selling_price": "",
-        "weight": "",
         "min_stock": "",
     }
     form.update(overrides)
@@ -295,7 +294,6 @@ def test_new_template_is_in_the_template_list_but_not_in_the_article_list(
         client,
         description="Halter für Kabel",
         selling_price="12,90",
-        weight="3",
         min_stock="5",
         **{f"attr_{ids[0]}": "1", f"attr_{ids[1]}": "1"},
     )
@@ -307,9 +305,8 @@ def test_new_template_is_in_the_template_list_but_not_in_the_article_list(
         "Halter für Kabel",
         True,
     )
-    assert (stored.selling_price, stored.weight, stored.min_stock) == (
+    assert (stored.selling_price, stored.min_stock) == (
         Decimal("12.90"),
-        Decimal("3"),
         5,
     )
     assert response.headers["location"] == f"/templates/{stored.id}"
@@ -385,7 +382,6 @@ def test_template_needs_a_name(client: AppClient, value: str) -> None:
     [
         ("selling_price", "abc", "article.error.number"),
         ("selling_price", "-1", "article.error.negative"),
-        ("weight", "0", "article.error.zero"),
         ("min_stock", "1,5", "article.error.whole"),
         ("min_stock", "2000000", "article.error.too_large"),
         ("name", "N" * 101, "article.error.too_long"),
