@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}{{ t('production.new.title') }} – {{ app_name }}{% endblock %}
+{% macro err(name) %}{% if errors.get(name) %}<small id="{{ name }}-error" class="field-error">{{ t(errors[name]) }}</small>{% endif %}{% endmacro %}
+{% block content %}
+<nav aria-label="breadcrumb">
+  <ul>
+    <li><a href="/production">{{ t('production.title') }}</a></li>
+    <li>{{ t('production.new.title') }}</li>
+  </ul>
+</nav>
+<h1>{{ t('production.new.title') }}</h1>
+<p><small>{{ t('production.new.intro') }}</small></p>
+{% for key in ('prints', 'results', 'alloc', 'note') %}
+{% if errors.get(key) %}<p role="alert"><mark>{{ t(errors[key]) }}</mark></p>{% endif %}
+{% endfor %}
+{% if errors and not errors.get('prints') %}<p role="alert"><mark>{{ t('production.has_errors') }}</mark></p>{% endif %}
+{% if any_missing %}<p role="status"><small>{{ t('production.cost_missing') }}</small></p>{% endif %}
+<form method="post" action="/production/new" novalidate>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <input type="hidden" name="rows" value="{{ draft.rows }}">
+  <input type="hidden" name="preview_key" value="{{ preview_key or draft.preview_key }}">
+  {% for archive_id in draft.ids %}<input type="hidden" name="prints" value="{{ archive_id }}">{% endfor %}
+  <h2>{{ t('production.detail.prints') }}</h2>
+  <article class="data-card">
+  <div class="data-scroll">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th scope="col">{{ t('production.col.date') }}</th>
+        <th scope="col">{{ t('production.col.name') }}</th>
+        <th scope="col" class="num">{{ t('production.col.material') }}</th>
+        <th scope="col" class="num">{{ t('production.col.electricity') }}</th>
+        <th scope="col" class="num">{{ t('production.col.wear') }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in shown_prints %}
+      <tr class="form-print{% if p.row.failed %} print-failed{% endif %}">
+        <td>{{ p.row.when }}</td>
+        <td class="cell-strong">{{ p.row.name }}</td>
+        {% for part in ('material', 'electricity', 'wear') %}
+        <td class="num">
+          <input type="text" inputmode="decimal" autocomplete="off" name="cost_{{ part }}_{{ p.row.archive_id }}" id="cost_{{ part }}_{{ p.row.archive_id }}" value="{{ p[part] }}" aria-label="{{ t('production.col.' ~ part) }}: {{ p.row.name }}">
+          {{ err('cost_' ~ part ~ '_' ~ p.row.archive_id) }}
+        </td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  </article>
+
+  <h2>{{ t('production.detail.articles') }}</h2>
+  <article class="data-card">
+  <div class="data-scroll">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th scope="col">{{ t('production.col.article') }}</th>
+        <th scope="col" class="num">{{ t('production.col.quantity') }}</th>
+        <th scope="col" class="num">{{ t('production.col.weight') }}</th>
+        {% if previewed or draft.preview_key %}
+        <th scope="col" class="num">{{ t('production.col.alloc') }}</th>
+        <th scope="col" class="num">{{ t('production.col.per_piece') }}</th>
+        {% endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in result_rows %}
+      <tr class="form-article">
+        <td>
+          <select name="article_{{ r.n }}" id="article_{{ r.n }}" aria-label="{{ t('production.col.article') }} {{ r.n }}">
+            <option value="">{{ t('production.choose') }}</option>
+            {% for a in articles %}
+            <option value="{{ a.id }}"{% if r.article == a.id|string %} selected{% endif %}>{{ a.label }}</option>
+            {% endfor %}
+          </select>
+          {{ err('article_' ~ r.n) }}
+        </td>
+        <td class="num">
+          <input type="text" inputmode="numeric" autocomplete="off" name="quantity_{{ r.n }}" id="quantity_{{ r.n }}" value="{{ r.quantity }}" aria-label="{{ t('production.col.quantity') }} {{ r.n }}">
+          {{ err('quantity_' ~ r.n) }}
+        </td>
+        <td class="num">
+          <input type="text" inputmode="decimal" autocomplete="off" name="weight_{{ r.n }}" id="weight_{{ r.n }}" value="{{ r.weight }}" aria-label="{{ t('production.col.weight') }} {{ r.n }}">
+          {{ err('weight_' ~ r.n) }}
+        </td>
+        {% if previewed or draft.preview_key %}
+        <td class="num">
+          <input type="text" inputmode="decimal" autocomplete="off" name="alloc_{{ r.n }}" id="alloc_{{ r.n }}" value="{{ r.alloc }}" aria-label="{{ t('production.col.alloc') }} {{ r.n }}">
+          {{ err('alloc_' ~ r.n) }}
+        </td>
+        <td class="num">{{ r.per_piece }}</td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  </article>
+  {% if previewed %}
+  <p class="preview-total"><strong>{{ t('production.preview.total') }}: {{ preview_total }}</strong> <small>{{ t('production.preview.hint') }}</small></p>
+  {% endif %}
+
+  <article class="detail-card">
+    <label for="date">{{ t('production.field.date') }}</label>
+    <input type="date" max="{{ today }}" name="date" id="date" value="{{ draft.date }}">
+    {{ err('date') }}
+    <label for="note">{{ t('production.field.note') }}</label>
+    <input type="text" maxlength="600" autocomplete="off" name="note" id="note" value="{{ draft.note }}">
+    {{ err('note') }}
+  </article>
+  <div class="form-actions">
+    {# The first button counts when Enter is pressed in a field: that is the harmless one #}
+    <button type="submit" name="action" value="preview" class="secondary">{{ t('production.preview') }}</button>
+    <button type="submit" name="action" value="add_row" class="secondary outline">{{ t('production.add_row') }}</button>
+    <button type="submit" name="action" value="book">{{ t('production.book') }}</button>
+    <a href="/production" role="button" class="secondary outline">{{ t('article.cancel') }}</a>
+  </div>
+</form>
+{% endblock %}

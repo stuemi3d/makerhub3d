@@ -13,23 +13,25 @@
   {% if can('manage') %}<a href="/settings/bambuddy" role="button">{{ t('production.to_settings') }}</a>{% endif %}
 </article>
 {% else %}
-<nav aria-label="{{ t('production.views') }}" class="area-tabs">
-  <ul>
-    {% for v in views %}
-    <li><a href="/production?view={{ v }}"{% if v == view %} aria-current="page"{% endif %}>{{ t('production.view.' ~ v) }}</a></li>
-    {% endfor %}
-  </ul>
-</nav>
+{% set active = view %}
+{% include "_production_tabs.html" %}
+{% set can_choose = can('edit') and view == 'open' %}
 {% if prints.error %}
 <p role="alert"><span class="chip chip-warn">{{ t(prints.error[0]) }}</span>{% if prints.error[1] %} <code>{{ prints.error[1] }}</code>{% endif %}</p>
 {% else %}
 {% if prints.truncated %}<p role="status"><mark>{{ t('production.truncated') }}</mark></p>{% endif %}
 {% if rows %}
+{% if can_choose %}
+{# The chosen prints go to the form for a new production; the boxes belong to this form from afar, so that the buttons of the rows can have forms of their own #}
+<form id="select-form" method="get" action="/production/new"></form>
+<div class="form-actions"><button type="submit" form="select-form">{{ t('production.create') }}</button> <small>{{ t('production.create.hint') }}</small></div>
+{% endif %}
 <article class="data-card">
 <div class="data-scroll">
 <table class="data-table">
   <thead>
     <tr>
+      {% if can_choose %}<th scope="col"><span class="visually-hidden">{{ t('production.choose_print') }}</span></th>{% endif %}
       {{ head(t('production.col.date'), sort_links.date) }}
       {{ head(t('production.col.name'), sort_links.name) }}
       {{ head(t('production.col.duration')) }}
@@ -43,6 +45,9 @@
   <tbody>
     {% for p in rows %}
     <tr class="print-row{% if p.failed %} print-failed{% endif %}" data-archive="{{ p.archive_id }}" data-name="{{ p.name }}">
+      {% if can_choose %}
+      <td>{% if p.status in ('completed', 'failed', 'cancelled') %}<input type="checkbox" name="prints" value="{{ p.archive_id }}" form="select-form" aria-label="{{ t('production.choose_print') }}: {{ p.name }}">{% endif %}</td>
+      {% endif %}
       <td>{{ p.when }}</td>
       <td class="cell-strong">{{ p.name }}</td>
       <td>{{ p.duration if p.duration else t('table.empty_value') }}</td>
@@ -59,7 +64,7 @@
           <button type="submit" class="secondary outline">{{ t('production.unignore' if p.state == 'ignored' else 'production.ignore') }}</button>
         </form>
         {% elif p.state == 'assigned' %}
-        {{ chip(t('production.in_production'), 'active') }}
+        <a href="/production/{{ p.production_id }}">{{ t('production.in_production') }}</a>
         {% endif %}
       </td>
     </tr>

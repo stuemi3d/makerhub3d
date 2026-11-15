@@ -13,7 +13,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app import audit, auth, table_sort
-from app.models import Article, StockMovement, StockMovementKind, User
+from app.models import Article, ProductionResult, StockMovement, StockMovementKind, User
 
 # Checking the stock (or whether a print is taken) and booking must not overlap, or two bookings
 # could together push the stock below zero. One lock for all bookings (also productions) is
@@ -73,6 +73,8 @@ class MovementRow:
     is_cancelled: bool
     cancellable: bool
     user: str
+    # Set for movements of a production (and their counter bookings): where it is cancelled
+    production_id: int | None = None
 
 
 def movement_rows(db: Session, language: str, article_id: int | None = None) -> list[MovementRow]:
@@ -80,6 +82,12 @@ def movement_rows(db: Session, language: str, article_id: int | None = None) -> 
     cancelled_ids = set(
         db.scalars(select(StockMovement.cancels_id).where(StockMovement.cancels_id.is_not(None)))
     )
+    from_production = {
+        movement_id: production_id
+        for movement_id, production_id in db.execute(
+            select(ProductionResult.movement_id, ProductionResult.production_id)
+        )
+    }
     query = (
         select(StockMovement, Article.number, User.username)
         .join(Article, Article.id == StockMovement.article_id)
@@ -104,6 +112,7 @@ def movement_rows(db: Session, language: str, article_id: int | None = None) -> 
             is_cancelled=movement.id in cancelled_ids,
             cancellable=movement.kind in CANCELLABLE_KINDS and movement.id not in cancelled_ids,
             user=username or "",
+            production_id=from_production.get(movement.cancels_id or movement.id),
         )
         for movement, number, username in db.execute(query)
     ]

@@ -69,7 +69,7 @@ def count(model) -> int:
         return len(session.scalars(select(model)).all())
 
 
-# --- Cases 1-2: booking raises the stock, costs are stored ------------------------------------
+# --- Cases 1-2: booking raises the stock, costs are stored -------------------------------------
 
 
 def test_booking_raises_the_stock_and_stores_the_total_cost() -> None:
@@ -93,7 +93,7 @@ def test_booking_raises_the_stock_and_stores_the_total_cost() -> None:
         assert (movement.quantity, movement.kind) == (10, "production")
 
 
-# --- Cases 3-4 and the three combinations -----------------------------------------------------
+# --- Cases 3-4 and the three combinations ------------------------------------------------------
 
 
 def test_costs_are_split_by_quantity_and_add_up_exactly() -> None:
@@ -173,7 +173,7 @@ def test_two_articles_on_three_plates() -> None:
     assert [r.allocated_cost for r in item.results] == [D("3.00"), D("3.00")]
 
 
-# --- Case 5: later changes do not change the past ---------------------------------------------
+# --- Case 5: later changes do not change the past ----------------------------------------------
 
 
 def test_stored_costs_stay_when_the_article_changes() -> None:
@@ -189,7 +189,7 @@ def test_stored_costs_stay_when_the_article_changes() -> None:
     assert get_production(production_id).total_cost == D("4.50")
 
 
-# --- Case 6: invalid input books nothing ------------------------------------------------------
+# --- Case 6: invalid input books nothing -------------------------------------------------------
 
 
 @pytest.mark.parametrize("quantity", [0, -3])
@@ -239,7 +239,7 @@ def test_same_article_twice_and_no_print_are_refused() -> None:
     assert count(Production) == 0
 
 
-# --- Case 7: failed prints --------------------------------------------------------------------
+# --- Case 7: failed prints ---------------------------------------------------------------------
 
 
 def test_failed_prints_count_into_the_costs_and_are_marked() -> None:
@@ -256,7 +256,7 @@ def test_failed_prints_count_into_the_costs_and_are_marked() -> None:
     assert [p.status for p in item.prints] == ["success", "failed"]
 
 
-# --- Case 8: change log -----------------------------------------------------------------------
+# --- Case 8: change log ------------------------------------------------------------------------
 
 
 def test_booking_and_cancelling_are_in_the_change_log() -> None:
@@ -271,7 +271,7 @@ def test_booking_and_cancelling_are_in_the_change_log() -> None:
     assert DE["log.action.production.booked"] and DE["log.action.production.cancelled"]
 
 
-# --- Cases 9-11: prints belong to one production, ignored prints ------------------------------
+# --- Cases 9-11: prints belong to one production, ignored prints -------------------------------
 
 
 def test_a_print_cannot_be_in_two_active_productions() -> None:
@@ -323,7 +323,7 @@ def test_ignoring_twice_is_harmless() -> None:
     assert count(IgnoredPrint) == 1
 
 
-# --- Case 12-14, 16: cancelling ---------------------------------------------------------------
+# --- Case 12-14, 16: cancelling ----------------------------------------------------------------
 
 
 def test_cancelling_books_a_counter_movement_and_keeps_the_original() -> None:
@@ -365,7 +365,7 @@ def test_cancelling_a_missing_production_raises() -> None:
         cancel(404)
 
 
-# --- Case 15: not enough stock left -----------------------------------------------------------
+# --- Case 15: not enough stock left ------------------------------------------------------------
 
 
 def test_cancelling_is_refused_when_the_stock_would_go_negative() -> None:
@@ -386,7 +386,7 @@ def test_cancelling_is_refused_when_the_stock_would_go_negative() -> None:
         )
 
 
-# --- Case 17: several articles are cancelled together or not at all ---------------------------
+# --- Case 17: several articles are cancelled together or not at all ----------------------------
 
 
 def test_with_several_articles_both_are_cancelled_together() -> None:
@@ -411,7 +411,7 @@ def test_with_several_articles_nothing_is_cancelled_if_one_cannot_be() -> None:
     assert count(StockMovement) == 3
 
 
-# --- Case 18: the movement is cancelled only through the production ---------------------------
+# --- Case 18: the movement is cancelled only through the production ----------------------------
 
 
 def test_a_production_movement_cannot_be_cancelled_on_its_own() -> None:
@@ -427,7 +427,7 @@ def test_a_production_movement_cannot_be_cancelled_on_its_own() -> None:
     assert stock(article_id) == 10
 
 
-# --- Case 19: migration -----------------------------------------------------------------------
+# --- Case 19: migration ------------------------------------------------------------------------
 
 
 def test_production_migration_on_filled_database_and_back(tmp_path: Path) -> None:
@@ -466,7 +466,7 @@ def test_production_migration_on_filled_database_and_back(tmp_path: Path) -> Non
         assert connection.execute("SELECT COUNT(*) FROM productions").fetchone() == (0,)
 
 
-# --- Cases 20-21: deleting an article for good ------------------------------------------------
+# --- Cases 20-21: deleting an article for good -------------------------------------------------
 
 
 def purge(article_id: int) -> None:
@@ -516,7 +516,7 @@ def test_purge_of_a_cancelled_production_article_still_works() -> None:
     assert (count(Production), count(StockMovement)) == (0, 0)
 
 
-# --- Case 23: prints that are not assigned yet ------------------------------------------------
+# --- Case 23: prints that are not assigned yet -------------------------------------------------
 
 
 def test_unassigned_prints_are_those_neither_booked_nor_ignored() -> None:
@@ -533,7 +533,7 @@ def test_unassigned_prints_are_those_neither_booked_nor_ignored() -> None:
         assert production.unassigned(session, [1, 2, 3, 4, 5]) == [1, 2, 4, 5]
 
 
-# --- Texts ------------------------------------------------------------------------------------
+# --- Texts -------------------------------------------------------------------------------------
 
 
 def test_all_production_texts_exist_in_both_languages() -> None:
@@ -568,3 +568,66 @@ def test_the_production_count_covers_several_productions() -> None:
 
     purge(article_id)
     assert (count(Production), count(ProductionPrint), count(StockMovement)) == (0, 0, 0)
+
+
+# --- Issue #127: rounding of the total, split by hand, preview ---------------------------------
+
+
+def test_the_total_is_rounded_to_the_cent_when_booking() -> None:
+    article_id = add_article()
+
+    production_id, _ = book([print_(1, "0.005", "0", "0")], [ResultInput(article_id, 1)])
+
+    item = get_production(production_id)
+    assert item.total_cost == D("0.01")
+    assert item.results[0].allocated_cost == D("0.01")
+
+
+def test_a_split_by_hand_is_stored_when_it_adds_up() -> None:
+    first, second = add_article("A-1"), add_article("A-2")
+    with db() as session, session.begin():
+        production_id, errors = production.book(
+            session,
+            None,
+            TODAY,
+            "",
+            [print_(1, "5.00", "0", "0")],
+            [ResultInput(first, 1), ResultInput(second, 1)],
+            [D("4.00"), D("1.00")],
+        )
+
+    assert errors == {}
+    rows = get_production(production_id).results
+    assert [(r.allocated_cost, r.split) for r in rows] == [(D("4.00"), True), (D("1.00"), True)]
+
+
+@pytest.mark.parametrize("split", [[D("4.00"), D("2.00")], [D("5.00")], [D("6.00"), D("-1.00")]])
+def test_a_split_by_hand_that_does_not_fit_books_nothing(split: list[Decimal]) -> None:
+    first, second = add_article("A-1"), add_article("A-2")
+    with db() as session, session.begin():
+        production_id, errors = production.book(
+            session,
+            None,
+            TODAY,
+            "",
+            [print_(1, "5.00", "0", "0")],
+            [ResultInput(first, 1), ResultInput(second, 1)],
+            split,
+        )
+
+    assert production_id is None and errors == {"alloc": "production.error.alloc_sum"}
+    assert (count(Production), count(StockMovement)) == (0, 0)
+
+
+def test_the_preview_changes_nothing() -> None:
+    first, second = add_article("A-1"), add_article("A-2")
+    with db() as session:
+        errors, total, rows = production.preview(
+            session,
+            [print_(1, "7.25", "0", "0")],
+            [ResultInput(first, 6), ResultInput(second, 4)],
+        )
+
+    assert errors == {} and total == D("7.25")
+    assert [r.cost for r in rows] == [D("4.35"), D("2.90")]
+    assert (count(Production), count(StockMovement)) == (0, 0)

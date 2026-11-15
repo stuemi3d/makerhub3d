@@ -116,3 +116,40 @@ def test_ignoring_works_with_the_buttons(admin_page: Page, fake_bambuddy: str) -
     assert fits_screen_width(admin_page)
     admin_page.get_by_role("button", name=t("production.unignore")).click()
     expect(admin_page.locator("tr.print-row")).to_have_count(0)
+
+
+def test_booking_and_cancelling_work_on_every_screen(
+    admin_page: Page, fake_bambuddy: str, viewport_name: str
+) -> None:
+    connect(admin_page, fake_bambuddy)
+    number = f"3D-P-{viewport_name}"
+    admin_page.goto("/articles/new")
+    admin_page.fill("#number", number)
+    admin_page.fill("#name", "Halter")
+    admin_page.locator(f"button[type=submit]:has-text('{t('article.create')}')").click()
+    expect(admin_page.locator("h1")).to_contain_text("Halter")
+
+    admin_page.goto("/production")
+    admin_page.locator("tr.print-row").first.locator("input[name=prints]").check()
+    admin_page.get_by_role("button", name=t("production.create"), exact=True).click()
+    expect(admin_page.locator("h1")).to_have_text(t("production.new.title"))
+    assert fits_screen_width(admin_page)
+
+    admin_page.select_option("#article_1", label=f"{number} · Halter")
+    admin_page.fill("#quantity_1", "4")
+    admin_page.get_by_role("button", name=t("production.preview"), exact=True).click()
+    expect(admin_page.locator(".preview-total")).to_be_visible()
+    assert fits_screen_width(admin_page)
+    admin_page.get_by_role("button", name=t("production.book"), exact=True).click()
+    expect(admin_page.locator("[role=status]")).to_contain_text(t("production.booked"))
+    # The browser tests share one database: look for the row of this test's article only.
+    row = admin_page.locator("tr.production-row").filter(has_text=number)
+    expect(row).to_have_count(1)
+    assert fits_screen_width(admin_page)
+
+    row.get_by_role("button", name=t("production.cancel"), exact=True).click()
+    expect(admin_page.locator("h1")).to_have_text(t("production.cancel.title"))
+    admin_page.get_by_role("button", name=t("production.cancel.submit"), exact=True).click()
+    expect(admin_page.locator("[role=status]")).to_contain_text(t("production.cancelled_done"))
+    expect(admin_page.locator("tr.production-cancelled").filter(has_text=number)).to_have_count(1)
+    assert fits_screen_width(admin_page)

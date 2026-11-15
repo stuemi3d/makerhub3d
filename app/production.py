@@ -63,6 +63,40 @@ def allocate(total: Decimal, shares: list[Decimal]) -> list[Decimal]:
     return parts
 
 
+@dataclass(frozen=True)
+class PreviewRow:
+    article: Article
+    quantity: int
+    weight: Decimal
+    cost: Decimal
+
+
+def preview(
+    db: Session, prints: list[PrintInput], results: list[ResultInput]
+) -> tuple[dict[str, str], Decimal, list[PreviewRow]]:
+    """What booking would allocate: the errors, the total and one row per result article.
+    Nothing is stored."""
+    errors, rows = _check(db, prints, results, "")
+    if errors:
+        return errors, Decimal(0), []
+    total = _total(prints)
+    shares = [Decimal(item.quantity) * weight for _, item, weight in rows]
+    costs = allocate(total, shares)
+    return (
+        {},
+        total,
+        [
+            PreviewRow(article, item.quantity, weight, cost)
+            for (article, item, weight), cost in zip(rows, costs, strict=True)
+        ],
+    )
+
+
+def _total(prints: list[PrintInput]) -> Decimal:
+    """The sum of all print costs, rounded to the cent."""
+    return sum((item.cost for item in prints), Decimal(0)).quantize(CENT, rounding=ROUND_HALF_UP)
+
+
 def assigned_archive_ids(db: Session) -> set[int]:
     """The prints that are in an active (not cancelled) production."""
     return set(
@@ -176,16 +210,25 @@ def book(
     note: str,
     prints: list[PrintInput],
     results: list[ResultInput],
+    allocated: list[Decimal] | None = None,
 ) -> tuple[int | None, dict[str, str]]:
     """Books a production and raises the stock of its result articles. Returns the id, or the
-    errors by field; nothing is stored when there are errors."""
+    errors by field; nothing is stored when there are errors.
+
+    The total is rounded to the cent. `allocated` is a split corrected by hand (one amount per
+    result, in order); it must add up to the total, otherwise the split is calculated."""
     errors, rows = _check(db, prints, results, note.strip())
     if errors:
         return None, errors
 
-    total = sum((item.cost for item in prints), Decimal(0))
+    total = _total(prints)
     shares = [Decimal(item.quantity) * weight for _, item, weight in rows]
-    costs = allocate(total, shares)
+    if allocated is None:
+        costs = allocate(total, shares)
+    else:
+        costs = [value.quantize(CENT, rounding=ROUND_HALF_UP) for value in allocated]
+        if len(costs) != len(rows) or any(c < 0 for c in costs) or sum(costs) != total:
+            return None, {"alloc": "production.error.alloc_sum"}
     split = len(rows) > 1
     now = auth.utcnow()
 
