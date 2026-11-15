@@ -21,7 +21,7 @@ from app import APP_NAME, audit, auth, backup, dashboard, two_factor
 from app.account_two_factor import add_two_factor_routes
 from app.article_pages import add_article_routes
 from app.backup_pages import add_backup_routes
-from app.bambuddy_pages import add_bambuddy_routes
+from app.bambuddy_pages import add_bambuddy_routes, connection_is_set_up
 from app.config import Settings
 from app.db import make_engine, run_migrations
 from app.i18n import translate
@@ -170,6 +170,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.state.setup_code = None
 
+    def _bambuddy_ready() -> bool:
+        with new_session() as db:
+            return connection_is_set_up(db)
+
     def render(
         request: Request, template: str, current_nav: str, status_code: int = 200, **context
     ) -> HTMLResponse:
@@ -187,6 +191,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     user is not None and has_permission(user.role, permission)
                 ),
                 "csrf_token": getattr(request.state, "csrf_token", ""),
+                # Looked up only when the settings tab bar asks (admin pages), not on every page.
+                "bambuddy_ready": _bambuddy_ready,
                 **context,
             },
             status_code=status_code,

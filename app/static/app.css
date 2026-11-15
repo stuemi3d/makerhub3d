@@ -671,3 +671,24 @@ main .detail-card:not(.auth-box) > form [type="submit"] {
   color: var(--mh-accent);
   font-weight: 600;
 }
+
+.status-dot {
+  display: inline-block;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  vertical-align: middle;
+}
+
+.status-dot-on {
+  background: var(--mh-success-text);
+}
+
+.status-dot-off {
+  background: var(--mh-text-muted);
+}
+
+.bambuddy-status p {
+  margin: 0.25rem 0;
+  overflow-wrap: anywhere;
+}
