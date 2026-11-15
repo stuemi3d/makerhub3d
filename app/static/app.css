@@ -621,6 +621,17 @@ dialog#popup h1 {
   margin: 0 0 1rem;
 }
 
+/* Forms inside cards (settings, account, appearance, attributes) keep a readable width
+   instead of stretching over the whole screen; the buttons only take the space they need. */
+main > form:has(> .detail-card),
+main .detail-card:not(.auth-box):has(> form) {
+  max-width: 36rem;
+}
+main > form:has(> .detail-card) > button[type="submit"],
+main .detail-card:not(.auth-box) > form [type="submit"] {
+  width: auto;
+}
+
 .auth-box.detail-card {
   /* Login, code entry and setup: the card stays centered (the card margin comes later). */
   margin: 2rem auto;
