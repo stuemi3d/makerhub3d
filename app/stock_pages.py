@@ -2,7 +2,6 @@
 
 from collections.abc import Awaitable, Callable
 from datetime import date
-from threading import Lock
 from urllib.parse import urlencode
 
 from fastapi import FastAPI, HTTPException, Query, Request, Response
@@ -16,11 +15,6 @@ from app import stock, table_sort, variants
 from app.article_pages import saved_in_popup, wants_popup
 from app.models import Article
 from app.permissions import Permission, requires
-
-# Checking the stock and booking must not overlap, or two bookings could together push the
-# stock below zero. One lock is enough: the app runs as one process with one database.
-_booking_lock = Lock()
-
 
 LEVEL_SORT_KEYS = ("number", "name", "stock", "min_stock")
 
@@ -131,7 +125,7 @@ def add_stock_routes(
         values, errors = stock.validate_booking(raw, date.today())
         if errors:
             return errors
-        with _booking_lock, new_session() as db, db.begin():
+        with stock.booking_lock, new_session() as db, db.begin():
             return stock.book(db, actor_id, values)
 
     @app.post("/stock/new", response_class=HTMLResponse, dependencies=edit)
@@ -184,7 +178,7 @@ def add_stock_routes(
 
     def cancel_movement(movement_id: int, actor_id: int) -> str | None:
         try:
-            with _booking_lock, new_session() as db, db.begin():
+            with stock.booking_lock, new_session() as db, db.begin():
                 return stock.cancel(db, actor_id, movement_id)
         except LookupError:
             raise HTTPException(status_code=404) from None

@@ -147,6 +147,90 @@ class StockMovement(Base):
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
 
 
+class PrintStatus(StrEnum):
+    """How a print of a production ended."""
+
+    SUCCESS = "success"
+    FAILED = "failed"
+
+
+class Production(Base):
+    """A production (issue #118): any number of prints and any number of result articles.
+
+    Never deleted, only cancelled (the one exception is deleting an article for good). The
+    costs are stored as values when booking.
+    """
+
+    __tablename__ = "productions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    booked_on: Mapped[date] = mapped_column(Date)
+    # UTC without time zone
+    created_at: Mapped[datetime] = mapped_column(DateTime)
+    note: Mapped[str] = mapped_column(String(500), server_default="")
+    # Euro; the sum of all print costs
+    total_cost: Mapped[Decimal] = mapped_column(DecimalText)
+    cancelled: Mapped[bool] = mapped_column(Boolean, server_default=false())
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    prints: Mapped[list["ProductionPrint"]] = relationship(
+        cascade="all, delete-orphan", order_by="ProductionPrint.id"
+    )
+    results: Mapped[list["ProductionResult"]] = relationship(
+        cascade="all, delete-orphan", order_by="ProductionResult.id"
+    )
+
+
+class ProductionPrint(Base):
+    """One print (a Bambuddy archive entry) of a production, with its costs as values."""
+
+    __tablename__ = "production_prints"
+    __table_args__ = (
+        CheckConstraint("status IN ('success', 'failed')", name="ck_production_prints_status"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    production_id: Mapped[int] = mapped_column(ForeignKey("productions.id"), index=True)
+    # Not unique: the prints of a cancelled production are free again
+    archive_id: Mapped[int] = mapped_column(Integer, index=True)
+    # Euro
+    material_cost: Mapped[Decimal] = mapped_column(DecimalText)
+    electricity_cost: Mapped[Decimal] = mapped_column(DecimalText)
+    wear_cost: Mapped[Decimal] = mapped_column(DecimalText)
+    status: Mapped[PrintStatus] = mapped_column(String(10))
+
+
+class ProductionResult(Base):
+    """A result article of a production: good pieces and the costs allocated to them."""
+
+    __tablename__ = "production_results"
+    __table_args__ = (
+        CheckConstraint("quantity > 0", name="ck_production_results_quantity"),
+        UniqueConstraint("production_id", "article_id", name="uq_production_results_article"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    production_id: Mapped[int] = mapped_column(ForeignKey("productions.id"), index=True)
+    article_id: Mapped[int] = mapped_column(ForeignKey("articles.id"), index=True)
+    quantity: Mapped[int] = mapped_column(Integer)
+    # The weight used for the split, stored as a value
+    weight: Mapped[Decimal] = mapped_column(DecimalText)
+    # Euro
+    allocated_cost: Mapped[Decimal] = mapped_column(DecimalText)
+    # True when the costs were split between several articles
+    split: Mapped[bool] = mapped_column(Boolean, server_default=false())
+    # The stock movement this row booked
+    movement_id: Mapped[int] = mapped_column(ForeignKey("stock_movements.id"))
+
+
+class IgnoredPrint(Base):
+    """A Bambuddy print that does not matter and is hidden from the list of open prints."""
+
+    __tablename__ = "ignored_prints"
+
+    archive_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)
+    ignored_on: Mapped[date] = mapped_column(Date)
+
+
 class UserRole(StrEnum):
     """Fixed roles from the plan (section 8); their rights are in app/permissions.py."""
 
