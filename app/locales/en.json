@@ -605,5 +605,6 @@
   "production.error.date": "Please enter a valid date, not in the future.",
   "production.error.alloc_sum": "The allocated costs must add up to exactly the total cost.",
   "production.error.preview_stale": "The input was changed since the preview. Please make the preview again.",
-  "production.col.print_total": "Sum (€)"
+  "production.col.print_total": "Sum (€)",
+  "production.selected": "chosen"
 }

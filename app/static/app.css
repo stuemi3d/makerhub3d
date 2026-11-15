@@ -721,3 +721,59 @@ main .detail-card:not(.auth-box) > form [type="submit"] {
 .print-failed td.cell-strong {
   font-weight: 600;
 }
+
+/* Form of a production: one block per print and per result article, fields wrap on narrow screens */
+.form-block {
+  margin: 0 0 0.75rem;
+  padding: 0.75rem 1rem;
+  background: var(--mh-surface);
+  border: 1px solid var(--mh-border);
+  border-radius: var(--mh-radius);
+}
+
+.form-block-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  margin-bottom: 0.5rem;
+  overflow-wrap: anywhere;
+}
+
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  gap: 0.5rem 1rem;
+}
+
+.field-grid > div {
+  min-width: 0;
+}
+
+.field-grid .field-wide {
+  grid-column: 1 / -1;
+}
+
+.field-grid :is(input, select) {
+  margin-bottom: 0.25rem;
+}
+
+.field-label {
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.field-static {
+  display: block;
+  padding: 0.5rem 0;
+}
+
+.selected-count {
+  align-self: center;
+  color: var(--mh-text-muted);
+}
+
+/* A failed print in the form of a production: red like in the lists */
+.print-block.print-failed {
+  color: var(--mh-danger-text);
+}

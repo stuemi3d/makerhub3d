@@ -153,3 +153,69 @@ def test_booking_and_cancelling_work_on_every_screen(
     expect(admin_page.locator("[role=status]")).to_contain_text(t("production.cancelled_done"))
     expect(admin_page.locator("tr.production-cancelled").filter(has_text=number)).to_have_count(1)
     assert fits_screen_width(admin_page)
+
+
+def test_the_create_button_waits_for_a_chosen_print(admin_page: Page, fake_bambuddy: str) -> None:
+    connect(admin_page, fake_bambuddy)
+    admin_page.goto("/production")
+    button = admin_page.get_by_role("button", name=t("production.create"), exact=True)
+    boxes = admin_page.locator("input[name=prints]")
+    assert fits_screen_width(admin_page)
+
+    expect(button).to_be_disabled()
+    boxes.nth(0).check()
+    expect(button).to_be_enabled()
+    expect(admin_page.locator("[data-selected-text]")).to_have_text(f"1 {t('production.selected')}")
+    boxes.nth(1).check()
+    expect(admin_page.locator("[data-selected-text]")).to_have_text(f"2 {t('production.selected')}")
+    boxes.nth(0).uncheck()
+    boxes.nth(1).uncheck()
+    expect(button).to_be_disabled()
+    expect(admin_page.locator("[data-selected-text]")).to_have_text("")
+    # The button sits in the head, above the table.
+    button_box = button.bounding_box()
+    table_box = admin_page.locator("table.data-table").bounding_box()
+    assert button_box["y"] < table_box["y"]
+
+
+SCROLLERS = """
+() => [...document.querySelectorAll('main *')].filter((e) => {
+  const overflow = getComputedStyle(e).overflowX;
+  return (overflow === 'auto' || overflow === 'scroll') && e.scrollWidth > e.clientWidth + 1;
+}).length
+"""
+
+
+@pytest.mark.parametrize("width", [390, 600, 1000])
+def test_the_form_has_no_sideways_scrolling_and_a_wide_article_choice(
+    admin_page: Page, fake_bambuddy: str, width: int, viewport_name: str
+) -> None:
+    connect(admin_page, fake_bambuddy)
+    number = f"3D-W-{width}-{viewport_name}"
+    admin_page.goto("/articles/new")
+    admin_page.fill("#number", number)
+    admin_page.fill("#name", "Halter mit langem Namen")
+    admin_page.locator(f"button[type=submit]:has-text('{t('article.create')}')").click()
+    expect(admin_page.locator("h1")).to_contain_text("Halter")
+
+    admin_page.set_viewport_size({"width": width, "height": 900})
+    admin_page.goto("/production")
+    admin_page.locator("input[name=prints]").first.check()
+    admin_page.get_by_role("button", name=t("production.create"), exact=True).click()
+    expect(admin_page.locator("h1")).to_have_text(t("production.new.title"))
+
+    before = admin_page.locator("#article_1").bounding_box()["width"]
+    assert admin_page.evaluate(SCROLLERS) == 0
+    assert fits_screen_width(admin_page)
+    # Wide enough for a number and a name: at least about 12 characters of the text size.
+    assert before >= min(width - 60, 170)
+
+    admin_page.select_option("#article_1", label=f"{number} · Halter mit langem Namen")
+    admin_page.fill("#quantity_1", "2")
+    admin_page.get_by_role("button", name=t("production.preview"), exact=True).click()
+    expect(admin_page.locator(".preview-total")).to_be_visible()
+
+    after = admin_page.locator("#article_1").bounding_box()["width"]
+    assert admin_page.evaluate(SCROLLERS) == 0
+    assert fits_screen_width(admin_page)
+    assert abs(after - before) <= 2
