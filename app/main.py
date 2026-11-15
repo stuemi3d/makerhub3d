@@ -17,7 +17,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import sessionmaker
 
-from app import APP_NAME, audit, auth, backup, dashboard, two_factor
+from app import APP_NAME, audit, auth, backup, dashboard, print_list, two_factor
 from app.account_two_factor import add_two_factor_routes
 from app.article_pages import add_article_routes
 from app.backup_pages import add_backup_routes
@@ -28,6 +28,7 @@ from app.i18n import translate
 from app.log_pages import add_log_routes
 from app.models import AppSettings, Rounding, User, UserRole
 from app.permissions import Permission, PermissionDenied, has_permission, requires
+from app.production_pages import add_production_routes
 from app.settings_form import FIELD_NAMES, form_values, validate
 from app.stock_pages import add_stock_routes
 from app.template_pages import add_template_routes
@@ -48,7 +49,7 @@ NAV_ITEMS = (
     {"key": "nav.dashboard", "href": "/", "permission": Permission.VIEW},
     {"key": "nav.articles", "href": "/articles", "permission": Permission.VIEW},
     {"key": "nav.calculation", "href": None, "permission": Permission.VIEW},
-    {"key": "nav.production", "href": None, "permission": Permission.VIEW},
+    {"key": "nav.production", "href": "/production", "permission": Permission.VIEW},
     {"key": "nav.stock", "href": "/stock", "permission": Permission.VIEW},
     {"key": "nav.analysis", "href": None, "permission": Permission.VIEW},
     # Open to everyone (issue #73): others only reach the appearance page, not the admin pages.
@@ -437,12 +438,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         with new_session() as session:
             data = dashboard.build(session)
         rows = dashboard.sort_rows(data.low_stock, *(chosen or dashboard.DEFAULT_SORT))
+        # Bambuddy being slow or away must not hold the dashboard up (short wait, no error page)
+        open_prints = print_list.open_summary(app.state.read_prints(print_list.DASHBOARD_TIMEOUT))
         return render(
             request,
             "index.html",
             "nav.dashboard",
             data=data,
             low_rows=rows,
+            open_prints=open_prints,
             sort_links=dashboard.sort_links(chosen),
         )
 
@@ -558,6 +562,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     add_variant_routes(app, new_session, render, read_form, language)
     add_variant_bulk_routes(app, new_session, render, read_form)
     add_stock_routes(app, new_session, render, read_form, language)
+    add_production_routes(app, new_session, bambuddy_cipher, render, read_form, language)
 
     # Deliberately without login: the container health check calls it. Returns no details.
     @app.get("/healthz", response_class=PlainTextResponse)

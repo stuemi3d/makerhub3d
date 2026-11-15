@@ -74,6 +74,16 @@ def assigned_archive_ids(db: Session) -> set[int]:
     )
 
 
+def assigned_productions(db: Session) -> dict[int, int]:
+    """For every print in an active production: the id of that production."""
+    found = db.execute(
+        select(ProductionPrint.archive_id, ProductionPrint.production_id)
+        .join(Production, Production.id == ProductionPrint.production_id)
+        .where(Production.cancelled.is_(False))
+    )
+    return {archive_id: production_id for archive_id, production_id in found}
+
+
 def ignored_archive_ids(db: Session) -> set[int]:
     return set(db.scalars(select(IgnoredPrint.archive_id)))
 

@@ -65,6 +65,8 @@ class BambuddyConnection(Base):
     url: Mapped[str] = mapped_column(String(200), default="")
     # The read-only API key, encrypted (never stored or logged in plain text)
     api_key_encrypted: Mapped[str | None] = mapped_column(Text, default=None)
+    # Only prints from this day on are shown (issue #119); empty = not set up yet
+    prints_from: Mapped[date | None] = mapped_column(Date, default=None)
 
 
 class Article(Base):

@@ -29,6 +29,9 @@
     <input type="password" maxlength="200" autocomplete="off" {{ field_attrs('api_key', errors) }} value=""{% if not can_store_key %} disabled{% endif %}>
     {{ feedback('api_key', errors, t, 'bambuddy.hint.') }}
     <p><small>{% if has_key %}{{ t('bambuddy.key.set') }}{% else %}{{ t('bambuddy.key.unset') }}{% endif %}</small></p>
+    <label for="prints_from">{{ t('bambuddy.field.prints_from') }}</label>
+    <input type="date" max="{{ today }}" {{ field_attrs('prints_from', errors) }} value="{{ values.get('prints_from', '') }}">
+    {{ feedback('prints_from', errors, t, 'bambuddy.hint.') }}
     {% if not can_store_key %}<p role="alert"><mark>{{ t('bambuddy.error.no_cipher') }}</mark></p>{% endif %}
   </article>
   <button type="submit">{{ t('settings.save') }}</button>

@@ -7,8 +7,9 @@ answer of the server, so they are safe to show.
 
 import json
 import re
+import time
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
@@ -16,6 +17,9 @@ import httpx2
 
 TIMEOUT_SECONDS = 10.0
 DEFAULT_ARCHIVE_LIMIT = 500
+# Reading the archive since a start date: page size and an upper limit for one reading
+PAGE_SIZE = 100
+MAX_ARCHIVES = 2000
 
 # Scheme + host (+ port), optionally one trailing slash; no user name, path, query or spaces.
 _ADDRESS = re.compile(
@@ -58,6 +62,13 @@ class Archive:
     wear_cost: Decimal | None
     material_cost: Decimal | None
     failure_reason: str | None
+    created_at: datetime | None = None
+
+    @property
+    def printed_on(self) -> date | None:
+        """The day the print belongs to: start, else entry in the archive, else end."""
+        moment = self.started_at or self.created_at or self.completed_at
+        return moment.date() if moment else None
 
 
 @dataclass(frozen=True)
@@ -126,9 +137,13 @@ def _time(item: dict, name: str) -> datetime | None:
     if value is None:
         return None
     try:
-        return datetime.fromisoformat(value)
+        moment = datetime.fromisoformat(value)
     except ValueError:
         raise _bad() from None
+    # One form for all times (UTC without zone), so that they can be compared and sorted
+    if moment.tzinfo is not None:
+        moment = moment.astimezone(UTC).replace(tzinfo=None)
+    return moment
 
 
 def _entry(item: Any) -> dict:
@@ -156,6 +171,7 @@ def _archive(raw: Any) -> Archive:
         wear_cost=_decimal(item, "wear_cost"),
         material_cost=_decimal(item, "cost"),
         failure_reason=_text(item, "failure_reason"),
+        created_at=_time(item, "created_at"),
     )
 
 
@@ -184,19 +200,24 @@ def _printer(raw: Any) -> Printer:
 
 class BambuddyClient:
     def __init__(
-        self, base_url: str, api_key: str, transport: httpx2.BaseTransport | None = None
+        self,
+        base_url: str,
+        api_key: str,
+        transport: httpx2.BaseTransport | None = None,
+        timeout: float = TIMEOUT_SECONDS,
     ) -> None:
         if not valid_address(base_url):
             raise ValueError("invalid Bambuddy address")
         self._base_url = base_url.strip().rstrip("/")
         self._api_key = api_key
         self._transport = transport
+        self._timeout = timeout
 
     def _get(self, path: str, params: dict[str, int] | None = None) -> Any:
         try:
             # No redirects: they could carry the key to another host.
             with httpx2.Client(
-                transport=self._transport, timeout=TIMEOUT_SECONDS, follow_redirects=False
+                transport=self._transport, timeout=self._timeout, follow_redirects=False
             ) as http:
                 response = http.get(
                     self._base_url + path, params=params, headers={"X-API-Key": self._api_key}
@@ -227,6 +248,30 @@ class BambuddyClient:
 
     def archives(self, limit: int = DEFAULT_ARCHIVE_LIMIT, offset: int = 0) -> list[Archive]:
         return [_archive(i) for i in self._list(ARCHIVES_PATH, {"limit": limit, "offset": offset})]
+
+    def archives_since(
+        self, since: date, max_items: int | None = None, budget: float | None = None
+    ) -> tuple[list[Archive], bool]:
+        """The prints from the day `since` on (newest first) and whether the upper limit cut
+        the list. Reads page by page and stops at the first page with nothing newer, so the
+        older history is not read at all. This relies on Bambuddy listing newest first, as it
+        does. With `budget` (seconds for the whole reading) a slow Bambuddy ends in a timeout
+        error instead of a long wait."""
+        limit = MAX_ARCHIVES if max_items is None else max_items
+        started = time.monotonic()
+        found: list[Archive] = []
+        offset = 0
+        while True:
+            page = self.archives(limit=PAGE_SIZE, offset=offset)
+            recent = [a for a in page if a.printed_on is None or a.printed_on >= since]
+            found.extend(recent)
+            if len(found) > limit:
+                return found[:limit], True
+            if len(page) < PAGE_SIZE or not recent:
+                return found, False
+            if budget is not None and time.monotonic() - started > budget:
+                raise BambuddyError("timeout", ARCHIVES_PATH)
+            offset += PAGE_SIZE
 
     def archive(self, archive_id: int) -> Archive:
         return _archive(self._get(f"{ARCHIVES_PATH}{int(archive_id)}"))
