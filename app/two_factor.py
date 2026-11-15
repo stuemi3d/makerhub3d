@@ -2,8 +2,8 @@
 
 Agreed in issues #8 and #30: one 30-second step before or after is accepted, every code works
 only once, 10 one-time recovery codes, secrets are stored encrypted with the key from
-MAKERHUB_2FA_KEY. This module holds the building blocks; the login and account flows are in
-app/auth.py.
+MAKERHUB_SECRET_KEY (older name: MAKERHUB_2FA_KEY). This module holds the building blocks;
+the login and account flows are in app/auth.py.
 """
 
 import base64
@@ -32,12 +32,13 @@ MAX_CODE_LENGTH = 100
 
 
 class Cipher:
-    """Encrypts the two-factor secrets with a key derived from MAKERHUB_2FA_KEY."""
+    """Encrypts stored secrets with a key derived from MAKERHUB_2FA_KEY."""
 
-    def __init__(self, key: str) -> None:
-        # Any long random text is allowed as key; HKDF turns it into a Fernet key.
+    def __init__(self, key: str, purpose: str = "two-factor") -> None:
+        # Any long random text is allowed as key; HKDF turns it into a Fernet key. A purpose
+        # of its own gives other secrets (e.g. the Bambuddy key) a different derived key.
         derived = HKDF(
-            algorithm=hashes.SHA256(), length=32, salt=None, info=b"makerhub3d two-factor"
+            algorithm=hashes.SHA256(), length=32, salt=None, info=f"makerhub3d {purpose}".encode()
         ).derive(key.encode())
         self._fernet = Fernet(base64.urlsafe_b64encode(derived))
 

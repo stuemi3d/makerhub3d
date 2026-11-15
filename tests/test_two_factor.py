@@ -575,6 +575,22 @@ def test_invalid_key_stops_the_start(monkeypatch: pytest.MonkeyPatch, value: str
     assert value not in str(error.value)
 
 
+def test_new_key_name_is_used_and_wins_over_the_old_one(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("MAKERHUB_SECRET_KEY", OTHER_KEY)
+    assert Settings.from_env().two_factor_key == OTHER_KEY  # old name is still set by the fixture
+    monkeypatch.delenv("MAKERHUB_SECRET_KEY")
+    assert Settings.from_env().two_factor_key == TEST_KEY  # the old name alone still works
+
+
+def test_invalid_new_key_stops_the_start_and_names_the_variable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("MAKERHUB_SECRET_KEY", "zu-kurz")
+    with pytest.raises(ConfigError) as error:
+        create_app()
+    assert "MAKERHUB_SECRET_KEY" in str(error.value) and "zu-kurz" not in str(error.value)
+
+
 def test_key_is_not_shown_in_settings_repr() -> None:
     assert TEST_KEY not in repr(Settings.from_env())
     assert parse_two_factor_key("  " + TEST_KEY + "\n") == TEST_KEY
@@ -638,9 +654,16 @@ def test_key_is_explained_in_env_example_and_guide() -> None:
     example = (REPO_DIR / ".env.example").read_text(encoding="utf-8")
     guide = (REPO_DIR / "docs" / "erster-start.md").read_text(encoding="utf-8")
 
-    assert "# MAKERHUB_2FA_KEY=" in example
+    assert "# MAKERHUB_SECRET_KEY=" in example
+    assert "MAKERHUB_2FA_KEY" in example  # the older name is explained
     assert "openssl rand -hex 32" in example
-    for text in ("MAKERHUB_2FA_KEY", "openssl rand -hex 32", "reset-2fa", "Uhr"):
+    for text in (
+        "MAKERHUB_SECRET_KEY",
+        "MAKERHUB_2FA_KEY",
+        "openssl rand -hex 32",
+        "reset-2fa",
+        "Uhr",
+    ):
         assert text in guide, text
 
 

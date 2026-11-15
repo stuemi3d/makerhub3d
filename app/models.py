@@ -54,6 +54,19 @@ class AppSettings(Base):
     deviation_threshold: Mapped[Decimal] = mapped_column(DecimalText)
 
 
+class BambuddyConnection(Base):
+    """Address and key of Bambuddy (issue #117). There is exactly one row (id = 1)."""
+
+    __tablename__ = "bambuddy_connection"
+    __table_args__ = (CheckConstraint("id = 1", name="ck_bambuddy_connection_single_row"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    # Empty = not set up
+    url: Mapped[str] = mapped_column(String(200), default="")
+    # The read-only API key, encrypted (never stored or logged in plain text)
+    api_key_encrypted: Mapped[str | None] = mapped_column(Text, default=None)
+
+
 class Article(Base):
     """An article (issue #10). Never deleted, only deactivated.
 
@@ -252,7 +265,7 @@ class User(Base):
     active: Mapped[bool] = mapped_column(Boolean, server_default=true())
     # Set for initial passwords given by an admin; the user must change it first (issue #32).
     must_change_password: Mapped[bool] = mapped_column(Boolean, server_default=false())
-    # Two-factor login (issue #30): the secret is encrypted with MAKERHUB_2FA_KEY.
+    # Two-factor login (issue #30): the secret is encrypted with MAKERHUB_SECRET_KEY.
     # Set = two-factor login is on.
     totp_secret: Mapped[str | None] = mapped_column(Text)
     # Secret shown during setup, until the user confirms it with a first code.

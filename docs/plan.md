@@ -259,7 +259,7 @@ Der Maintainer hat die frühere Bedingung („erst nach Alltagsnutzung von M1“
 
 **M2 – Bambuddy-Anbindung und Produktion**
 
-- [ ] Bambuddy-Client: Archiv-Liste, Archiv-Detail, Spulen, Drucker, Strompreis
+- [x] Bambuddy-Client: Archiv-Liste, Archiv-Detail, Spulen, Drucker, Strompreis; Einstellungen mit Adresse, Schlüssel und Verbindungstest (#117)
 - [ ] Seite Produktion: Drucke auswählen, Ergebnis-Artikel, Kostenaufteilung mit Vorschau, Fehldrucke, Ignorieren
 - [ ] Artikel-Detail: Produktionen und Kosten pro Stück, Links zu Bambuddy
 
@@ -283,7 +283,7 @@ Der Maintainer hat die frühere Bedingung („erst nach Alltagsnutzung von M1“
 
 ## 11. Offene Punkte
 
-- Reicht beim Bambuddy-Key das Recht „Status lesen“ für Archiv und Spulen? (Test in M2)
+- ~~Reicht beim Bambuddy-Key das Recht „Status lesen“ für Archiv und Spulen?~~ Ja: Archiv, Spulen, Drucker und Einstellungen sind mit einem nur lesenden Key abrufbar (geprüft in #117).
 - Liefern die APIs der Rechnungs-Software den Bezahlt-Status? (Prüfung zu Beginn von M5)
 - Risiko: Bambuddy entwickelt sich sehr schnell → Anbindung in einem einzigen Baustein, Tests mit aufgezeichneten Antworten, Verbindungstest in den Einstellungen.
 - **Umfang der tatsächlichen Kosten** (M2/M4): Eine Produktion erfasst bisher nur Material-, Strom- und Verschleißkosten, keine Arbeitszeit und keine Zusatzteile. Gewinn und effektiver Stundenlohn mit tatsächlichen Werten (Abschnitt 7) sind so nicht berechenbar, und der Vergleich kalkuliert ↔ tatsächlich vergleicht unterschiedliche Kostenumfänge. *Vorschlag:* Arbeitszeit und Zusatzteile werden beim Anlegen einer Produktion aus der maßgeblichen Kalkulation vorbelegt und können dort angepasst werden; die Abweichungswarnung vergleicht nur Druckkosten mit Druckkosten.

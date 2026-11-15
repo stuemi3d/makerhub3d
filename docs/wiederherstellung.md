@@ -59,4 +59,4 @@ Schritte (auf dem Server, im Ordner mit der `compose.yml`; `DATEI` ist der Name 
 
 Der Ablauf (Sicherung anlegen, Daten ändern, Datei zurückkopieren, App starten) wird in `tests/test_backup.py` automatisch geprüft.
 
-Wichtig: Der Schlüssel `MAKERHUB_2FA_KEY` in der `.env` muss derselbe sein wie zur Sicherungszeit, sonst startet die App nicht.
+Wichtig: Der Schlüssel `MAKERHUB_SECRET_KEY` (oder der ältere Name `MAKERHUB_2FA_KEY`) in der `.env` muss derselbe sein wie zur Sicherungszeit, sonst startet die App nicht.

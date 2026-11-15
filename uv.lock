@@ -294,6 +294,7 @@ dependencies = [
     { name = "argon2-cffi" },
     { name = "cryptography" },
     { name = "fastapi" },
+    { name = "httpx2" },
     { name = "jinja2" },
     { name = "pyotp" },
     { name = "python-multipart" },
@@ -305,7 +306,6 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "httpx2" },
     { name = "pytest" },
     { name = "pytest-playwright" },
     { name = "ruff" },
@@ -317,6 +317,7 @@ requires-dist = [
     { name = "argon2-cffi", specifier = "==25.1.0" },
     { name = "cryptography", specifier = "==50.0.2" },
     { name = "fastapi", specifier = "==0.162.5" },
+    { name = "httpx2", specifier = "==2.16.0" },
     { name = "jinja2", specifier = "==3.1.6" },
     { name = "pyotp", specifier = "==2.10.0" },
     { name = "python-multipart", specifier = "==0.0.33" },
@@ -328,7 +329,6 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "httpx2", specifier = "==2.16.0" },
     { name = "pytest", specifier = "==9.2.0" },
     { name = "pytest-playwright", specifier = "==0.10.0" },
     { name = "ruff", specifier = "==0.17.4" },
