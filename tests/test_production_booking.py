@@ -1,4 +1,4 @@
-"""Page Production, part 2: creating, booking and cancelling productions (issue #127, cases 1-21).
+"""Page Production, part 2: creating, booking and cancelling productions (issues #127, #140).
 
 All data is invented; Bambuddy answers come from a mock. The test case numbers refer to the
 comment on the issue.
@@ -46,20 +46,16 @@ def setup_prints(client: AppClient) -> None:
     prepared(client, ARCHIVES)
 
 
-def form(ids: list[int], results: list[tuple[int, str] | tuple[int, str, str]], **extra: object):
-    """The data of the booking form (what a browser sends)."""
+def form(ids: list[int], result: tuple[int, str], **extra: object):
+    """The data of the booking form (what a browser sends): one article and its good pieces."""
     data: dict[str, object] = {
         "prints": [str(i) for i in ids],
-        "rows": str(max(len(results), 3)),
+        "article": str(result[0]),
+        "quantity": result[1],
         "date": "",
         "note": "",
         "action": "book",
     }
-    for number, result in enumerate(results, start=1):
-        data[f"article_{number}"] = str(result[0])
-        data[f"quantity_{number}"] = result[1]
-        if len(result) == 3:
-            data[f"weight_{number}"] = result[2]
     data.update(extra)
     return data
 
@@ -100,7 +96,7 @@ def test_reader_sees_productions_but_gets_no_buttons_and_no_booking(
     prepared_client: AppClient,
 ) -> None:
     article_id = add_article()
-    send(prepared_client, form([6], [(article_id, "2")]))
+    send(prepared_client, form([6], (article_id, "2")))
     add_user(READER_NAME, "read_only")
 
     with client_as(READER_NAME) as reader:
@@ -110,7 +106,7 @@ def test_reader_sees_productions_but_gets_no_buttons_and_no_booking(
         assert reader.get("/production/1").status_code == 200
         assert DE["production.cancel"] not in reader.get("/production/list").text
         assert reader.get("/production/new?prints=7").status_code == 403
-        assert send(reader, form([7], [(article_id, "1")])).status_code == 403
+        assert send(reader, form([7], (article_id, "1"))).status_code == 403
         assert reader.get("/production/1/cancel").status_code == 403
         assert reader.post("/production/1/cancel", data={}).status_code == 403
     assert len(productions()) == 1
@@ -122,7 +118,7 @@ def test_employee_may_book_and_cancel(prepared_client: AppClient) -> None:
 
     with client_as(EMPLOYEE_NAME) as employee:
         employee.app.state.bambuddy_transport = prepared_client.app.state.bambuddy_transport
-        assert send(employee, form([6], [(article_id, "2")])).status_code == 303
+        assert send(employee, form([6], (article_id, "2"))).status_code == 303
         assert (
             employee.post("/production/1/cancel", data={}, follow_redirects=False).status_code
             == 303
@@ -140,11 +136,11 @@ def test_without_login_everything_leads_to_the_login(prepared_client: AppClient)
 @pytest.mark.parametrize("path", ["/production/new", "/production/1/cancel"])
 def test_post_without_a_valid_form_token_is_refused(prepared_client: AppClient, path: str) -> None:
     article_id = add_article()
-    send(prepared_client, form([6], [(article_id, "2")]))
+    send(prepared_client, form([6], (article_id, "2")))
     prepared_client.csrf_token = None
 
     for token in ({}, {"csrf_token": "falsch"}):
-        response = prepared_client.post(path, data={**form([7], [(article_id, "1")]), **token})
+        response = prepared_client.post(path, data={**form([7], (article_id, "1")), **token})
         assert response.status_code == 403
     assert len(productions()) == 1
 
@@ -176,7 +172,7 @@ def test_a_running_or_unknown_print_cannot_be_used(prepared_client: AppClient) -
     assert prepared_client.get("/production/new?prints=9").status_code == 422
     assert prepared_client.get("/production/new?prints=999").status_code == 422
     article_id = add_article()
-    assert send(prepared_client, form([9], [(article_id, "1")])).status_code == 422
+    assert send(prepared_client, form([9], (article_id, "1"))).status_code == 422
     assert productions() == []
 
 
@@ -186,7 +182,7 @@ def test_a_running_or_unknown_print_cannot_be_used(prepared_client: AppClient) -
 def test_a_failed_print_can_be_booked_and_its_costs_count(prepared_client: AppClient) -> None:
     article_id = add_article()
 
-    response = send(prepared_client, form([6, 8], [(article_id, "5")]))
+    response = send(prepared_client, form([6, 8], (article_id, "5")))
 
     assert response.status_code == 303
     (item,) = productions()
@@ -196,16 +192,16 @@ def test_a_failed_print_can_be_booked_and_its_costs_count(prepared_client: AppCl
 
 def test_a_print_that_was_taken_meanwhile_is_refused(prepared_client: AppClient) -> None:
     article_id = add_article()
-    send(prepared_client, form([6], [(article_id, "1")]))
+    send(prepared_client, form([6], (article_id, "1")))
 
-    response = send(prepared_client, form([6, 7], [(article_id, "1")]))
+    response = send(prepared_client, form([6, 7], (article_id, "1")))
 
     assert response.status_code == 422
     assert DE["production.error.print_taken"] in response.text
     assert len(productions()) == 1
 
 
-# --- Cases 6-7: costs and preview --------------------------------------------------------------
+# --- Cases 6-7: costs and preview (issue #140: one article gets all costs) ----------------
 
 
 def test_the_form_has_the_costs_from_bambuddy_and_a_hint_for_missing_ones(
@@ -224,7 +220,7 @@ def test_the_form_has_the_costs_from_bambuddy_and_a_hint_for_missing_ones(
 
 def test_missing_costs_count_as_zero_and_edited_costs_win(prepared_client: AppClient) -> None:
     article_id = add_article()
-    data = form([5, 6], [(article_id, "2")], cost_material_6="4,50", cost_wear_6="")
+    data = form([5, 6], (article_id, "2"), cost_material_6="4,50", cost_wear_6="")
 
     send(prepared_client, data)
 
@@ -233,115 +229,42 @@ def test_missing_costs_count_as_zero_and_edited_costs_win(prepared_client: AppCl
     assert sorted(p.material_cost for p in item.prints) == [D("0"), D("4.50")]
 
 
-def test_the_preview_shows_total_split_and_cost_per_piece(prepared_client: AppClient) -> None:
-    first, second = add_article("A-1"), add_article("A-2")
+def test_the_preview_shows_total_and_cost_per_piece(prepared_client: AppClient) -> None:
+    article_id = add_article()
 
-    response = send(
-        prepared_client,
-        form([6, 7], [(first, "6"), (second, "4")], action="preview"),
-    )
+    response = send(prepared_client, form([6, 7], (article_id, "5"), action="preview"))
 
     assert response.status_code == 200
     html = response.text
     assert DE["production.preview.total"] in html
     assert "7,25" in html
-    assert re.search(r'name="alloc_1"[^>]*value="4,35"', html)
-    assert re.search(r'name="alloc_2"[^>]*value="2,90"', html)
-    assert "0,725" in html or "0,7250" in html
-    assert 'name="preview_key"' in html
+    assert DE["production.col.per_piece"] in html and "1,45" in html
+    assert 'name="alloc' not in html and 'name="preview_key"' not in html
     assert productions() == [] and count_movements() == 0
 
 
-def test_a_single_article_gets_everything_in_the_preview(prepared_client: AppClient) -> None:
+def test_fewer_good_pieces_make_each_piece_dearer(prepared_client: AppClient) -> None:
     article_id = add_article()
 
-    html = send(prepared_client, form([6, 7], [(article_id, "5")], action="preview")).text
+    html = send(prepared_client, form([6], (article_id, "4"), action="preview")).text
 
-    assert re.search(r'name="alloc_1"[^>]*value="7,25"', html)
-    assert "1,45" in html
+    assert "4,5" in html and "1,125" in html
+    assert send(prepared_client, form([6], (article_id, "3"), action="preview")).text.count("1,5")
 
 
-def test_weights_count_in_the_preview(prepared_client: AppClient) -> None:
-    holder, clip = add_article("H-1"), add_article("C-1")
+def test_an_invalid_preview_shows_the_errors_and_no_costs(prepared_client: AppClient) -> None:
+    article_id = add_article()
 
-    html = send(
-        prepared_client,
-        form([6], [(holder, "2", "3"), (clip, "2", "1")], action="preview"),
-    ).text
+    response = send(prepared_client, form([6], (article_id, "0"), action="preview"))
 
-    # 4.50 split 6 : 2 is 3.375 and 1.125; the cent that is left over goes to the larger share.
-    assert re.search(r'name="alloc_1"[^>]*value="3,37"', html)
-    assert re.search(r'name="alloc_2"[^>]*value="1,13"', html)
+    assert response.status_code == 422
+    assert field_error(response.text, "quantity")
+    assert DE["production.preview.total"] not in response.text
 
 
 def count_movements() -> int:
     with db() as session:
         return len(session.scalars(select(StockMovement)).all())
-
-
-# --- Case 8: correcting the split by hand ------------------------------------------------------
-
-
-def preview_key(client: AppClient, data: dict[str, object]) -> str:
-    html = send(client, {**data, "action": "preview"}).text
-    return re.search(r'name="preview_key"[^>]*value="([^"]+)"', html).group(1)
-
-
-def test_a_hand_made_split_is_booked_when_it_adds_up(prepared_client: AppClient) -> None:
-    first, second = add_article("A-1"), add_article("A-2")
-    data = form([6, 7], [(first, "6"), (second, "4")])
-    data["preview_key"] = preview_key(prepared_client, data)
-
-    response = send(prepared_client, {**data, "alloc_1": "5,25", "alloc_2": "2,00"})
-
-    assert response.status_code == 303
-    (item,) = productions()
-    assert [(r.allocated_cost, r.split) for r in item.results] == [
-        (D("5.25"), True),
-        (D("2.00"), True),
-    ]
-
-
-def test_a_hand_made_split_that_does_not_add_up_books_nothing(prepared_client: AppClient) -> None:
-    first, second = add_article("A-1"), add_article("A-2")
-    data = form([6, 7], [(first, "6"), (second, "4")])
-    data["preview_key"] = preview_key(prepared_client, data)
-
-    response = send(prepared_client, {**data, "alloc_1": "5,25", "alloc_2": "1,00"})
-
-    assert response.status_code == 422
-    assert DE["production.error.alloc_sum"] in response.text
-    assert productions() == [] and count_movements() == 0
-
-
-def test_a_split_from_an_old_preview_is_refused_when_the_form_changed(
-    prepared_client: AppClient,
-) -> None:
-    first, second = add_article("A-1"), add_article("A-2")
-    data = form([6, 7], [(first, "6"), (second, "4")])
-    key = preview_key(prepared_client, data)
-    changed = form([6, 7], [(first, "1"), (second, "9")])
-
-    response = send(
-        prepared_client, {**changed, "preview_key": key, "alloc_1": "4,35", "alloc_2": "2,90"}
-    )
-
-    assert response.status_code == 422
-    assert DE["production.error.preview_stale"] in response.text
-    assert productions() == []
-
-
-@pytest.mark.parametrize("value", ["abc", "-1", "1,23456"])
-def test_bad_hand_made_costs_are_refused(prepared_client: AppClient, value: str) -> None:
-    first, second = add_article("A-1"), add_article("A-2")
-    data = form([6, 7], [(first, "6"), (second, "4")])
-    data["preview_key"] = preview_key(prepared_client, data)
-
-    response = send(prepared_client, {**data, "alloc_1": value, "alloc_2": "2,90"})
-
-    assert response.status_code == 422
-    assert field_error(response.text, "alloc_1")
-    assert productions() == []
 
 
 def test_bambuddy_costs_with_many_decimals_are_rounded_in_the_form_and_can_be_booked(
@@ -355,7 +278,7 @@ def test_bambuddy_costs_with_many_decimals_are_rounded_in_the_form_and_can_be_bo
     assert re.search(r'name="cost_material_1"[^>]*value="0,1235"', html)
     assert re.search(r'name="cost_electricity_1"[^>]*value="0,0001"', html)
     # What the form shows can be sent back as it is.
-    assert send(client, form([1], [(article_id, "2")])).status_code == 303
+    assert send(client, form([1], (article_id, "2"))).status_code == 303
     # And without the cost fields the same rounding counts.
     assert productions()[0].prints[0].material_cost == D("0.1235")
 
@@ -366,7 +289,7 @@ def test_bambuddy_costs_with_many_decimals_are_rounded_in_the_form_and_can_be_bo
 def test_the_total_is_rounded_to_the_cent(prepared_client: AppClient) -> None:
     article_id = add_article()
     data = form(
-        [6], [(article_id, "1")], cost_material_6="0,005", cost_electricity_6="0", cost_wear_6="0"
+        [6], (article_id, "1"), cost_material_6="0,005", cost_electricity_6="0", cost_wear_6="0"
     )
 
     assert send(prepared_client, data).status_code == 303
@@ -377,7 +300,7 @@ def test_the_total_is_rounded_to_the_cent(prepared_client: AppClient) -> None:
 @pytest.mark.parametrize("value", ["1,23456", "-1", "abc", "1e3", "1.2.3", "1" * 12])
 def test_bad_costs_are_refused(prepared_client: AppClient, value: str) -> None:
     article_id = add_article()
-    data = form([6], [(article_id, "1")], cost_material_6=value)
+    data = form([6], (article_id, "1"), cost_material_6=value)
 
     response = send(prepared_client, data)
 
@@ -394,7 +317,7 @@ def test_booking_raises_the_stock_and_leads_to_the_list_with_a_message(
 ) -> None:
     article_id = add_article()
 
-    response = send(prepared_client, form([6, 7], [(article_id, "10")]))
+    response = send(prepared_client, form([6, 7], (article_id, "10")))
 
     assert response.status_code == 303
     assert response.headers["location"] == "/production/list?booked=1"
@@ -407,38 +330,29 @@ def test_one_article_on_five_plates(prepared_client: AppClient) -> None:
     prepared(prepared_client, [raw(n, f"2026-11-15T0{n}:00:00") for n in range(5, 0, -1)])
     article_id = add_article()
 
-    assert send(prepared_client, form([1, 2, 3, 4, 5], [(article_id, "8")])).status_code == 303
+    assert send(prepared_client, form([1, 2, 3, 4, 5], (article_id, "8"))).status_code == 303
 
     (item,) = productions()
     assert len(item.prints) == 5 and len(item.results) == 1
     assert stock(article_id) == 8
 
 
-def test_two_articles_on_one_plate(prepared_client: AppClient) -> None:
-    first, second = add_article("A-1"), add_article("A-2")
+def test_the_same_article_several_times_on_three_plates(prepared_client: AppClient) -> None:
+    article_id = add_article()
 
-    assert send(prepared_client, form([6], [(first, "3"), (second, "2")])).status_code == 303
-
-    (item,) = productions()
-    assert [r.allocated_cost for r in item.results] == [D("2.70"), D("1.80")]
-    assert (stock(first), stock(second)) == (3, 2)
-
-
-def test_two_articles_on_three_plates(prepared_client: AppClient) -> None:
-    first, second = add_article("A-1"), add_article("A-2")
-
-    assert send(prepared_client, form([6, 7, 8], [(first, "4"), (second, "4")])).status_code == 303
+    assert send(prepared_client, form([6, 7, 8], (article_id, "12"))).status_code == 303
 
     (item,) = productions()
     assert item.total_cost == D("8.55")
-    assert sum(r.allocated_cost for r in item.results) == D("8.55")
+    assert [r.allocated_cost for r in item.results] == [D("8.55")]
+    assert stock(article_id) == 12
 
 
 def test_booked_prints_leave_the_open_view_and_link_to_their_production(
     prepared_client: AppClient,
 ) -> None:
     article_id = add_article()
-    send(prepared_client, form([6], [(article_id, "1")]))
+    send(prepared_client, form([6], (article_id, "1")))
 
     assert "Druck A" not in names(prepared_client.get("/production").text)
     assigned = prepared_client.get("/production?view=assigned").text
@@ -456,14 +370,13 @@ def future() -> str:
 @pytest.mark.parametrize(
     ("change", "field"),
     [
-        ({"article_1": ""}, "article_1"),
-        ({"article_1": "99999"}, "article_1"),
-        ({"quantity_1": "0"}, "quantity_1"),
-        ({"quantity_1": "-2"}, "quantity_1"),
-        ({"quantity_1": "abc"}, "quantity_1"),
-        ({"quantity_1": "1" * 12}, "quantity_1"),
-        ({"weight_1": "0"}, "weight_1"),
-        ({"weight_1": "x"}, "weight_1"),
+        ({"article": ""}, "article"),
+        ({"article": "99999"}, "article"),
+        ({"quantity": ""}, "quantity"),
+        ({"quantity": "0"}, "quantity"),
+        ({"quantity": "-2"}, "quantity"),
+        ({"quantity": "abc"}, "quantity"),
+        ({"quantity": "1" * 12}, "quantity"),
         ({"date": "gestern"}, "date"),
         ({"date": "2999-01-01"}, "date"),
         ({"date": "future"}, "date"),
@@ -474,7 +387,7 @@ def test_invalid_input_shows_errors_keeps_the_input_and_books_nothing(
     prepared_client: AppClient, change: dict[str, str], field: str
 ) -> None:
     article_id = add_article()
-    data = form([6], [(article_id, "2")], note="Meine Notiz")
+    data = form([6], (article_id, "2"), note="Meine Notiz")
     data.update({k: (future() if v == "future" else v) for k, v in change.items()})
 
     response = send(prepared_client, data)
@@ -485,41 +398,48 @@ def test_invalid_input_shows_errors_keeps_the_input_and_books_nothing(
     assert "Meine Notiz" in response.text or field == "note"
 
 
-def test_an_inactive_article_and_the_same_article_twice_are_refused(
-    prepared_client: AppClient,
-) -> None:
-    inactive, active = add_article("X-1", active=False), add_article("A-1")
+def test_an_inactive_article_is_refused(prepared_client: AppClient) -> None:
+    inactive = add_article("X-1", active=False)
 
-    inactive_response = send(prepared_client, form([6], [(inactive, "1")]))
-    twice = send(prepared_client, form([6], [(active, "1"), (active, "2")]))
+    response = send(prepared_client, form([6], (inactive, "1")))
 
-    assert inactive_response.status_code == 422 and field_error(inactive_response.text, "article_1")
-    assert twice.status_code == 422 and field_error(twice.text, "article_2")
+    assert response.status_code == 422 and field_error(response.text, "article")
     assert productions() == []
 
 
 def test_the_input_stays_in_the_form_after_an_error(prepared_client: AppClient) -> None:
     article_id = add_article()
-    data = form([6, 7], [(article_id, "2")], quantity_1="0", cost_material_6="4,40", note="Bleibt")
+    data = form([6, 7], (article_id, "0"), cost_material_6="4,40", note="Bleibt")
 
     html = send(prepared_client, data).text
 
     assert 'value="Bleibt"' in html
     assert re.search(r'name="cost_material_6"[^>]*value="4,40"', html)
-    assert re.search(r'name="quantity_1"[^>]*value="0"', html)
+    assert re.search(r'name="quantity"[^>]*value="0"', html)
+    assert re.search(rf'<option value="{article_id}" selected', html)
     assert html.count('name="prints"') == 2
 
 
-def test_a_row_can_be_added_and_there_is_an_upper_limit(prepared_client: AppClient) -> None:
+def test_the_form_has_no_extra_rows_and_no_weights(prepared_client: AppClient) -> None:
     article_id = add_article()
-    data = form([6], [(article_id, "2")], action="add_row", rows="3")
 
-    html = send(prepared_client, data).text
+    for html in (
+        prepared_client.get("/production/new?prints=6").text,
+        send(prepared_client, form([6], (article_id, "2"), action="preview")).text,
+    ):
+        assert html.count('name="article"') == 1 and html.count('name="quantity"') == 1
+        assert 'name="weight' not in html and 'name="rows"' not in html
+        assert 'value="add_row"' not in html
 
-    assert html.count('name="article_') == 4
-    assert productions() == []
-    limit = send(prepared_client, {**data, "rows": "20"})
-    assert limit.text.count('name="article_') == 20
+
+def test_a_second_article_sent_by_hand_is_ignored(prepared_client: AppClient) -> None:
+    first, second = add_article("A-1"), add_article("A-2")
+
+    send(prepared_client, form([6], (first, "2"), article_2=str(second), quantity_2="5"))
+
+    (item,) = productions()
+    assert [(r.article_id, r.quantity) for r in item.results] == [(first, 2)]
+    assert stock(second) == 0
 
 
 # --- Case 13: double submit --------------------------------------------------------------------
@@ -527,7 +447,7 @@ def test_a_row_can_be_added_and_there_is_an_upper_limit(prepared_client: AppClie
 
 def test_sending_twice_books_only_once(prepared_client: AppClient) -> None:
     article_id = add_article()
-    data = form([6], [(article_id, "2")])
+    data = form([6], (article_id, "2"))
 
     first, second = send(prepared_client, data), send(prepared_client, data)
 
@@ -541,7 +461,7 @@ def test_sending_twice_books_only_once(prepared_client: AppClient) -> None:
 
 def test_booking_and_cancelling_are_in_the_change_log(prepared_client: AppClient) -> None:
     article_id = add_article()
-    send(prepared_client, form([6], [(article_id, "2")]))
+    send(prepared_client, form([6], (article_id, "2")))
     prepared_client.post("/production/1/cancel", data={})
 
     with db() as session:
@@ -563,8 +483,8 @@ def production_rows(html: str) -> list[str]:
 
 def two_productions(client: AppClient) -> tuple[int, int]:
     first, second = add_article("A-1"), add_article("A-2")
-    send(client, form([6], [(first, "3")], date="2026-11-10", note="Erste"))
-    send(client, form([7, 8], [(first, "1"), (second, "4")], date="2026-11-12", note="Zweite"))
+    send(client, form([6], (first, "3"), date="2026-11-10", note="Erste"))
+    send(client, form([7, 8], (second, "4"), date="2026-11-12", note="Zweite"))
     return first, second
 
 
@@ -576,7 +496,7 @@ def test_the_list_shows_the_productions_newest_first(prepared_client: AppClient)
     first_row, second_row = production_rows(html)
     assert "Zweite" in first_row and "12.11.2026" in first_row
     assert "2 " in first_row or "2</td>" in first_row  # two prints
-    assert "A-1 x 1" in first_row and "A-2 x 4" in first_row
+    assert "A-2 x 4" in first_row
     assert "4,05" in first_row  # 2.75 + 1.30
     assert DE["production.state.active"] in first_row
     assert "Erste" in second_row and "A-1 x 3" in second_row and "4,5" in second_row
@@ -606,9 +526,9 @@ def test_an_empty_list_has_a_hint_and_the_tab_is_there(prepared_client: AppClien
 # --- Case 16: detail ---------------------------------------------------------------------------
 
 
-def test_the_detail_shows_prints_and_articles(prepared_client: AppClient) -> None:
-    first, second = add_article("A-1", "Halter"), add_article("A-2", "Clip")
-    send(prepared_client, form([6, 8], [(first, "6"), (second, "4")], date="2026-11-10"))
+def test_the_detail_shows_prints_and_the_article_with_all_costs(prepared_client: AppClient) -> None:
+    article_id = add_article("A-1", "Halter")
+    send(prepared_client, form([6, 8], (article_id, "4"), date="2026-11-10"))
 
     html = prepared_client.get("/production/1").text
 
@@ -616,20 +536,20 @@ def test_the_detail_shows_prints_and_articles(prepared_client: AppClient) -> Non
     assert len(print_rows) == 2
     assert "print-failed" not in print_rows[0] and "print-failed" in print_rows[1]
     assert "4,5" in print_rows[0] and "1,3" in print_rows[1]
-    article_rows = re.findall(r'<tr class="detail-article[^"]*".*?</tr>', html, re.S)
-    assert "A-1" in article_rows[0] and ">6<" in article_rows[0].replace(" ", "").replace("\n", "")
-    assert "3,48" in article_rows[0] and "0,58" in article_rows[0]  # 5.80 * 0.6 and per piece
-    assert DE["production.split"] in article_rows[0]
+    (article_row,) = re.findall(r'<tr class="detail-article[^"]*".*?</tr>', html, re.S)
+    assert "A-1" in article_row and ">4<" in article_row.replace(" ", "").replace("\n", "")
+    assert "5,8" in article_row and "1,45" in article_row  # all costs and the cost per piece
     assert "10.11.2026" in html
 
 
-def test_the_detail_of_a_single_article_has_no_split_flag(prepared_client: AppClient) -> None:
+def test_the_detail_has_no_weight_and_no_split_column(prepared_client: AppClient) -> None:
     article_id = add_article()
-    send(prepared_client, form([6], [(article_id, "3")]))
+    send(prepared_client, form([6], (article_id, "3")))
 
     html = prepared_client.get("/production/1").text
 
-    assert DE["production.split"] not in html
+    assert "production.split" not in html and "Aufteilung" not in html
+    assert "Gewichtung" not in html
     assert "4,5" in html and "1,5" in html
 
 
@@ -648,7 +568,7 @@ def test_an_unknown_production_is_a_404(prepared_client: AppClient) -> None:
 
 def test_cancelling_asks_first_and_then_frees_the_prints(prepared_client: AppClient) -> None:
     article_id = add_article()
-    send(prepared_client, form([6, 7], [(article_id, "10")]))
+    send(prepared_client, form([6, 7], (article_id, "10")))
 
     page = prepared_client.get("/production/1/cancel")
     assert page.status_code == 200
@@ -670,7 +590,7 @@ def test_cancelling_asks_first_and_then_frees_the_prints(prepared_client: AppCli
 
 def test_a_production_cannot_be_cancelled_twice(prepared_client: AppClient) -> None:
     article_id = add_article()
-    send(prepared_client, form([6], [(article_id, "2")]))
+    send(prepared_client, form([6], (article_id, "2")))
     prepared_client.post("/production/1/cancel", data={})
 
     response = prepared_client.post("/production/1/cancel", data={})
@@ -684,7 +604,7 @@ def test_cancelling_with_too_little_stock_says_so_and_changes_nothing(
     prepared_client: AppClient,
 ) -> None:
     article_id = add_article()
-    send(prepared_client, form([6], [(article_id, "10")]))
+    send(prepared_client, form([6], (article_id, "10")))
     add_movement(article_id, -4, reason="Verschenkt")
 
     response = prepared_client.post("/production/1/cancel", data={})
@@ -703,7 +623,7 @@ def test_the_stock_list_links_to_the_production_instead_of_a_cancel_button(
     prepared_client: AppClient,
 ) -> None:
     article_id = add_article()
-    send(prepared_client, form([6], [(article_id, "10")]))
+    send(prepared_client, form([6], (article_id, "10")))
 
     html = prepared_client.get("/stock/movements").text
 

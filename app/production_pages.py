@@ -99,7 +99,7 @@ def add_production_routes(
         raw = await read_form(request, ("archive_id", "view"))
         return await run_in_threadpool(change, request, "unignore", raw)
 
-    # --- Creating a production (issue #127) ---------------------------------------------------
+    # --- Creating a production (issues #127, #140) --------------------------------------------
 
     def form_page(
         request: Request,
@@ -107,8 +107,7 @@ def add_production_routes(
         prints: print_list.PrintList,
         status_code: int = 200,
         errors: dict[str, str] | None = None,
-        preview: tuple[str, list[dict]] | None = None,
-        preview_key: str = "",
+        preview: dict[str, str] | None = None,
     ) -> HTMLResponse:
         errors = errors or {}
         found = {row.archive_id: row for row in prints.rows}
@@ -140,53 +139,24 @@ def add_production_routes(
                     select(Article).where(Article.active.is_(True)).order_by(Article.number_key)
                 )
             ]
-        result_rows = [
-            {
-                "n": index + 1,
-                "article": draft.articles[index] if index < len(draft.articles) else "",
-                "quantity": draft.quantities[index] if index < len(draft.quantities) else "",
-                "weight": draft.weights[index] if index < len(draft.weights) else "",
-                "alloc": (draft.allocs[index] or "") if index < len(draft.allocs) else "",
-                "per_piece": "",
-            }
-            for index in range(draft.rows)
-        ]
-        total_text = ""
-        if preview is not None:
-            total_text, lines = preview
-            for line in lines:
-                result_rows[line["n"] - 1].update(alloc=line["alloc"], per_piece=line["per_piece"])
-        # The split columns belong to a successful preview, or to a booking that was refused
-        # because of the split itself (then the typed values stay); after any other error or
-        # after adding a row they would be out of date
-        split_refused = any(key == "alloc" or key.startswith("alloc_") for key in errors)
-        show_alloc = preview is not None or (
-            draft.action == "book"
-            and split_refused
-            and any((text or "").strip() for text in draft.allocs)
-        )
         return render(
             request,
             "production_new.html",
             "nav.production",
             status_code=status_code,
             popup=wants_popup(request),
-            show_alloc=show_alloc,
             prints=prints,
             draft=draft,
             shown_prints=shown,
             any_missing=any(item["missing"] for item in shown),
-            result_rows=result_rows,
             articles=articles,
             errors=errors,
-            preview_total=total_text,
-            previewed=preview is not None,
-            preview_key=(preview_key or draft.preview_key) if show_alloc else "",
+            preview=preview,
             today=date.today().isoformat(),
         )
 
     def open_form(
-        request: Request, draft: production_form.Draft, need_alloc: bool = False
+        request: Request, draft: production_form.Draft
     ) -> tuple[HTMLResponse | None, production_form.Checked, print_list.PrintList]:
         prints = read_prints()
         if prints.not_set_up or prints.error:
@@ -196,17 +166,13 @@ def add_production_routes(
             return form_page(request, draft, prints, 422, checked.errors), checked, prints
         found = {row.archive_id: row for row in prints.rows}
         with new_session() as db:
-            checked = production_form.check(db, draft, found, date.today(), need_alloc)
+            checked = production_form.check(db, draft, found, date.today())
         return None, checked, prints
 
     @app.get("/production/new", response_class=HTMLResponse, dependencies=edit_right)
     async def new_production(request: Request) -> HTMLResponse:
         ids = [str(v) for v in request.query_params.getlist("prints")]
         draft = production_form.read(None, ids)
-        draft.articles = [""] * draft.rows
-        draft.quantities = [""] * draft.rows
-        draft.weights = [""] * draft.rows
-        draft.allocs = [None] * draft.rows
         draft.date = date.today().isoformat()
 
         def work() -> HTMLResponse:
@@ -234,34 +200,22 @@ def add_production_routes(
         return None
 
     def handle_form(request: Request, draft: production_form.Draft) -> Response:
-        if draft.action == "add_row":
-            prints = read_prints()
-            return form_page(request, draft, prints)
-        failed_page, checked, prints = open_form(request, draft, need_alloc=draft.action == "book")
+        failed_page, checked, prints = open_form(request, draft)
         if failed_page is not None:
             return failed_page
         if checked.errors:
             return form_page(request, draft, prints, 422, checked.errors)
         if draft.action == "preview":
             with new_session() as db:
-                errors, total, lines = production.preview(db, checked.prints, checked.results)
+                errors, total, line = production.preview(db, checked.prints, checked.result)
             if errors:
                 return form_page(request, draft, prints, 422, errors)
-            shown = [
-                {
-                    "n": number,
-                    "alloc": production_form.money_text(line.cost, language),
-                    "per_piece": production_form.money_text(line.cost / line.quantity, language),
-                }
-                for number, line in zip(checked.numbers, lines, strict=True)
-            ]
-            return form_page(
-                request,
-                draft,
-                prints,
-                preview=(production_form.money_text(total, language), shown),
-                preview_key=checked.key,
-            )
+            shown = {
+                "total": production_form.money_text(total, language),
+                "cost": production_form.money_text(line.cost, language),
+                "per_piece": production_form.money_text(line.cost / line.quantity, language),
+            }
+            return form_page(request, draft, prints, preview=shown)
         with stock.booking_lock, new_session() as db, db.begin():
             production_id, errors = production.book(
                 db,
@@ -269,8 +223,7 @@ def add_production_routes(
                 checked.booked_on,
                 draft.note,
                 checked.prints,
-                checked.results,
-                checked.allocated,
+                checked.result,
             )
         if production_id is None:
             return form_page(request, draft, prints, 422, errors)

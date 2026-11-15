@@ -137,8 +137,8 @@ def test_booking_and_cancelling_work_on_every_screen(
     expect(admin_page.locator("#popup")).to_be_visible()
     assert fits_screen_width(admin_page)
 
-    admin_page.select_option("#article_1", label=f"{number} · Halter")
-    admin_page.fill("#quantity_1", "4")
+    admin_page.select_option("#article", label=f"{number} · Halter")
+    admin_page.fill("#quantity", "4")
     admin_page.get_by_role("button", name=t("production.preview"), exact=True).click()
     expect(admin_page.locator(".preview-total")).to_be_visible()
     assert fits_screen_width(admin_page)
@@ -209,18 +209,18 @@ def test_the_form_has_no_sideways_scrolling_and_a_wide_article_choice(
     expect(admin_page.locator("#popup h1")).to_have_text(t("production.new.title"))
     expect(admin_page.locator("#popup")).to_be_visible()
 
-    before = admin_page.locator("#article_1").bounding_box()["width"]
+    before = admin_page.locator("#article").bounding_box()["width"]
     assert admin_page.evaluate(SCROLLERS) == 0
     assert fits_screen_width(admin_page)
     # Wide enough for a number and a name: at least about 12 characters of the text size.
     assert before >= min(width - 60, 170)
 
-    admin_page.select_option("#article_1", label=f"{number} · Halter mit langem Namen")
-    admin_page.fill("#quantity_1", "2")
+    admin_page.select_option("#article", label=f"{number} · Halter mit langem Namen")
+    admin_page.fill("#quantity", "2")
     admin_page.get_by_role("button", name=t("production.preview"), exact=True).click()
     expect(admin_page.locator(".preview-total")).to_be_visible()
 
-    after = admin_page.locator("#article_1").bounding_box()["width"]
+    after = admin_page.locator("#article").bounding_box()["width"]
     assert admin_page.evaluate(SCROLLERS) == 0
     assert fits_screen_width(admin_page)
     assert abs(after - before) <= 2
@@ -252,11 +252,11 @@ def click_and_wait(page: Page, button) -> None:
     )
 
 
-def test_the_preview_keeps_working_after_the_same_article_was_chosen_twice(
+def test_the_preview_keeps_working_after_a_mistake_and_changes_the_cost_per_piece(
     admin_page: Page, fake_bambuddy: str, viewport_name: str
 ) -> None:
     connect(admin_page, fake_bambuddy)
-    number = f"PRD-DUP-{viewport_name}"
+    number = f"PRD-ONE-{viewport_name}"
     admin_page.goto("/articles/new")
     admin_page.fill("#number", number)
     admin_page.fill("#name", "Halter")
@@ -267,34 +267,29 @@ def test_the_preview_keeps_working_after_the_same_article_was_chosen_twice(
     admin_page.get_by_role("button", name=t("production.create"), exact=True).click()
     popup = admin_page.locator("#popup")
     preview = popup.get_by_role("button", name=t("production.preview"), exact=True)
-    label = f"{number} · Halter"
     total = popup.locator(".preview-total")
-    error = popup.locator("#article_2-error")
+    per_piece = popup.locator("output.field-static")
 
-    popup.locator("#article_1").select_option(label=label)
-    popup.locator("#quantity_1").fill("2")
+    # One article and its good pieces: no extra rows, no weight
+    expect(popup.locator("#article")).to_have_count(1)
+    expect(popup.locator("[name^=weight]")).to_have_count(0)
+    expect(popup.locator("button[value=add_row]")).to_have_count(0)
+
+    popup.locator("#article").select_option(label=f"{number} · Halter")
+    popup.locator("#quantity").fill("2")
     click_and_wait(admin_page, preview)
     expect(total).to_be_visible()
-    # The same article in a second row: a message at that row
-    popup.locator("#article_2").select_option(label=label)
-    popup.locator("#quantity_2").fill("3")
+    first = per_piece.inner_text()
+    # A mistake gives a message and no costs ...
+    popup.locator("#quantity").fill("0")
     click_and_wait(admin_page, preview)
-    expect(error).to_be_visible()
+    expect(popup.locator("#quantity-error")).to_be_visible()
     expect(total).to_have_count(0)
-    # Changing again and again keeps answering (and the message stays while it is true)
-    for quantity in ("4", "5", "6"):
-        popup.locator("#quantity_1").fill(quantity)
-        click_and_wait(admin_page, preview)
-        expect(error).to_be_visible()
-    # Emptying the second row: the old cost numbers of the first preview must not count
-    popup.locator("#article_2").select_option(value="")
-    popup.locator("#quantity_2").fill("")
+    # ... and the next try works again; more good pieces make each piece cheaper
+    popup.locator("#quantity").fill("4")
     click_and_wait(admin_page, preview)
     expect(total).to_be_visible()
-    expect(error).to_have_count(0)
-    for quantity in ("7", "8"):
-        popup.locator("#quantity_1").fill(quantity)
-        click_and_wait(admin_page, preview)
-        expect(total).to_be_visible()
-        expect(popup.locator("#quantity_1")).to_have_value(quantity)
+    expect(popup.locator("#quantity-error")).to_have_count(0)
+    assert per_piece.inner_text() != first
+    expect(popup.locator("#quantity")).to_have_value("4")
     assert fits_screen_width(admin_page)

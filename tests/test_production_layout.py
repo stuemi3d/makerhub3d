@@ -97,12 +97,9 @@ def test_the_form_uses_labelled_blocks_and_no_table(prepared_client: AppClient) 
     for block in prints:
         for part in ("material", "electricity", "wear"):
             assert re.search(rf'<label for="cost_{part}_\d+">', block)
-    rows = re.findall(r'<div class="form-block result-block', html)
-    assert len(rows) == 3
-    for number in (1, 2, 3):
-        assert f'<label for="article_{number}">' in html
-        assert f'<label for="quantity_{number}">' in html
-        assert f'<label for="weight_{number}">' in html
+    assert len(re.findall(r'<div class="form-block result-block', html)) == 1
+    assert '<label for="article">' in html and '<label for="quantity">' in html
+    assert "weight" not in html
 
 
 def test_a_failed_print_is_marked_in_the_form(prepared_client: AppClient) -> None:
@@ -118,19 +115,19 @@ def test_a_failed_print_is_marked_in_the_form(prepared_client: AppClient) -> Non
     assert ".print-block.print-failed" in css
 
 
-def test_the_blocks_get_the_preview_fields_after_the_preview(prepared_client: AppClient) -> None:
+def test_the_result_block_shows_the_costs_after_the_preview(prepared_client: AppClient) -> None:
     article_id = add_article()
 
-    html = send(prepared_client, form([6, 7], [(article_id, "5")], action="preview")).text
+    html = send(prepared_client, form([6, 7], (article_id, "5"), action="preview")).text
 
     assert "<table" not in html
-    assert '<label for="alloc_1">' in html
-    assert DE["production.col.per_piece"] in html
-    assert re.search(r'name="alloc_1"[^>]*value="7,25"', html)
+    block = html.split('<div class="form-block result-block')[1]
+    assert DE["production.col.per_piece"] in block and "1,45" in block
+    assert DE["production.preview.total"] in html and "7,25" in html
 
 
 def test_the_labels_are_the_old_column_names() -> None:
-    for key in ("production.col.article", "production.col.quantity", "production.col.weight"):
+    for key in ("production.col.article", "production.col.quantity", "production.col.per_piece"):
         assert DE[key] and EN[key]
     assert DE["production.selected"] and EN["production.selected"]
     assert ARCHIVES  # the same prints as in the booking tests

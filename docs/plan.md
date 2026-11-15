@@ -12,7 +12,7 @@ Das Tool beantwortet für jeden Artikel eine Frage: *Was habe ich kalkuliert, wa
 
 - Artikelstamm mit Vorlagen und Varianten, jede Variante mit eigener Artikelnummer (z. B. `123456-rt`, automatisch aus Vorlagennummer und Kürzeln der Merkmalswerte zusammengesetzt); Kalkulation ist immer optional
 - Kalkulation für noch nicht gedruckte Teile: Filament aus den Bambuddy-Spulen, Druckzeit und Gramm aus gesliceter 3MF oder G-Code, Strom, Maschine, Ausschussquote, Arbeitszeit, Zusatzteile, Gewinnaufschlag
-- Produktion: einen oder mehrere Drucke aus dem Bambuddy-Archiv einem oder mehreren Artikeln zuordnen; nicht zugeordnete (z. B. private) Drucke bleiben unberührt
+- Produktion: einen oder mehrere Drucke aus dem Bambuddy-Archiv genau einem Artikel zuordnen; nicht zugeordnete (z. B. private) Drucke bleiben unberührt
 - Lager: Zugänge aus Produktionen, Abgänge vorerst von Hand
 - Auswertung pro Artikel: kalkuliert ↔ produziert ↔ verkauft, als Verlauf; Dashboard als Startseite
 
@@ -71,7 +71,7 @@ Der Artikel ist der Knotenpunkt; alles andere hängt über die Artikelnummer an 
 | Kalkulation (optional) | Artikel oder Vorlage, Datum, „maßgeblich“-Kennzeichen, Materialzeilen (Spule/Durchschnitt/frei, Gramm, Preis/kg), Druckzeit, Teile pro Platte, Drucker, Ausschussquote %, Rüstzeit pro Platte (Min.), Nacharbeit pro Stück (Min.), Zusatzteile pro Stück, Gewinnaufschlag %, Ergebnis pro Stück (Selbstkosten ohne/mit Arbeitszeit, Verkaufspreis-Vorschlag) | Spule aus Bambuddy (nur gelesen) |
 | Produktion | Datum, Notiz, Gesamtkosten, Arbeitszeit (Minuten), Stundensatz und Arbeitskosten als Wert, storniert | – |
 | Produktion – Drucke | Produktion, Material-, Strom-, Maschinenkosten als Wert (der Verschleiß steckt im Druckerstundensatz und wird nicht aus Bambuddy übernommen), Status (erfolgreich/fehlgeschlagen) | Bambuddy-Archiv-ID |
-| Produktion – Ergebnis | Produktion, Artikel, gute Stück, Gewichtung, zugeteilte Kosten, Kennzeichen „aufgeteilt“ | – |
+| Produktion – Ergebnis | Produktion, Artikel (genau einer), gute Stück, Kosten (alle Kosten der Produktion) | – |
 | Lagerbewegung | Artikel, Datum, Menge (+/−), Art (Produktion, Verkauf, Korrektur, Storno), Bezug | Produktion oder Verkauf |
 | Verkauf | Artikel, Datum, Menge, Preis pro Stück, Quelle (Hand, RechnungsFee, Haben) | Rechnungsnummer bzw. externe ID |
 | Ignoriert | Bambuddy-Archiv-ID, Datum | nicht relevante Drucke ausblenden |
@@ -88,11 +88,11 @@ Der Artikel ist der Knotenpunkt; alles andere hängt über die Artikelnummer an 
 1. **Nichts verknüpft:** „Löschen“ mit Rückfrage (Admin und Mitarbeiter; „Nur lesen“ nie).
 2. **Nur Kalkulationen verknüpft:** Löschen möglich (Admin und Mitarbeiter); die Rückfrage nennt, was mitgelöscht wird, und rät zum Deaktivieren.
 3. **Produktionen, Lagerbewegungen oder Verkäufe verknüpft:** für Mitarbeiter nur Deaktivieren, mit erklärendem Hinweis.
-4. **Admin, „Endgültig löschen“:** löscht den Artikel samt allem Zugehörigen. Die Warnung nennt die Anzahl der betroffenen Datensätze und weist darauf hin, dass es nicht rückgängig zu machen ist; zur Bestätigung wird die Artikelnummer abgetippt. Das Änderungsprotokoll hält fest, wer wann welchen Artikel mit wie vielen Datensätzen gelöscht hat. Der Button wird nur angeboten, wenn Stufe 3 gilt (etwas hängt am Artikel). Gehört der Artikel zu einer Produktion mit mehreren Ergebnis-Artikeln, entfallen nur seine Ergebniszeile und seine Lagerbewegungen; Produktion und Kosten der übrigen Artikel bleiben unverändert (Kosten sind als Wert gespeichert). Dies ist die einzige Ausnahme von der Regel „nie löschen, sondern stornieren“; gedacht vor allem für Testdaten zu Beginn.
+4. **Admin, „Endgültig löschen“:** löscht den Artikel samt allem Zugehörigen. Die Warnung nennt die Anzahl der betroffenen Datensätze und weist darauf hin, dass es nicht rückgängig zu machen ist; zur Bestätigung wird die Artikelnummer abgetippt. Das Änderungsprotokoll hält fest, wer wann welchen Artikel mit wie vielen Datensätzen gelöscht hat. Der Button wird nur angeboten, wenn Stufe 3 gilt (etwas hängt am Artikel). Dies ist die einzige Ausnahme von der Regel „nie löschen, sondern stornieren“; gedacht vor allem für Testdaten zu Beginn.
 
 **Vorlagen** haben nie Bestand, Produktion oder Verkauf; für sie gelten deshalb nur die Stufen 1 und 2 plus Deaktivieren. Eine Vorlage lässt sich erst löschen, wenn alle ihre Varianten gelöscht sind; ihre Kalkulationen werden dann mitgelöscht (Rückfrage nennt die Anzahl). Eine deaktivierte Vorlage kann nicht mehr für neue Varianten genutzt werden; vorhandene Varianten bleiben unberührt.
 
-**Produktion:** fasst beliebig viele Drucke und beliebig viele Ergebnis-Artikel zusammen. Ein einziger Ergebnis-Artikel (z. B. Laterne aus 5 Platten) bekommt alle Kosten, ohne Schätzung. Bei mehreren Ergebnis-Artikeln: Aufteilung nach Stückzahl, optional mit Gewichtung pro Zeile (z. B. Halter zählt 3, Clip zählt 1); Vorschau vor dem Speichern, korrigierbar; in der Auswertung als „aufgeteilt“ markiert.
+**Produktion:** fasst beliebig viele Drucke (Platten) und **genau einen Ergebnis-Artikel** zusammen. Dieser Artikel bekommt alle Kosten, ohne Schätzung und ohne Aufteilung. Erlaubt sind: ein Artikel auf einer Platte, derselbe Artikel mehrfach auf einer Platte, ein Artikel über mehrere Platten (z. B. Laterne aus 5 Platten) und derselbe Artikel mehrfach über mehrere Platten; die Kosten pro Stück sind alle Kosten geteilt durch die guten Stück. Vorschau vor dem Buchen. Wer mehrere Artikel druckt, legt je Artikel eine eigene Produktion mit eigenen Platten an. Gemischte Platten mit mehreren Artikeln sind bewusst nicht vorgesehen: Bambuddy liefert nur Kosten pro Druck, und eine Aufteilung nach Stückzahl oder von Hand eingetragener Gewichtung ist zu ungenau. Möglicher späterer Ausbau (nur bei Bedarf): Aufteilung nach dem Filamentgewicht pro Objekt, das sich aus den Objekt-Markierungen im G-Code der Platte berechnen lässt.
 
 **Ausschuss und Fehldrucke:** Ausschuss auf einer durchgelaufenen Platte wird über weniger gute Stück eingepreist. Fehlgeschlagene Drucke werden rot angezeigt und können der Produktion zugeordnet werden, für die sie gedacht waren (erhöhen dann deren Stückkosten), oder ignoriert werden. Die Auswertung weist den Fehldruck-Anteil pro Artikel aus.
 
@@ -105,7 +105,7 @@ Der Artikel ist der Knotenpunkt; alles andere hängt über die Artikelnummer an 
 | Dashboard (Startseite) | Kennzahlen des Zeitraums, Mindestbestand, nicht zugeordnete Drucke, Warnungen |
 | Artikel | Vorlagen und Artikel anlegen; Variante aus Vorlage erzeugen. Artikel-Detail mit Kacheln **Kalkulationen · Produktionen · Lager · Verkäufe · Auswertung** (jeweils mit Anzahl); Klick öffnet die Tabelle mit Links zur Produktion und zum Bambuddy-Druck |
 | Kalkulation | Teil kalkulieren: Spulen wählen, 3MF/G-Code hochladen oder Werte eintippen, Live-Berechnung, als Kalkulation am Artikel oder an der Vorlage speichern |
-| Produktion | Liste erfolgreicher und fehlgeschlagener Bambuddy-Drucke; einen oder mehrere auswählen → Produktion mit Ergebnis-Artikeln und Stückzahl; Kostenaufteilung prüfen; oder „Ignorieren“ |
+| Produktion | Liste erfolgreicher und fehlgeschlagener Bambuddy-Drucke; einen oder mehrere auswählen → Produktion mit einem Ergebnis-Artikel und den guten Stück; Kosten pro Stück in der Vorschau prüfen; oder „Ignorieren“ |
 | Lager | Bestand je Artikel, Abgang/Korrektur von Hand, Bewegungsliste |
 | Auswertung | pro Artikel, pro Vorlage und gesamt |
 | Einstellungen | Werte, Geräte, Bambuddy-Verbindung (mit Verbindungstest), Benutzer (nur Admin) |
@@ -261,6 +261,7 @@ Der Maintainer hat die frühere Bedingung („erst nach Alltagsnutzung von M1“
 
 - [x] Bambuddy-Client: Archiv-Liste, Archiv-Detail, Spulen, Drucker, Strompreis; Einstellungen mit Adresse, Schlüssel und Verbindungstest (#117)
 - [x] Seite Produktion: Drucke auswählen, Ergebnis-Artikel, Kostenaufteilung mit Vorschau, Fehldrucke, Ignorieren (#119, #127)
+- [x] Produktion mit genau einem Ergebnis-Artikel, keine Kostenaufteilung (#140)
 - [ ] Produktion: Arbeitskosten erfassen (Arbeitszeit × Stundensatz, Teil der Gesamtkosten) (#134)
 - [ ] Produktion: Maschinenkosten = Druckstunden × Druckerstundensatz (zunächst ein Wert in den Einstellungen) statt Verschleiß aus Bambuddy (#135)
 - [x] Dashboard: Liste „Noch nicht zugeordnet“ (Drucke aus dem Bambuddy-Archiv, die weder in einer Produktion stehen noch ignoriert sind) (#119, #129)

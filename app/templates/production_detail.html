@@ -50,7 +50,7 @@
 </table>
 </div>
 </article>
-<h2>{{ t('production.detail.articles') }}</h2>
+<h2>{{ t('production.detail.article') }}</h2>
 <article class="data-card">
 <div class="data-scroll">
 <table class="data-table">
@@ -58,10 +58,8 @@
     <tr>
       {{ head(t('production.col.article')) }}
       {{ head(t('production.col.quantity'), numeric=true) }}
-      {{ head(t('production.col.weight'), numeric=true) }}
-      {{ head(t('production.col.alloc'), numeric=true) }}
+      {{ head(t('production.col.cost'), numeric=true) }}
       {{ head(t('production.col.per_piece'), numeric=true) }}
-      {{ head(t('production.col.split')) }}
     </tr>
   </thead>
   <tbody>
@@ -69,10 +67,8 @@
     <tr class="detail-article">
       <td class="cell-strong"><a href="/articles/{{ r.article_id }}">{{ r.number }}</a> {{ r.name }}</td>
       <td class="num">{{ r.quantity }}</td>
-      <td class="num">{{ r.weight }}</td>
       <td class="num">{{ r.cost }}</td>
       <td class="num">{{ r.per_piece }}</td>
-      <td>{% if r.split %}{{ chip(t('production.split'), 'inactive') }}{% endif %}</td>
     </tr>
     {% endfor %}
   </tbody>

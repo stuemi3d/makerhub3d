@@ -115,7 +115,7 @@ def book_print(archive_id: int) -> int:
             date(2026, 11, 15),
             "",
             [PrintInput(archive_id, D(1), D(1), D(1))],
-            [ResultInput(article_id, 1)],
+            ResultInput(article_id, 1),
         )
     assert not errors
     return production_id
