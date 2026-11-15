@@ -19,3 +19,10 @@ def test_area_tabs_are_flat_with_a_line_below(admin_page: Page) -> None:
     assert px(admin_page, '.area-tabs a[aria-current="page"]', "borderTopLeftRadius") == 0
     assert px(admin_page, ".area-tabs ul", "borderBottomWidth") == 1
     assert px(admin_page, '.area-tabs a[aria-current="page"]', "borderBottomWidth") == 2
+
+
+def test_settings_tabs_look_like_the_area_tabs(admin_page: Page) -> None:
+    admin_page.goto("/settings")
+    assert px(admin_page, '.settings-tabs a[aria-current="page"]', "borderTopLeftRadius") == 0
+    assert px(admin_page, ".settings-tabs ul", "borderBottomWidth") == 1
+    assert px(admin_page, '.settings-tabs a[aria-current="page"]', "borderBottomWidth") == 2
