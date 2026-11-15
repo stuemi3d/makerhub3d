@@ -1,6 +1,7 @@
-"""Production in the database: booking, cost split, cancelling, prints (issue #118, cases 1-23).
+"""Production in the database: booking, cancelling, prints (issues #118 and #140).
 
-All data is invented. The test case numbers refer to the comment on the issue.
+A production has exactly one result article that gets all costs. All data is invented. The
+test case numbers of #118 refer to the comment on that issue.
 """
 
 import json
@@ -12,6 +13,7 @@ from pathlib import Path
 import pytest
 from alembic import command
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from app import article_purge, production
 from app.db import alembic_config, make_engine, run_migrations
@@ -38,15 +40,15 @@ def print_(archive_id: int, material="3.00", power="0.50", wear="1.00", failed=F
     return PrintInput(archive_id, D(material), D(power), D(wear), failed)
 
 
-def book(prints, results, note: str = ""):
+def book(prints, result, note: str = ""):
     """Books a production; returns (production id, errors)."""
     with db() as session, session.begin():
-        return production.book(session, None, TODAY, note, prints, results)
+        return production.book(session, None, TODAY, note, prints, result)
 
 
 def one_production(quantity: int = 10, archive_id: int = 1) -> tuple[int, int]:
     article_id = add_article()
-    production_id, errors = book([print_(archive_id)], [ResultInput(article_id, quantity)])
+    production_id, errors = book([print_(archive_id)], ResultInput(article_id, quantity))
     assert not errors
     return production_id, article_id
 
@@ -77,7 +79,7 @@ def test_booking_raises_the_stock_and_stores_the_total_cost() -> None:
 
     production_id, errors = book(
         [print_(1, "3.00", "0.50", "1.00"), print_(2, "2.00", "0.25", "0.50")],
-        [ResultInput(article_id, 10)],
+        ResultInput(article_id, 10),
     )
 
     assert errors == {}
@@ -86,91 +88,76 @@ def test_booking_raises_the_stock_and_stores_the_total_cost() -> None:
     assert item.total_cost == D("7.25")
     assert not item.cancelled
     assert len(item.prints) == 2
-    row = item.results[0]
-    assert (row.quantity, row.allocated_cost, row.split) == (10, D("7.25"), False)
+    (row,) = item.results
+    assert (row.quantity, row.allocated_cost) == (10, D("7.25"))
     with db() as session:
         movement = session.get(StockMovement, row.movement_id)
         assert (movement.quantity, movement.kind) == (10, "production")
 
 
-# --- Cases 3-4 and the three combinations ------------------------------------------------------
+# --- Issue #140: the four cases with one article get all costs ---------------------------------
 
 
-def test_costs_are_split_by_quantity_and_add_up_exactly() -> None:
-    first, second = add_article("A-1"), add_article("A-2")
+def test_one_article_one_plate_one_piece() -> None:
+    article_id = add_article()
 
-    production_id, errors = book(
-        [print_(1, "3.00", "0.50", "1.00"), print_(2, "2.00", "0.25", "0.50")],
-        [ResultInput(first, 6), ResultInput(second, 4)],
-    )
+    production_id, errors = book([print_(1, "5.00", "0.00", "0.00")], ResultInput(article_id, 1))
 
     assert errors == {}
-    rows = get_production(production_id).results
-    assert [r.allocated_cost for r in rows] == [D("4.35"), D("2.90")]
-    assert all(r.split for r in rows)
-    assert sum(r.allocated_cost for r in rows) == D("7.25")
-    assert (stock(first), stock(second)) == (6, 4)
+    assert get_production(production_id).results[0].allocated_cost == D("5.00")
 
 
-def test_rounding_remainder_goes_to_one_row_and_nothing_is_lost() -> None:
-    ids = [add_article(f"R-{n}") for n in range(3)]
+def test_the_same_article_several_times_on_one_plate() -> None:
+    article_id = add_article()
 
-    production_id, _ = book([print_(1, "1.00", "0.00", "0.00")], [ResultInput(i, 1) for i in ids])
+    production_id, errors = book([print_(1, "12.00", "0.00", "0.00")], ResultInput(article_id, 4))
 
-    rows = get_production(production_id).results
-    assert sum(r.allocated_cost for r in rows) == D("1.00")
-    assert sorted(r.allocated_cost for r in rows) == [D("0.33"), D("0.33"), D("0.34")]
-
-
-def test_split_with_weights() -> None:
-    holder, clip = add_article("H-1"), add_article("C-1")
-
-    production_id, _ = book(
-        [print_(1, "8.00", "0.00", "0.00")],
-        [ResultInput(holder, 2, D("3")), ResultInput(clip, 2, D("1"))],
-    )
-
-    rows = get_production(production_id).results
-    assert [r.allocated_cost for r in rows] == [D("6.00"), D("2.00")]
-    assert [r.weight for r in rows] == [D("3"), D("1")]
+    assert errors == {}
+    row = get_production(production_id).results[0]
+    assert (row.quantity, row.allocated_cost) == (4, D("12.00"))
+    assert stock(article_id) == 4
 
 
 def test_one_article_on_five_plates_gets_all_costs() -> None:
     article_id = add_article()
 
     production_id, errors = book(
-        [print_(n, "1.00", "0.10", "0.20") for n in range(1, 6)], [ResultInput(article_id, 1)]
+        [print_(n, "1.00", "0.10", "0.20") for n in range(1, 6)], ResultInput(article_id, 1)
     )
 
     assert errors == {}
-    row = get_production(production_id).results[0]
-    assert (row.allocated_cost, row.split) == (D("6.50"), False)
+    assert get_production(production_id).results[0].allocated_cost == D("6.50")
 
 
-def test_two_articles_on_one_plate() -> None:
-    first, second = add_article("A-1"), add_article("A-2")
-
-    production_id, errors = book(
-        [print_(1, "5.00", "0.00", "0.00")], [ResultInput(first, 3), ResultInput(second, 2)]
-    )
-
-    assert errors == {}
-    rows = get_production(production_id).results
-    assert [r.allocated_cost for r in rows] == [D("3.00"), D("2.00")]
-
-
-def test_two_articles_on_three_plates() -> None:
-    first, second = add_article("A-1"), add_article("A-2")
+def test_the_same_article_several_times_on_three_plates() -> None:
+    article_id = add_article()
 
     production_id, errors = book(
-        [print_(n, "2.00", "0.00", "0.00") for n in (1, 2, 3)],
-        [ResultInput(first, 4), ResultInput(second, 4)],
+        [print_(n, "2.00", "0.00", "0.00") for n in (1, 2, 3)], ResultInput(article_id, 12)
     )
 
     assert errors == {}
     item = get_production(production_id)
-    assert item.total_cost == D("6.00")
-    assert [r.allocated_cost for r in item.results] == [D("3.00"), D("3.00")]
+    assert (item.total_cost, item.results[0].allocated_cost) == (D("6.00"), D("6.00"))
+    assert stock(article_id) == 12
+
+
+def test_a_production_cannot_hold_a_second_result_article() -> None:
+    first, second = add_article("A-1"), add_article("A-2")
+    production_id, _ = book([print_(1)], ResultInput(first, 2))
+
+    with db() as session:
+        movement_id = session.scalars(select(StockMovement.id)).first()
+    with db() as session, pytest.raises(IntegrityError), session.begin():
+        session.add(
+            ProductionResult(
+                production_id=production_id,
+                article_id=second,
+                quantity=1,
+                allocated_cost=D("1.00"),
+                movement_id=movement_id,
+            )
+        )
 
 
 # --- Case 5: later changes do not change the past ----------------------------------------------
@@ -182,7 +169,6 @@ def test_stored_costs_stay_when_the_article_changes() -> None:
     with db() as session, session.begin():
         article = session.get(Article, article_id)
         article.selling_price = D("99.00")
-        article.weight = D("5")
 
     row = get_production(production_id).results[0]
     assert row.allocated_cost == D("4.50")
@@ -196,46 +182,29 @@ def test_stored_costs_stay_when_the_article_changes() -> None:
 def test_zero_or_negative_pieces_are_refused(quantity: int) -> None:
     article_id = add_article()
 
-    production_id, errors = book([print_(1)], [ResultInput(article_id, quantity)])
+    production_id, errors = book([print_(1)], ResultInput(article_id, quantity))
 
     assert production_id is None
-    assert "results" in errors
+    assert errors == {"quantity": "production.error.quantity"}
     assert (count(Production), count(StockMovement)) == (0, 0)
-
-
-def test_no_result_article_is_refused() -> None:
-    production_id, errors = book([print_(1)], [])
-
-    assert production_id is None and "results" in errors
-    assert count(Production) == 0
 
 
 def test_inactive_or_missing_article_is_refused() -> None:
     inactive = add_article(active=False)
 
-    _, errors_inactive = book([print_(1)], [ResultInput(inactive, 1)])
-    _, errors_missing = book([print_(1)], [ResultInput(999, 1)])
+    _, errors_inactive = book([print_(1)], ResultInput(inactive, 1))
+    _, errors_missing = book([print_(1)], ResultInput(999, 1))
 
-    assert "results" in errors_inactive and "results" in errors_missing
+    assert errors_inactive == errors_missing == {"article": "production.error.article"}
     assert (count(Production), count(StockMovement)) == (0, 0)
 
 
-def test_one_of_several_bad_rows_books_nothing() -> None:
-    good = add_article("A-1")
-
-    _, errors = book([print_(1)], [ResultInput(good, 2), ResultInput(999, 1)])
-
-    assert errors
-    assert (count(Production), count(StockMovement), stock(good)) == (0, 0, 0)
-
-
-def test_same_article_twice_and_no_print_are_refused() -> None:
+def test_no_print_is_refused() -> None:
     article_id = add_article()
 
-    _, twice = book([print_(1)], [ResultInput(article_id, 1), ResultInput(article_id, 2)])
-    _, no_print = book([], [ResultInput(article_id, 1)])
+    production_id, errors = book([], ResultInput(article_id, 1))
 
-    assert twice and no_print
+    assert production_id is None and "prints" in errors
     assert count(Production) == 0
 
 
@@ -247,7 +216,7 @@ def test_failed_prints_count_into_the_costs_and_are_marked() -> None:
 
     production_id, errors = book(
         [print_(1, "3.00", "0.50", "1.00"), print_(2, "1.00", "0.10", "0.20", failed=True)],
-        [ResultInput(article_id, 5)],
+        ResultInput(article_id, 5),
     )
 
     assert errors == {}
@@ -276,9 +245,9 @@ def test_booking_and_cancelling_are_in_the_change_log() -> None:
 
 def test_a_print_cannot_be_in_two_active_productions() -> None:
     article_id = add_article()
-    book([print_(7)], [ResultInput(article_id, 1)])
+    book([print_(7)], ResultInput(article_id, 1))
 
-    production_id, errors = book([print_(7)], [ResultInput(article_id, 1)])
+    production_id, errors = book([print_(7)], ResultInput(article_id, 1))
 
     assert production_id is None and "prints" in errors
     assert count(Production) == 1
@@ -287,7 +256,7 @@ def test_a_print_cannot_be_in_two_active_productions() -> None:
 def test_the_same_print_twice_in_one_production_is_refused() -> None:
     article_id = add_article()
 
-    production_id, errors = book([print_(7), print_(7)], [ResultInput(article_id, 1)])
+    production_id, errors = book([print_(7), print_(7)], ResultInput(article_id, 1))
 
     assert production_id is None and "prints" in errors
 
@@ -297,10 +266,10 @@ def test_an_ignored_print_cannot_be_booked_until_it_is_not_ignored_any_more() ->
     with db() as session, session.begin():
         production.ignore(session, None, 5)
 
-    refused, errors = book([print_(5)], [ResultInput(article_id, 1)])
+    refused, errors = book([print_(5)], ResultInput(article_id, 1))
     with db() as session, session.begin():
         production.unignore(session, None, 5)
-    accepted, no_errors = book([print_(5)], [ResultInput(article_id, 1)])
+    accepted, no_errors = book([print_(5)], ResultInput(article_id, 1))
 
     assert refused is None and "prints" in errors
     assert accepted is not None and no_errors == {}
@@ -345,7 +314,7 @@ def test_the_prints_of_a_cancelled_production_are_free_again() -> None:
     production_id, article_id = one_production(archive_id=9)
     cancel(production_id)
 
-    new_id, errors = book([print_(9)], [ResultInput(article_id, 2)])
+    new_id, errors = book([print_(9)], ResultInput(article_id, 2))
 
     assert errors == {} and new_id is not None
     assert stock(article_id) == 2
@@ -384,31 +353,6 @@ def test_cancelling_is_refused_when_the_stock_would_go_negative() -> None:
             ).all()
             == []
         )
-
-
-# --- Case 17: several articles are cancelled together or not at all ----------------------------
-
-
-def test_with_several_articles_both_are_cancelled_together() -> None:
-    first, second = add_article("A-1"), add_article("A-2")
-    production_id, _ = book([print_(1)], [ResultInput(first, 6), ResultInput(second, 4)])
-
-    assert cancel(production_id) is None
-
-    assert (stock(first), stock(second)) == (0, 0)
-    assert count(StockMovement) == 4
-
-
-def test_with_several_articles_nothing_is_cancelled_if_one_cannot_be() -> None:
-    first, second = add_article("A-1"), add_article("A-2")
-    production_id, _ = book([print_(1)], [ResultInput(first, 6), ResultInput(second, 4)])
-    add_movement(second, -1, reason="Verschenkt")
-
-    assert cancel(production_id) == "production.error.insufficient"
-
-    assert (stock(first), stock(second)) == (6, 3)
-    assert not get_production(production_id).cancelled
-    assert count(StockMovement) == 3
 
 
 # --- Case 18: the movement is cancelled only through the production ----------------------------
@@ -491,22 +435,6 @@ def test_purging_the_only_article_removes_the_production_with_its_prints() -> No
     assert count(Article) == 0
 
 
-def test_purging_one_of_two_articles_keeps_the_production_unchanged() -> None:
-    first, second = add_article("A-1"), add_article("A-2")
-    production_id, _ = book(
-        [print_(1, "3.00", "0.50", "1.00"), print_(2, "2.00", "0.25", "0.50")],
-        [ResultInput(first, 6), ResultInput(second, 4)],
-    )
-
-    purge(first)
-
-    item = get_production(production_id)
-    assert item.total_cost == D("7.25")
-    assert len(item.prints) == 2
-    assert [(r.article_id, r.allocated_cost) for r in item.results] == [(second, D("2.90"))]
-    assert stock(second) == 4
-
-
 def test_purge_of_a_cancelled_production_article_still_works() -> None:
     production_id, article_id = one_production()
     cancel(production_id)
@@ -521,7 +449,7 @@ def test_purge_of_a_cancelled_production_article_still_works() -> None:
 
 def test_unassigned_prints_are_those_neither_booked_nor_ignored() -> None:
     article_id = add_article()
-    production_id, _ = book([print_(1), print_(2)], [ResultInput(article_id, 1)])
+    production_id, _ = book([print_(1), print_(2)], ResultInput(article_id, 1))
     with db() as session, session.begin():
         production.ignore(session, None, 3)
 
@@ -547,7 +475,7 @@ def test_all_production_texts_exist_in_both_languages() -> None:
 
 def test_bad_print_ids_and_costs_are_refused() -> None:
     article_id = add_article()
-    results = [ResultInput(article_id, 1)]
+    results = ResultInput(article_id, 1)
 
     _, zero = book([print_(0)], results)
     _, negative = book([print_(1, material="-1.00")], results)
@@ -559,8 +487,8 @@ def test_bad_print_ids_and_costs_are_refused() -> None:
 
 def test_the_production_count_covers_several_productions() -> None:
     article_id = add_article()
-    first, _ = book([print_(1)], [ResultInput(article_id, 2)])
-    book([print_(2)], [ResultInput(article_id, 3)])
+    first, _ = book([print_(1)], ResultInput(article_id, 2))
+    book([print_(2)], ResultInput(article_id, 3))
     cancel(first)
 
     with db() as session:
@@ -576,58 +504,108 @@ def test_the_production_count_covers_several_productions() -> None:
 def test_the_total_is_rounded_to_the_cent_when_booking() -> None:
     article_id = add_article()
 
-    production_id, _ = book([print_(1, "0.005", "0", "0")], [ResultInput(article_id, 1)])
+    production_id, _ = book([print_(1, "0.005", "0", "0")], ResultInput(article_id, 1))
 
     item = get_production(production_id)
     assert item.total_cost == D("0.01")
     assert item.results[0].allocated_cost == D("0.01")
 
 
-def test_a_split_by_hand_is_stored_when_it_adds_up() -> None:
-    first, second = add_article("A-1"), add_article("A-2")
-    with db() as session, session.begin():
-        production_id, errors = production.book(
-            session,
-            None,
-            TODAY,
-            "",
-            [print_(1, "5.00", "0", "0")],
-            [ResultInput(first, 1), ResultInput(second, 1)],
-            [D("4.00"), D("1.00")],
-        )
-
-    assert errors == {}
-    rows = get_production(production_id).results
-    assert [(r.allocated_cost, r.split) for r in rows] == [(D("4.00"), True), (D("1.00"), True)]
-
-
-@pytest.mark.parametrize("split", [[D("4.00"), D("2.00")], [D("5.00")], [D("6.00"), D("-1.00")]])
-def test_a_split_by_hand_that_does_not_fit_books_nothing(split: list[Decimal]) -> None:
-    first, second = add_article("A-1"), add_article("A-2")
-    with db() as session, session.begin():
-        production_id, errors = production.book(
-            session,
-            None,
-            TODAY,
-            "",
-            [print_(1, "5.00", "0", "0")],
-            [ResultInput(first, 1), ResultInput(second, 1)],
-            split,
-        )
-
-    assert production_id is None and errors == {"alloc": "production.error.alloc_sum"}
-    assert (count(Production), count(StockMovement)) == (0, 0)
-
-
-def test_the_preview_changes_nothing() -> None:
-    first, second = add_article("A-1"), add_article("A-2")
+def test_the_preview_changes_nothing_and_gives_all_costs_to_the_one_article() -> None:
+    article_id = add_article()
     with db() as session:
-        errors, total, rows = production.preview(
-            session,
-            [print_(1, "7.25", "0", "0")],
-            [ResultInput(first, 6), ResultInput(second, 4)],
+        errors, total, row = production.preview(
+            session, [print_(1, "7.25", "0", "0")], ResultInput(article_id, 5)
         )
 
     assert errors == {} and total == D("7.25")
-    assert [r.cost for r in rows] == [D("4.35"), D("2.90")]
+    assert (row.quantity, row.cost) == (5, D("7.25"))
     assert (count(Production), count(StockMovement)) == (0, 0)
+
+
+def test_the_preview_names_the_same_errors_as_booking() -> None:
+    with db() as session:
+        errors, total, row = production.preview(session, [print_(1)], ResultInput(999, 0))
+
+    assert errors == {
+        "article": "production.error.article",
+        "quantity": "production.error.quantity",
+    }
+    assert (total, row) == (D(0), None)
+
+
+# --- Issue #140: migration 0015 drops weight and split and allows one result per production ----
+
+
+def test_single_result_migration_keeps_the_data_and_can_be_undone(tmp_path: Path) -> None:
+    database = tmp_path / "single.db"
+    engine = make_engine(database)
+    with engine.begin() as connection:
+        command.upgrade(alembic_config(connection), "0014")
+    with sqlite3.connect(database) as connection:
+        connection.executescript(
+            """
+            INSERT INTO articles (id, number, number_key, name, active, created_at)
+              VALUES (1, '3D-1', '3d-1', 'Erfunden', 1, '2026-01-01 00:00:00');
+            INSERT INTO productions (id, booked_on, created_at, note, total_cost, cancelled)
+              VALUES (1, '2026-11-15', '2026-11-15 10:00:00', '', '4.50', 0);
+            INSERT INTO stock_movements (id, article_id, booked_on, created_at, quantity, kind,
+              reason) VALUES (1, 1, '2026-11-15', '2026-11-15 10:00:00', 10, 'production', '');
+            INSERT INTO production_results (production_id, article_id, quantity, weight,
+              allocated_cost, split, movement_id) VALUES (1, 1, 10, '1', '4.50', 0, 1);
+            """
+        )
+
+    run_migrations(engine)
+
+    with sqlite3.connect(database) as connection:
+        columns = [r[1] for r in connection.execute("PRAGMA table_info(production_results)")]
+        assert "weight" not in columns and "split" not in columns
+        assert connection.execute(
+            "SELECT production_id, article_id, quantity, allocated_cost FROM production_results"
+        ).fetchall() == [(1, 1, 10, "4.50")]
+        connection.execute("PRAGMA foreign_keys = ON")
+        with pytest.raises(sqlite3.IntegrityError):
+            connection.execute(
+                "INSERT INTO production_results (production_id, article_id, quantity,"
+                " allocated_cost, movement_id) VALUES (1, 1, 1, '1', 1)"
+            )
+
+    with engine.begin() as connection:
+        command.downgrade(alembic_config(connection), "0014")
+    with sqlite3.connect(database) as connection:
+        columns = [r[1] for r in connection.execute("PRAGMA table_info(production_results)")]
+        assert "weight" in columns and "split" in columns
+        assert connection.execute("SELECT COUNT(*) FROM production_results").fetchone() == (1,)
+    run_migrations(engine)
+
+
+def test_single_result_migration_stops_clearly_when_a_production_has_two_articles(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "several.db"
+    engine = make_engine(database)
+    with engine.begin() as connection:
+        command.upgrade(alembic_config(connection), "0014")
+    with sqlite3.connect(database) as connection:
+        connection.executescript(
+            """
+            INSERT INTO articles (id, number, number_key, name, active, created_at)
+              VALUES (1, 'A-1', 'a-1', 'Erfunden', 1, '2026-01-01 00:00:00'),
+                     (2, 'A-2', 'a-2', 'Erfunden', 1, '2026-01-01 00:00:00');
+            INSERT INTO productions (id, booked_on, created_at, note, total_cost, cancelled)
+              VALUES (1, '2026-11-15', '2026-11-15 10:00:00', '', '4.50', 0);
+            INSERT INTO stock_movements (id, article_id, booked_on, created_at, quantity, kind,
+              reason) VALUES (1, 1, '2026-11-15', '2026-11-15 10:00:00', 3, 'production', ''),
+                             (2, 2, '2026-11-15', '2026-11-15 10:00:00', 2, 'production', '');
+            INSERT INTO production_results (production_id, article_id, quantity, weight,
+              allocated_cost, split, movement_id) VALUES (1, 1, 3, '1', '2.70', 1, 1),
+                                                         (1, 2, 2, '1', '1.80', 1, 2);
+            """
+        )
+
+    with pytest.raises(RuntimeError, match="several result articles"):
+        run_migrations(engine)
+
+    with sqlite3.connect(database) as connection:
+        assert connection.execute("SELECT COUNT(*) FROM production_results").fetchone() == (2,)

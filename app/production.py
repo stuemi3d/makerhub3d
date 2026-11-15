@@ -1,7 +1,7 @@
-"""Production (issue #118): booking prints and result articles, cost split and cancelling.
+"""Production (issues #118, #140): booking prints and the result article, and cancelling.
 
-A production holds any number of prints (Bambuddy archive entries) and any number of result
-articles. Booking raises the stock of every result article; cancelling books counter movements.
+A production holds any number of prints (Bambuddy archive entries) and exactly one result
+article, which gets all costs. Booking raises its stock; cancelling books a counter movement.
 Productions are never changed or deleted afterwards. Costs are stored as values.
 
 The caller holds `stock.booking_lock` and the transaction (like for app.stock); a missing
@@ -48,48 +48,25 @@ class PrintInput:
 class ResultInput:
     article_id: int
     quantity: int
-    # Empty = the weight of the article (or its template), else 1
-    weight: Decimal | None = None
-
-
-def allocate(total: Decimal, shares: list[Decimal]) -> list[Decimal]:
-    """Splits `total` by the shares, to the cent. The rounding remainder goes to the row with
-    the largest share, so the parts always add up to the total. One row gets all, unrounded."""
-    if len(shares) == 1:
-        return [total]
-    whole = sum(shares)
-    parts = [(total * share / whole).quantize(CENT, rounding=ROUND_HALF_UP) for share in shares]
-    parts[shares.index(max(shares))] += total - sum(parts)
-    return parts
 
 
 @dataclass(frozen=True)
 class PreviewRow:
     article: Article
     quantity: int
-    weight: Decimal
     cost: Decimal
 
 
 def preview(
-    db: Session, prints: list[PrintInput], results: list[ResultInput]
-) -> tuple[dict[str, str], Decimal, list[PreviewRow]]:
-    """What booking would allocate: the errors, the total and one row per result article.
+    db: Session, prints: list[PrintInput], result: ResultInput
+) -> tuple[dict[str, str], Decimal, PreviewRow | None]:
+    """What booking would allocate: the errors, the total and the result article with all costs.
     Nothing is stored."""
-    errors, rows = _check(db, prints, results, "")
+    errors, article = _check(db, prints, result, "")
     if errors:
-        return errors, Decimal(0), []
+        return errors, Decimal(0), None
     total = _total(prints)
-    shares = [Decimal(item.quantity) * weight for _, item, weight in rows]
-    costs = allocate(total, shares)
-    return (
-        {},
-        total,
-        [
-            PreviewRow(article, item.quantity, weight, cost)
-            for (article, item, weight), cost in zip(rows, costs, strict=True)
-        ],
-    )
+    return {}, total, PreviewRow(article, result.quantity, total)
 
 
 def _total(prints: list[PrintInput]) -> Decimal:
@@ -147,21 +124,10 @@ def unignore(db: Session, actor_id: int | None, archive_id: int) -> None:
         audit.record_change(db, actor_id, "production.unignored", str(archive_id))
 
 
-def _weight_of(db: Session, article: Article, given: Decimal | None) -> Decimal:
-    if given is not None:
-        return given
-    if article.weight is not None:
-        return article.weight
-    if article.template is not None and article.template.weight is not None:
-        return article.template.weight
-    return Decimal(1)
-
-
 def _check(
-    db: Session, prints: list[PrintInput], results: list[ResultInput], note: str
-) -> tuple[dict[str, str], list[tuple[Article, ResultInput, Decimal]]]:
+    db: Session, prints: list[PrintInput], result: ResultInput, note: str
+) -> tuple[dict[str, str], Article | None]:
     errors: dict[str, str] = {}
-    rows: list[tuple[Article, ResultInput, Decimal]] = []
 
     ids = [item.archive_id for item in prints]
     if not prints:
@@ -180,27 +146,15 @@ def _check(
     ):
         errors["prints"] = "production.error.cost"
 
-    article_ids = [item.article_id for item in results]
-    if not results:
-        errors["results"] = "production.error.no_result"
-    elif len(set(article_ids)) != len(article_ids):
-        errors["results"] = "production.error.article_twice"
-    else:
-        for item in results:
-            article = db.get(Article, item.article_id)
-            weight = None if article is None else _weight_of(db, article, item.weight)
-            if article is None or not article.active:
-                errors["results"] = "production.error.article"
-            elif item.quantity <= 0:
-                errors["results"] = "production.error.quantity"
-            elif not weight.is_finite() or weight <= 0:
-                errors["results"] = "production.error.weight"
-            else:
-                rows.append((article, item, weight))
+    article = db.get(Article, result.article_id)
+    if article is None or not article.active:
+        errors["article"] = "production.error.article"
+    if result.quantity <= 0:
+        errors["quantity"] = "production.error.quantity"
 
     if len(note) > MAX_NOTE:
         errors["note"] = "production.error.note_long"
-    return errors, rows
+    return errors, article
 
 
 def book(
@@ -209,27 +163,17 @@ def book(
     booked_on: date,
     note: str,
     prints: list[PrintInput],
-    results: list[ResultInput],
-    allocated: list[Decimal] | None = None,
+    result: ResultInput,
 ) -> tuple[int | None, dict[str, str]]:
-    """Books a production and raises the stock of its result articles. Returns the id, or the
+    """Books a production and raises the stock of its result article. Returns the id, or the
     errors by field; nothing is stored when there are errors.
 
-    The total is rounded to the cent. `allocated` is a split corrected by hand (one amount per
-    result, in order); it must add up to the total, otherwise the split is calculated."""
-    errors, rows = _check(db, prints, results, note.strip())
+    The total is rounded to the cent and all of it goes to the one result article."""
+    errors, article = _check(db, prints, result, note.strip())
     if errors:
         return None, errors
 
     total = _total(prints)
-    shares = [Decimal(item.quantity) * weight for _, item, weight in rows]
-    if allocated is None:
-        costs = allocate(total, shares)
-    else:
-        costs = [value.quantize(CENT, rounding=ROUND_HALF_UP) for value in allocated]
-        if len(costs) != len(rows) or any(c < 0 for c in costs) or sum(costs) != total:
-            return None, {"alloc": "production.error.alloc_sum"}
-    split = len(rows) > 1
     now = auth.utcnow()
 
     item = Production(
@@ -250,28 +194,25 @@ def book(
             )
         )
     db.add(item)
-    for (article, result, weight), cost in zip(rows, costs, strict=True):
-        movement = StockMovement(
+    movement = StockMovement(
+        article_id=article.id,
+        booked_on=booked_on,
+        created_at=now,
+        quantity=result.quantity,
+        kind=StockMovementKind.PRODUCTION,
+        reason="",
+        user_id=actor_id,
+    )
+    db.add(movement)
+    db.flush()
+    item.results.append(
+        ProductionResult(
             article_id=article.id,
-            booked_on=booked_on,
-            created_at=now,
             quantity=result.quantity,
-            kind=StockMovementKind.PRODUCTION,
-            reason="",
-            user_id=actor_id,
+            allocated_cost=total,
+            movement_id=movement.id,
         )
-        db.add(movement)
-        db.flush()
-        item.results.append(
-            ProductionResult(
-                article_id=article.id,
-                quantity=result.quantity,
-                weight=weight,
-                allocated_cost=cost,
-                split=split,
-                movement_id=movement.id,
-            )
-        )
+    )
     db.flush()
     audit.record_change(
         db,
@@ -280,11 +221,7 @@ def book(
         str(item.id),
         [
             {"field": "total_cost", "old": "", "new": str(total)},
-            {
-                "field": "articles",
-                "old": "",
-                "new": ", ".join(f"{a.number} x {r.quantity}" for a, r, _ in rows),
-            },
+            {"field": "articles", "old": "", "new": f"{article.number} x {result.quantity}"},
             {"field": "prints", "old": "", "new": ", ".join(str(p.archive_id) for p in prints)},
         ],
     )
@@ -292,7 +229,7 @@ def book(
 
 
 def cancel(db: Session, actor_id: int | None, production_id: int) -> str | None:
-    """Cancels a production by counter movements for all its result articles, or none at all.
+    """Cancels a production by a counter movement for its result article.
     Returns an error key, or None when done. Raises LookupError for a missing production."""
     item = db.get(Production, production_id)
     if item is None:

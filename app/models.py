@@ -157,7 +157,7 @@ class PrintStatus(StrEnum):
 
 
 class Production(Base):
-    """A production (issue #118): any number of prints and any number of result articles.
+    """A production (issues #118, #140): any number of prints and exactly one result article.
 
     Never deleted, only cancelled (the one exception is deleting an article for good). The
     costs are stored as values when booking.
@@ -202,24 +202,21 @@ class ProductionPrint(Base):
 
 
 class ProductionResult(Base):
-    """A result article of a production: good pieces and the costs allocated to them."""
+    """The result article of a production: good pieces and all costs of the production."""
 
     __tablename__ = "production_results"
     __table_args__ = (
         CheckConstraint("quantity > 0", name="ck_production_results_quantity"),
-        UniqueConstraint("production_id", "article_id", name="uq_production_results_article"),
+        # One result article per production (issue #140)
+        UniqueConstraint("production_id", name="uq_production_results_production"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     production_id: Mapped[int] = mapped_column(ForeignKey("productions.id"), index=True)
     article_id: Mapped[int] = mapped_column(ForeignKey("articles.id"), index=True)
     quantity: Mapped[int] = mapped_column(Integer)
-    # The weight used for the split, stored as a value
-    weight: Mapped[Decimal] = mapped_column(DecimalText)
-    # Euro
+    # Euro; all costs of the production
     allocated_cost: Mapped[Decimal] = mapped_column(DecimalText)
-    # True when the costs were split between several articles
-    split: Mapped[bool] = mapped_column(Boolean, server_default=false())
     # The stock movement this row booked
     movement_id: Mapped[int] = mapped_column(ForeignKey("stock_movements.id"))
 

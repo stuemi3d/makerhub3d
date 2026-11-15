@@ -1,4 +1,4 @@
-"""Productions as lists and as a detail page (issue #127). Read-only."""
+"""Productions as lists and as a detail page (issues #127, #140). Read-only."""
 
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -82,10 +82,8 @@ class DetailResult:
     number: str
     name: str
     quantity: int
-    weight: str
     cost: str
     per_piece: str
-    split: bool
 
 
 @dataclass(frozen=True)
@@ -127,10 +125,8 @@ def detail(db: Session, production_id: int, language: str) -> Detail | None:
                 number=articles[r.article_id].number,
                 name=articles[r.article_id].name,
                 quantity=r.quantity,
-                weight=money_text(r.weight, language),
                 cost=money_text(r.allocated_cost, language),
                 per_piece=money_text(r.allocated_cost / r.quantity, language),
-                split=r.split,
             )
             for r in item.results
         ],
