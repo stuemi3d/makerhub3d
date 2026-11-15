@@ -554,7 +554,6 @@
   "bambuddy.hint.prints_from": "Only prints from this day on appear in MakerHub; older prints are not read. When set up first it is today. An earlier date brings older prints in as \"open\".",
   "bambuddy.error.prints_from": "Please enter a valid date, not in the future.",
   "dashboard.open.title": "Not assigned yet",
-  "dashboard.open.count": "Open prints",
   "dashboard.open.ok": "All assigned: no print is waiting for a production.",
   "dashboard.open.not_set_up": "Bambuddy is not set up yet.",
   "dashboard.open.unavailable": "The prints from Bambuddy cannot be read right now.",

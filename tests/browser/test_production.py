@@ -70,6 +70,9 @@ def fake_bambuddy() -> Iterator[str]:
     thread.start()
     yield f"http://{HOST}:{server.server_port}"
     server.shutdown()
+    # Close the socket too: otherwise later pages wait for an answer that never comes
+    # (the test app still has this address saved) instead of being refused at once.
+    server.server_close()
 
 
 def connect(page: Page, address: str) -> None:
@@ -91,7 +94,14 @@ def test_list_and_dashboard_fit_the_screen(admin_page: Page, fake_bambuddy: str)
 
     admin_page.goto("/")
     expect(admin_page.locator("#open-prints .open-count")).to_have_text("2")
+    expect(admin_page.locator("#open-prints .data-card")).to_have_count(1)
+    expect(admin_page.locator("#open-prints tr.open-row")).to_have_count(2)
+    expect(admin_page.locator("#open-prints tr.print-failed")).to_have_count(1)
+    expect(admin_page.locator("#open-prints .card-head a")).to_be_visible()
+    # The card stays inside the screen; at most the table scrolls inside it.
     assert fits_screen_width(admin_page)
+    card = admin_page.locator("#open-prints .data-card").bounding_box()
+    assert card["x"] >= 0 and card["x"] + card["width"] <= admin_page.viewport_size["width"]
 
 
 def test_ignoring_works_with_the_buttons(admin_page: Page, fake_bambuddy: str) -> None:
