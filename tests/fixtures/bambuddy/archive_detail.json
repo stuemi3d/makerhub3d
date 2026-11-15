@@ -1,0 +1,20 @@
+{
+  "id": 260,
+  "printer_id": 1,
+  "print_name": "Beispiel Clip - Plate 1",
+  "filename": "clip.gcode.3mf",
+  "status": "completed",
+  "started_at": "2026-11-15T08:52:15.901731",
+  "completed_at": "2026-11-15T09:05:01.929061",
+  "print_time_seconds": 734,
+  "actual_time_seconds": 766,
+  "filament_used_grams": 1.56,
+  "energy_kwh": 0.0337,
+  "energy_cost": 0.008,
+  "wear_cost": null,
+  "cost": 0.01,
+  "quantity": 1,
+  "failure_reason": null,
+  "created_at": "2026-11-15T08:51:51",
+  "total_filament_actual_grams": 1.4
+}

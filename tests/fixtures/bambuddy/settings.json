@@ -1,0 +1,6 @@
+{
+  "energy_cost_per_kwh": 0.23,
+  "currency": "EUR",
+  "energy_tracking_mode": "total",
+  "energy_price_source": "fixed"
+}

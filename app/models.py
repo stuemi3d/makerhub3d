@@ -54,6 +54,19 @@ class AppSettings(Base):
     deviation_threshold: Mapped[Decimal] = mapped_column(DecimalText)
 
 
+class BambuddyConnection(Base):
+    """Address and key of Bambuddy (issue #117). There is exactly one row (id = 1)."""
+
+    __tablename__ = "bambuddy_connection"
+    __table_args__ = (CheckConstraint("id = 1", name="ck_bambuddy_connection_single_row"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    # Empty = not set up
+    url: Mapped[str] = mapped_column(String(200), default="")
+    # The read-only API key, encrypted (never stored or logged in plain text)
+    api_key_encrypted: Mapped[str | None] = mapped_column(Text, default=None)
+
+
 class Article(Base):
     """An article (issue #10). Never deleted, only deactivated.
 

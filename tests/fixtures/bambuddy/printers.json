@@ -1,0 +1,9 @@
+[
+  {
+    "id": 1,
+    "name": "Beispiel-Drucker",
+    "model": "P2S",
+    "is_active": true,
+    "wear_cost_per_hour": null
+  }
+]

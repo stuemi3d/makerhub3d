@@ -1,0 +1,38 @@
+[
+  {
+    "id": 1,
+    "material": "ASA",
+    "subtype": "Durapro",
+    "color_name": "Grey",
+    "brand": "Beispielmarke",
+    "cost_per_kg": 27.5,
+    "label_weight": 750,
+    "weight_used": 434.0,
+    "category": null,
+    "archived_at": null
+  },
+  {
+    "id": 2,
+    "material": "ASA",
+    "subtype": "Basic",
+    "color_name": "Orange",
+    "brand": "Beispielmarke",
+    "cost_per_kg": 23.58,
+    "label_weight": 1000,
+    "weight_used": 179.0,
+    "category": null,
+    "archived_at": null
+  },
+  {
+    "id": 3,
+    "material": "PETG",
+    "subtype": "HF",
+    "color_name": "Black",
+    "brand": "Beispielmarke",
+    "cost_per_kg": 25.99,
+    "label_weight": 1000,
+    "weight_used": 555.94,
+    "category": "geschäftlich",
+    "archived_at": null
+  }
+]

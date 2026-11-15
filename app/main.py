@@ -21,6 +21,7 @@ from app import APP_NAME, audit, auth, backup, dashboard, two_factor
 from app.account_two_factor import add_two_factor_routes
 from app.article_pages import add_article_routes
 from app.backup_pages import add_backup_routes
+from app.bambuddy_pages import add_bambuddy_routes
 from app.config import Settings
 from app.db import make_engine, run_migrations
 from app.i18n import translate
@@ -540,6 +541,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     add_user_admin_routes(app, new_session, render, read_form)
     add_log_routes(app, new_session, render, language, settings.timezone)
     add_backup_routes(app, new_session, render, settings)
+    bambuddy_cipher = (
+        two_factor.Cipher(settings.two_factor_key, purpose="bambuddy")
+        if settings.two_factor_key
+        else None
+    )
+    add_bambuddy_routes(app, new_session, bambuddy_cipher, render, read_form)
     add_article_routes(app, new_session, render, read_form, language)
     add_template_routes(app, new_session, render, read_form, language)
     add_variant_routes(app, new_session, render, read_form, language)
