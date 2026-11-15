@@ -2,11 +2,11 @@
 {% from "_data_table.html" import head, actions_head, chip with context %}
 {% block title %}{{ t('production.tab.list') }} – {{ app_name }}{% endblock %}
 {% block content %}
+{% set active = 'productions' %}
+{% include "_production_tabs.html" %}
 <div class="page-head">
   <h1>{{ t('production.title') }}</h1>
 </div>
-{% set active = 'productions' %}
-{% include "_production_tabs.html" %}
 {% if booked %}<p role="status"><ins>{{ t('production.booked') }}</ins></p>{% endif %}
 {% if cancelled %}<p role="status"><ins>{{ t('production.cancelled_done') }}</ins></p>{% endif %}
 {% if rows %}

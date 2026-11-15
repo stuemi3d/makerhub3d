@@ -179,8 +179,8 @@ def check(
         article_text = draft.articles[index]
         quantity_text = draft.quantities[index]
         weight_text = draft.weights[index]
-        alloc_text = (draft.allocs[index] or "").strip()
-        if not (article_text or quantity_text or weight_text or alloc_text):
+        # A cost number alone does not make a row: it may be left over from an earlier preview
+        if not (article_text or quantity_text or weight_text):
             continue
         used += 1
         article = None
