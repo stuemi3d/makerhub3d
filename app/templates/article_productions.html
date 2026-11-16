@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% from "_data_table.html" import head, chip with context %}
+{% set title = t('article.tile.productions') %}
+{% block title %}{{ title }} – {{ article.number }} – {{ app_name }}{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb">
+  <ul>
+    <li><a href="/articles">{{ t('articles.title') }}</a></li>
+    <li><a href="/articles/{{ article.id }}">{{ article.number }}</a></li>
+    <li>{{ title }}</li>
+  </ul>
+</nav>
+<h1>{{ title }}</h1>
+<p>{{ article.number }} · {{ article.name }}</p>
+{% if rows %}
+<article class="data-card">
+<div class="data-scroll">
+<table class="data-table">
+  <thead>
+    <tr>
+      {{ head(t('production.col.date')) }}
+      {{ head(t('production.col.quantity'), numeric=true) }}
+      {{ head(t('production.col.cost'), numeric=true) }}
+      {{ head(t('production.col.per_piece'), numeric=true) }}
+      {{ head(t('production.detail.failed_pieces'), numeric=true) }}
+      {{ head(t('production.col.prints')) }}
+      {{ head(t('production.col.state')) }}
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in rows %}
+    <tr{% if r.cancelled %} class="row-cancelled"{% endif %}>
+      <td class="cell-strong"><a href="/production/{{ r.production_id }}">{{ r.date }}</a></td>
+      <td class="num">{{ r.quantity }}</td>
+      <td class="num">{{ r.cost }}</td>
+      <td class="num">{{ r.per_piece }}</td>
+      <td class="num">{{ r.failed_pieces }}</td>
+      <td>{% for a in r.archive_ids %}{% if bambuddy_address %}<a href="{{ bambuddy_address }}/archives" target="_blank" rel="noopener noreferrer">#{{ a }}</a>{% else %}#{{ a }}{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}</td>
+      <td>{{ chip(t('production.state.cancelled') if r.cancelled else t('production.state.active'), 'inactive' if r.cancelled else 'active') }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+  {% if totals %}
+  <tfoot>
+    <tr>
+      <th scope="row">{{ t('article.productions.totals') }}</th>
+      <td class="num">{{ totals.quantity }}</td>
+      <td class="num">{{ totals.cost }}</td>
+      <td class="num">{{ totals.per_piece }}</td>
+      <td colspan="3"></td>
+    </tr>
+  </tfoot>
+  {% endif %}
+</table>
+</div>
+</article>
+{% else %}
+<p>{{ t('article.productions.empty') }}</p>
+{% endif %}
+{% endblock %}

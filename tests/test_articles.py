@@ -318,7 +318,9 @@ def test_every_tile_opens_a_page_for_this_article(client: AppClient, section: st
     assert response.status_code == 200
     assert DE[f"article.tile.{section}"] in response.text
     assert "Kabelhalter" in response.text
-    assert DE["article.section.empty"] in response.text
+    # The productions list has its own hint (issue #120)
+    empty = "article.productions.empty" if section == "productions" else "article.section.empty"
+    assert DE[empty] in response.text
     assert f'href="/articles/{article_id}"' in response.text
 
 

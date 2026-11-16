@@ -298,6 +298,8 @@
   "article.tile.stock": "Stock",
   "article.tile.sales": "Sales",
   "article.tile.analysis": "Analysis",
+  "article.productions.empty": "No productions yet.",
+  "article.productions.totals": "Total (without cancelled)",
   "article.section.empty": "No entries yet.",
   "log.action.article.created": "Article created",
   "log.action.article.changed": "Article changed",
