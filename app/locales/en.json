@@ -659,6 +659,8 @@
   "log.action.device.deactivated": "Device deactivated",
   "log.action.device.activated": "Device activated",
   "log.action.device.deleted": "Device deleted",
+  "device.delete.title": "Delete device",
+  "device.delete.button": "Delete for good",
   "device.delete": "Delete",
   "device.delete.confirm": "Really delete this device? This cannot be undone.",
   "device.import.hint": "The name comes from Bambuddy. Then you add the values for the hourly rate.",

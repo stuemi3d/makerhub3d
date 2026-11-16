@@ -659,6 +659,8 @@
   "log.action.device.deactivated": "Gerät deaktiviert",
   "log.action.device.activated": "Gerät aktiviert",
   "log.action.device.deleted": "Gerät gelöscht",
+  "device.delete.title": "Gerät löschen",
+  "device.delete.button": "Endgültig löschen",
   "device.delete": "Löschen",
   "device.delete.confirm": "Dieses Gerät wirklich löschen? Das lässt sich nicht rückgängig machen.",
   "device.import.hint": "Der Name kommt aus Bambuddy. Danach ergänzt du die Werte für den Stundensatz.",
