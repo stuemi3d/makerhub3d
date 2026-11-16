@@ -75,8 +75,8 @@ Der Artikel ist der Knotenpunkt; alles andere hängt über die Artikelnummer an 
 | Lagerbewegung | Artikel, Datum, Menge (+/−), Art (Produktion, Verkauf, Korrektur, Storno), Bezug | Produktion oder Verkauf |
 | Verkauf | Artikel, Datum, Menge, Preis pro Stück, Quelle (Hand, RechnungsFee, Haben) | Rechnungsnummer bzw. externe ID |
 | Ignoriert | Bambuddy-Archiv-ID, Datum | nicht relevante Drucke ausblenden |
-| Gerät | Typ (Drucker/Trockner), Name, Anschaffungsdatum und -wert, Nutzungsjahre, Wartungsaufschlag, Druckstunden/Jahr bzw. Leistung (W) und Trocknungsstunden/Jahr | Drucker aus Bambuddy übernehmbar |
-| Einstellungen | Strompreis (eigen oder aus Bambuddy), Arbeits-Stundensatz, Druckerstundensatz (vorläufig ein Wert, später aus den Geräten in M3), Standard-Ausschussquote, Standard-Gewinnaufschlag, Rundung, Spulen-Kategorie für „geschäftlich“, Abweichungsschwelle | – |
+| Gerät | Typ (Drucker/Trockner), Name, Anschaffungsdatum und -wert, Nutzungsjahre, Wartungsaufschlag (%), nur Drucker: Druckstunden/Jahr; aktiv/deaktiviert. Restwert und Stundensatz werden nur angezeigt, nicht gespeichert | Drucker aus Bambuddy übernehmbar |
+| Einstellungen | Strompreis (eigen oder aus Bambuddy), Arbeits-Stundensatz, Druckerstundensatz (nur Übergangswert bis M3; danach gilt der Satz aus den Geräten, der Einstellungswert dient nur als Ersatz, solange kein Drucker angelegt ist), Standard-Ausschussquote, Standard-Gewinnaufschlag, Rundung, Spulen-Kategorie für „geschäftlich“, Abweichungsschwelle | – |
 | Benutzer, Änderungsprotokoll | siehe Sicherheit | – |
 
 **Vorlagen und Varianten:** Eine Vorlage beschreibt z. B. „Halter A“ mit dem Merkmal Farbe; jede Variante („Halter A rot“, `123456-rt`) ist ein vollwertiger Artikel mit eigener Artikelnummer und eigenem Bestand. Artikel ohne Varianten brauchen keine Vorlage. Preis, Mindestbestand und Kalkulation erbt die Variante von der Vorlage und kann sie überschreiben.
@@ -139,16 +139,25 @@ Gerechnet wird in dieser Reihenfolge. Standardwerte (Ausschussquote, Gewinnaufsc
 | --- | --- | --- | --- |
 | Material | pro Platte | Gramm ÷ 1000 × Preis/kg, eine Zeile pro Filament/Farbe | Gramm aus 3MF/G-Code (inkl. Spülmenge); Preisquelle je Zeile: echte Bambuddy-Spule, Durchschnitt passender geschäftlicher Spulen oder frei (z. B. bestellte Spule) |
 | Strom | pro Platte | Druckzeit in Stunden × Ø Verbrauch in kWh pro Stunde × Strompreis pro kWh | Ø Verbrauch aus echten Drucken im Bambuddy-Archiv |
-| Maschine | pro Platte | Druckzeit in Stunden × Druckerstundensatz | Stundensatz inkl. Trocknungsaufschlag |
+| Maschine | pro Platte | Druckzeit in Stunden × Maschinensatz | Maschinensatz = Stundensatz des gewählten Druckers + Trocknungsaufschlag (siehe unten) |
 | Ausschussquote | auf Druckkosten | × (1 + Ausschussquote ÷ 100) | Standard aus Einstellungen |
 | Rüstzeit (optional) | pro Platte | Minuten ÷ Teile pro Platte ÷ 60 × Arbeits-Stundensatz | z. B. Platte vorbereiten, Druck starten, abnehmen; leer = 0 |
 | Nacharbeit (optional) | pro Stück | Minuten ÷ 60 × Arbeits-Stundensatz | z. B. Stützen entfernen, entgraten, verpacken; leer = 0 |
 | Zusatzteile | pro Stück | Menge × Preis | freie Liste; später Einkaufspreise aus der Rechnungs-Software |
 | Gewinnaufschlag | auf Selbstkosten | × (1 + Gewinnaufschlag ÷ 100) | Standard aus Einstellungen |
 
-Druckerstundensatz = Anschaffungswert ÷ (Nutzungsjahre × Druckstunden pro Jahr) × (1 + Wartungsaufschlag in % ÷ 100)
+**Stundensatz pro Drucker:** Anschaffungswert ÷ (Nutzungsjahre × Druckstunden pro Jahr) × (1 + Wartungsaufschlag in % ÷ 100). Jeder Drucker hat seinen eigenen Satz. Alle drei Werte (Anschaffungswert, Nutzungsjahre, Druckstunden pro Jahr) sind Pflicht und müssen größer als 0 sein.
 
-**Trocknung pauschal:** Die Trocknerkosten pro Jahr (Gerätekosten + Trocknungsstunden × Leistung in Watt ÷ 1000 × Strompreis pro kWh) aller Trockner werden auf alle Druckstunden pro Jahr verteilt und auf den Druckerstundensatz aufgeschlagen.
+**Trocknung pauschal:** Die Trockner dienen allen Druckern, deshalb gibt es einen gemeinsamen Aufschlag:
+
+- Jahreskosten eines Trockners = Anschaffungswert ÷ Nutzungsjahre × (1 + Wartungsaufschlag in % ÷ 100). Strom und Trocknungsstunden gehen nicht ein (Entscheidung des Maintainers: zu ungenau, weil Materialien und Spulenzahl wechseln).
+- Trocknungsaufschlag pro Stunde = Summe der Jahreskosten aller aktiven Trockner ÷ Summe der Druckstunden pro Jahr aller aktiven Drucker.
+- Maschinensatz in der Kalkulation = Stundensatz des Druckers + Trocknungsaufschlag. Deaktivierte Geräte zählen nicht mit. Gibt es keinen aktiven Trockner oder keinen aktiven Drucker, ist der Aufschlag 0.
+- Beispiel: Trockner 132,99 € über 5 Jahre = 26,60 € pro Jahr; ein Drucker mit 1.000 Druckstunden pro Jahr ergibt 0,027 € pro Stunde Aufschlag.
+
+**Restwert (nur Anzeige):** Anschaffungswert × (1 − Tage seit Anschaffung ÷ (365 × Nutzungsjahre)), zwischen 0 und dem Anschaffungswert (liegt das Anschaffungsdatum in der Zukunft, gilt der volle Anschaffungswert). Er fließt nicht in die Kalkulation ein.
+
+**Strom des Druckers** wird nicht im Stundensatz berechnet, sondern als eigene Zeile aus den kWh des Drucks (Bambuddy).
 
 **Verkaufspreis-Vorschlag:** wie in Schritt 7, gerundet (z. B. auf ,50 oder ,90); Kleinunternehmer-tauglich (ohne Umsatzsteuer). Angezeigt werden Selbstkosten **ohne und mit Arbeitszeit**, Verkaufspreis-Vorschlag, Gewinn pro Stück und effektiver Stundenlohn (Schritte 8–10).
 
@@ -293,4 +302,4 @@ Der Maintainer hat die frühere Bedingung („erst nach Alltagsnutzung von M1“
 - Risiko: Bambuddy entwickelt sich sehr schnell → Anbindung in einem einzigen Baustein, Tests mit aufgezeichneten Antworten, Verbindungstest in den Einstellungen.
 - ~~**Umfang der tatsächlichen Kosten** (M2/M4)~~ Entschieden (Maintainer): Eine Produktion erfasst Material-, Strom- und **Maschinenkosten** (Druckstunden × Druckerstundensatz; der Verschleiß aus Bambuddy entfällt, weil er schon im Druckerstundensatz steckt, #135) sowie **Arbeitskosten** (Arbeitszeit × Stundensatz, #134). **Zusatzteile** sind in der Produktion noch nicht enthalten und bleiben offen (M3, Kalkulation); die Abweichungswarnung vergleicht deshalb bis dahin nur Druckkosten mit Druckkosten.
 - **Verkaufspreis bei einer Kalkulation an einer Vorlage** (M3): Schritt 8 in Abschnitt 6 geht vom Soll-Verkaufspreis eines Artikels aus; eine Kalkulation an einer Vorlage hat aber keinen Artikel, und für diesen Fall ist kein Preis festgelegt. *Vorschlag:* Es gilt der Standardpreis der Vorlage; ein Wert am Artikel überschreibt ihn.
-- **Druckerstundensatz mit Trocknung** (M3): Die Formel in Abschnitt 6 enthält den Trocknungsaufschlag noch nicht, und die Gerätekosten eines Trockners pro Jahr sind nicht festgelegt. *Vorschlag:* Druckerstundensatz = Anschaffungswert ÷ (Nutzungsjahre × Druckstunden pro Jahr) × (1 + Wartungsaufschlag ÷ 100) + Trocknungsaufschlag; Gerätekosten eines Trockners pro Jahr = Anschaffungswert ÷ Nutzungsjahre × (1 + Wartungsaufschlag ÷ 100).
+- ~~**Druckerstundensatz mit Trocknung** (M3)~~ Entschieden (Maintainer): Satz pro Drucker plus gemeinsamer Trocknungsaufschlag, ohne Strom beim Trockner; Formeln in Abschnitt 6.
