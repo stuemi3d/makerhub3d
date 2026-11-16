@@ -1,0 +1,11 @@
+{% extends "_confirm_layout.html" %}
+{% set title_key = 'user.two_factor.reset.submit' %}
+{% set button_key = 'user.two_factor.reset.submit' %}
+{% set action = '/settings/users/' ~ target.id ~ '/2fa-reset' %}
+{% set cancel_url = '/settings/users/' ~ target.id %}
+{% set subject = target.username %}
+{% if error %}{% set error_key = error %}{% endif %}
+{% block details %}
+<p>{{ t('user.two_factor.reset.intro') }}</p>
+<p>{{ t('user.two_factor.reset.confirm') }}</p>
+{% endblock %}

@@ -27,6 +27,7 @@ from tests.auth import (
     csrf_from,
     log_in,
 )
+from tests.popup_checks import HX, opens_in_popup
 
 APP_DIR = Path(__file__).resolve().parent.parent / "app"
 REPO_DIR = APP_DIR.parent
@@ -111,7 +112,8 @@ def test_user_page_shows_two_factor_on_with_reset_button(client: AppClient, empl
     assert DE["user.two_factor.title"] in page
     assert DE["user.two_factor.status.on"] in page
     assert RESET_BUTTON in page
-    assert f'action="/settings/users/{employee[0]}/2fa-reset"' in page
+    # The button opens the question in a pop-up (issue #169)
+    assert opens_in_popup(page, f"/settings/users/{employee[0]}/2fa-reset")
 
 
 def test_user_page_shows_two_factor_off_without_button(client: AppClient) -> None:
@@ -124,10 +126,13 @@ def test_user_page_shows_two_factor_off_without_button(client: AppClient) -> Non
 
 
 def test_reset_button_asks_for_confirmation(client: AppClient, employee) -> None:
+    # The question is a pop-up of the app, not a browser dialog (issue #169).
     page = client.get(f"/settings/users/{employee[0]}").text
+    question = client.get(f"/settings/users/{employee[0]}/2fa-reset", headers=HX).text
 
-    assert f'data-confirm="{DE["user.two_factor.reset.confirm"]}"' in page
-    assert '<script src="/static/app.js" defer></script>' in page
+    assert "data-confirm" not in page
+    assert DE["user.two_factor.reset.confirm"] in question
+    assert is_on(EMPLOYEE_NAME)
 
 
 # --- Test cases 3-5: what resetting does -----------------------------------------------
@@ -249,7 +254,7 @@ def test_logged_out_visitor_is_sent_to_login(client: AppClient, employee) -> Non
 
 
 def test_reset_form_carries_the_token(client: AppClient, employee) -> None:
-    page = client.get(f"/settings/users/{employee[0]}").text
+    page = client.get(f"/settings/users/{employee[0]}/2fa-reset", headers=HX).text
     form = re.search(r"<form[^>]*2fa-reset.*?</form>", page, re.DOTALL).group(0)
 
     assert f'name="csrf_token" value="{client.csrf_token}"' in form

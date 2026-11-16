@@ -1,18 +1,18 @@
 {% extends "base.html" %}
-{% from "_data_table.html" import head, actions_head, icon_link, chip with context %}
+{% from "_data_table.html" import head, actions_head, icon_link, icon_svg, chip with context %}
 {% from "_form_macros.html" import popup_attrs %}
 {% block title %}{{ t('device.title') }} – {{ app_name }}{% endblock %}
 {% macro toggle(d) %}
+{% set kind = 'deactivate' if d.active else 'activate' %}
+{% set label = t('device.deactivate' if d.active else 'device.activate') ~ ' ' ~ d.name %}
 <form class="icon-form" method="post" action="/settings/devices/{{ d.id }}/active">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <input type="hidden" name="active" value="{{ '0' if d.active else '1' }}">
-  <button type="submit" class="secondary outline">{{ t('device.deactivate' if d.active else 'device.activate') }}</button>
+  <button type="submit" class="icon-btn" title="{{ label }}">{{ icon_svg(kind) }}<span class="visually-hidden">{{ label }}</span></button>
 </form>
 {% endmacro %}
 {% macro remove(d) %}
-{% if d.deletable %}
-<a href="/settings/devices/{{ d.id }}/delete" role="button" class="secondary outline">{{ t('device.delete') }}</a>
-{% endif %}
+{% if d.deletable %}{{ icon_link('/settings/devices/' ~ d.id ~ '/delete', 'delete', true, d.name) }}{% endif %}
 {% endmacro %}
 {% macro status(d) %}{{ chip(t('device.status.active' if d.active else 'device.status.inactive'), 'active' if d.active else 'inactive') }}{% endmacro %}
 {% block content %}
@@ -32,7 +32,7 @@
 {% if printers %}
 <article class="data-card">
 <div class="data-scroll">
-<table class="data-table">
+<table class="data-table wrap-head">
   <thead>
     <tr>
       {{ head(t('device.field.name')) }}
@@ -73,7 +73,7 @@
 {% if dryers %}
 <article class="data-card">
 <div class="data-scroll">
-<table class="data-table">
+<table class="data-table wrap-head">
   <thead>
     <tr>
       {{ head(t('device.field.name')) }}

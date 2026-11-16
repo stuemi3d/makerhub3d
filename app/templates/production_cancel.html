@@ -1,27 +1,13 @@
-{% extends "base.html" %}
-{% block title %}{{ t('production.cancel.title') }} – {{ app_name }}{% endblock %}
-{% block content %}
-<nav aria-label="breadcrumb">
-  <ul>
-    <li><a href="/production/list">{{ t('production.tab.list') }}</a></li>
-    <li><a href="/production/{{ item.id }}">{{ t('production.detail.title') }} #{{ item.id }}</a></li>
-    <li>{{ t('production.cancel') }}</li>
-  </ul>
-</nav>
-<h1>{{ t('production.cancel.title') }}</h1>
-{% if error %}<p role="alert"><mark>{{ t(error) }}</mark></p>{% endif %}
-<article class="detail-card">
-  <p>{{ t('production.detail.title') }} #{{ item.id }} · {{ item.date }} · {{ t('production.col.cost') }}: {{ item.total }}</p>
-  <ul>
-    {% for r in item.results %}<li>{{ r.number }} x {{ r.quantity }}</li>{% endfor %}
-  </ul>
-  <p>{{ t('production.cancel.confirm') }}</p>
-  <form method="post" action="/production/{{ item.id }}/cancel">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <div class="form-actions">
-      <button type="submit" class="secondary">{{ t('production.cancel.submit') }}</button>
-      <a href="/production/{{ item.id }}" role="button" class="secondary outline">{{ t('production.cancel.back') }}</a>
-    </div>
-  </form>
-</article>
+{% extends "_confirm_layout.html" %}
+{% set title_key = 'production.cancel.title' %}
+{% set button_key = 'production.cancel.submit' %}
+{% set action = '/production/' ~ item.id ~ '/cancel' %}
+{% set cancel_url = '/production/' ~ item.id %}
+{% set subject = t('production.detail.title') ~ ' #' ~ item.id ~ ' · ' ~ item.date ~ ' · ' ~ t('production.col.cost') ~ ': ' ~ item.total %}
+{% if error %}{% set error_key = error %}{% endif %}
+{% block details %}
+<ul>
+  {% for r in item.results %}<li>{{ r.number }} x {{ r.quantity }}</li>{% endfor %}
+</ul>
+<p>{{ t('production.cancel.confirm') }}</p>
 {% endblock %}

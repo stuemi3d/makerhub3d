@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_form_macros.html" import field_attrs, feedback %}
+{% from "_form_macros.html" import field_attrs, feedback, popup_attrs %}
 {% block title %}{{ target.username }} – {{ app_name }}{% endblock %}
 {% block content %}
 {% set settings_tab = 'users' %}
@@ -73,10 +73,7 @@
   <p><small>{{ t('user.two_factor.self') }}</small></p>
   {% elif target.two_factor %}
   <p>{{ t('user.two_factor.reset.intro') }}</p>
-  <form method="post" action="/settings/users/{{ target.id }}/2fa-reset" data-confirm="{{ t('user.two_factor.reset.confirm') }}">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <button type="submit" class="secondary">{{ t('user.two_factor.reset.submit') }}</button>
-  </form>
+  <a {{ popup_attrs('/settings/users/' ~ target.id ~ '/2fa-reset') }} role="button" class="secondary">{{ t('user.two_factor.reset.submit') }}</a>
   {% endif %}
 </article>
 <p><a href="/settings/users">{{ t('users.back') }}</a></p>

@@ -1,12 +1,3 @@
-// Asks before sending a form that has a data-confirm text (issue #39).
-// Without JavaScript the form is simply sent; the server never relies on this question.
-document.addEventListener("submit", (event) => {
-  const message = event.target.dataset ? event.target.dataset.confirm : undefined;
-  if (message && !window.confirm(message)) {
-    event.preventDefault();
-  }
-});
-
 // Suggests the number of a new variant: template number + abbreviations of the chosen values
 // (issue #62). Stops as soon as the person has typed in the number field themselves. The form
 // may also arrive later in the pop-up (issue #87), so every new form is set up once it is shown.

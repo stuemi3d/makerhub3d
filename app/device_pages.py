@@ -18,7 +18,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app import audit, auth, device_form, device_import, device_usage, devices
-from app.article_pages import saved_in_popup, wants_popup
+from app.article_pages import confirmed, saved_in_popup, varied, wants_popup
 from app.models import Device
 from app.permissions import Permission, requires
 from app.settings_form import format_decimal
@@ -308,12 +308,19 @@ def add_device_routes(
             if device_usage.is_in_use(db, device_id):
                 raise HTTPException(status_code=409)
             name = device.name
-        return render(
-            request, "device_delete.html", "nav.settings", device_id=device_id, device_name=name
+        return varied(
+            render(
+                request,
+                "device_delete.html",
+                "nav.settings",
+                popup=wants_popup(request),
+                device_id=device_id,
+                device_name=name,
+            )
         )
 
     @app.post(f"{LIST_ADDRESS}/{{device_id}}/delete", dependencies=manage)
     async def delete_device(request: Request, device_id: int) -> Response:
         await read_form(request, ())
         await run_in_threadpool(remove, request.state.user.id, device_id)
-        return RedirectResponse(LIST_ADDRESS, status_code=303)
+        return confirmed(request, LIST_ADDRESS)

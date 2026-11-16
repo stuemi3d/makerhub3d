@@ -27,7 +27,7 @@
     {% if errors.get(a.id) %}<small id="value-{{ a.id }}-error">{{ t(errors[a.id]) }}</small>{% endif %}
     <button type="submit" class="secondary">{{ t('attribute.add_value_button') }}</button>
   </form>
-  <p><a href="/attributes/{{ a.id }}/delete">{{ t('attribute.delete') }}</a></p>
+  <p><a {{ popup_attrs('/attributes/' ~ a.id ~ '/delete') }}>{{ t('attribute.delete') }}</a></p>
   {% endif %}
 </article>
 {% else %}

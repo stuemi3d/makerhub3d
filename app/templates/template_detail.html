@@ -27,7 +27,7 @@
     {% endif %}
     {% endif %}
     {% if not variants %}
-    <a href="/templates/{{ tpl.id }}/delete" role="button" class="secondary outline">{{ t('template.delete') }}</a>
+    <a {{ popup_attrs('/templates/' ~ tpl.id ~ '/delete') }} role="button" class="secondary outline">{{ t('template.delete') }}</a>
     {% endif %}
   </div>
   {% endif %}

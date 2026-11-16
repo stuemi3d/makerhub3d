@@ -12,7 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import print_list, production, production_form, production_view, stock
-from app.article_pages import wants_popup
+from app.article_pages import confirmed, varied, wants_popup
 from app.models import AppSettings, Article
 from app.permissions import Permission, requires
 from app.two_factor import Cipher
@@ -300,13 +300,16 @@ def add_production_routes(
             item = production_view.detail(db, production_id, language)
         if item is None:
             raise HTTPException(status_code=404)
-        return render(
-            request,
-            "production_cancel.html",
-            "nav.production",
-            status_code=status_code,
-            item=item,
-            error=error,
+        return varied(
+            render(
+                request,
+                "production_cancel.html",
+                "nav.production",
+                status_code=status_code,
+                popup=wants_popup(request),
+                item=item,
+                error=error,
+            )
         )
 
     @app.get(
@@ -325,7 +328,9 @@ def add_production_routes(
             raise HTTPException(status_code=404) from None
         if error:
             return cancel_page(request, production_id, 422, error)
-        return RedirectResponse("/production/list?cancelled=1", status_code=303)
+        # The cancel question comes from the list or from the production itself; the list shows
+        # the notice, so a pop-up leads there too.
+        return confirmed(request, "/production/list?cancelled=1", leave=True)
 
     @app.post(
         "/production/{production_id}/cancel", response_class=HTMLResponse, dependencies=edit_right
