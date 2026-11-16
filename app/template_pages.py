@@ -160,6 +160,7 @@ def validate_template(
     return values, errors
 
 
+ATTRIBUTE_SORT_KEYS = ("name",)
 TEMPLATE_SORT_KEYS = ("number", "name", "price", "status")
 
 
@@ -214,24 +215,22 @@ def add_template_routes(
             raise HTTPException(status_code=404)
         return attribute
 
-    def attribute_list(request: Request, errors: dict | None = None, status_code: int = 200):
+    @app.get("/attributes", response_class=HTMLResponse, dependencies=view)
+    def attributes_page(
+        request: Request, sort: str | None = None, dir: str | None = None
+    ) -> HTMLResponse:
+        chosen = chosen_sort(ATTRIBUTE_SORT_KEYS, sort, dir)
+        descending = chosen is not None and chosen[1] == "desc"
         with new_session() as db:
-            items = [
-                attribute_view(db, attribute)
-                for attribute in db.scalars(select(Attribute).order_by(Attribute.name_key))
-            ]
+            order = Attribute.name_key.desc() if descending else Attribute.name_key
+            items = [attribute_view(db, a) for a in db.scalars(select(Attribute).order_by(order))]
         return render(
             request,
             "attributes.html",
             "nav.articles",
-            status_code=status_code,
             attributes=items,
-            errors=errors or {},
+            sort_links=sort_links("/attributes", ATTRIBUTE_SORT_KEYS, chosen, ("name", "asc")),
         )
-
-    @app.get("/attributes", response_class=HTMLResponse, dependencies=view)
-    def attributes_page(request: Request) -> HTMLResponse:
-        return attribute_list(request)
 
     def attribute_form_page(request: Request, values, errors, status_code=200) -> HTMLResponse:
         """The form: the whole page, or only the form for the pop-up (same template)."""
@@ -345,6 +344,31 @@ def add_template_routes(
             return "attribute.error.value_taken"
         return None
 
+    def value_form_page(
+        request: Request, attribute_id: int, values: dict, error: str | None, status_code: int = 200
+    ) -> HTMLResponse:
+        """The form to add a value: the whole page, or only the form for the pop-up."""
+        with new_session() as db:
+            name = attribute_or_404(db, attribute_id).name
+        return varied(
+            render(
+                request,
+                "attribute_value_form.html",
+                "nav.articles",
+                status_code=status_code,
+                popup=wants_popup(request),
+                attribute={"id": attribute_id, "name": name},
+                values=values,
+                error=error,
+            )
+        )
+
+    @app.get(
+        "/attributes/{attribute_id}/values/new", response_class=HTMLResponse, dependencies=edit
+    )
+    def new_value_page(request: Request, attribute_id: int) -> HTMLResponse:
+        return value_form_page(request, attribute_id, {}, None)
+
     @app.post("/attributes/{attribute_id}/values", dependencies=edit)
     async def add_attribute_value(request: Request, attribute_id: int) -> Response:
         raw = await read_form(request, ("value", "abbreviation"))
@@ -356,8 +380,8 @@ def add_template_routes(
             raw.get("abbreviation", ""),
         )
         if error:
-            return attribute_list(request, errors={attribute_id: error}, status_code=422)
-        return RedirectResponse("/attributes", status_code=303)
+            return value_form_page(request, attribute_id, raw, error, 422)
+        return confirmed(request, "/attributes")
 
     @app.get("/attributes/{attribute_id}/delete", response_class=HTMLResponse, dependencies=edit)
     def delete_attribute_page(request: Request, attribute_id: int) -> HTMLResponse:

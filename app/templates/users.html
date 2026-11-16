@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_data_table.html" import head, chip with context %}
+{% from "_data_table.html" import head, actions_head, icon_link, chip with context %}
 {% from "_form_macros.html" import popup_attrs %}
 {% block title %}{{ t('users.title') }} – {{ app_name }}{% endblock %}
 {% block content %}
@@ -22,12 +22,13 @@
       {{ head(t('users.col.role'), sort_links.role) }}
       {{ head(t('users.col.status'), sort_links.status) }}
       {{ head(t('users.col.two_factor')) }}
+      {{ actions_head() }}
     </tr>
   </thead>
   <tbody>
     {% for u in users %}
     <tr>
-      <td class="cell-strong"><a href="/settings/users/{{ u.id }}">{{ u.username }}</a></td>
+      <td class="cell-strong">{{ u.username }}</td>
       <td>{{ t('role.' ~ u.role) }}</td>
       <td class="cell-status">
         {% if not u.active %}{{ chip(t('user.status.inactive'), 'inactive') }}
@@ -36,6 +37,13 @@
         {% if u.must_change_password %}<br><small>{{ t('user.status.initial_password') }}</small>{% endif %}
       </td>
       <td>{{ t('user.two_factor.on' if u.two_factor else 'user.two_factor.off') }}</td>
+      <td class="row-actions">
+        {% if not u.is_self %}
+        {{ icon_link('/settings/users/' ~ u.id, 'edit', true, u.username) }}
+        {{ icon_link('/settings/users/' ~ u.id ~ '/password', 'password', true, u.username) }}
+        {% if u.two_factor %}{{ icon_link('/settings/users/' ~ u.id ~ '/2fa-reset', 'two_factor', true, u.username) }}{% endif %}
+        {% endif %}
+      </td>
     </tr>
     {% endfor %}
   </tbody>

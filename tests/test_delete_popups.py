@@ -202,18 +202,18 @@ def test_cancelling_twice_shows_the_error_inside_the_pop_up(prepared_client: App
 # --- Reset two-factor login --------------------------------------------------------------------
 
 
-def test_two_factor_reset_is_a_pop_up_and_the_user_page_reloads(client: AppClient) -> None:
+def test_two_factor_reset_is_a_pop_up_and_the_list_refreshes(client: AppClient) -> None:
     user_id = add_user(EMPLOYEE_NAME, "employee")
     switch_on(EMPLOYEE_NAME)
     address = f"/settings/users/{user_id}/2fa-reset"
-    assert opens_in_popup(client.get(f"/settings/users/{user_id}").text, address)
+    assert opens_in_popup(client.get("/settings/users").text, address)
 
     popup = client.get(address, headers=HX)
 
     assert is_popup(popup.text) and DE["user.two_factor.reset.confirm"] in popup.text
     assert user_named(EMPLOYEE_NAME).totp_secret is not None
     response = client.post(address, data={}, headers=HX)
-    assert leaves_to(response, f"/settings/users/{user_id}?tfa_reset=1")
+    assert saved_in_popup(response)
     assert user_named(EMPLOYEE_NAME).totp_secret is None
 
 

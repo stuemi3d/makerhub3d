@@ -18,14 +18,16 @@
 <th scope="col" class="row-actions"><span class="visually-hidden">{{ t('table.actions') }}</span></th>
 {% endmacro %}
 
-{# The drawing of an icon button. kind: view, edit, book, cancel, delete, activate or deactivate. #}
+{# The drawing of an icon button. kind: view, edit, book, add_value, password, two_factor, cancel, delete, activate or deactivate. #}
 {% macro icon_svg(kind) %}
 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
   {% if kind == 'view' %}<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/>
-  {% elif kind == 'book' %}<circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/>
+  {% elif kind == 'book' or kind == 'add_value' %}<circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/>
   {% elif kind == 'delete' %}<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/>
   {% elif kind == 'deactivate' %}<circle cx="12" cy="12" r="10"/><path d="M4.9 4.9l14.2 14.2"/>
   {% elif kind == 'activate' %}<circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-6"/>
+  {% elif kind == 'password' %}<circle cx="8" cy="15" r="4"/><path d="M10.8 12.2L21 2M16 7l3 3"/>
+  {% elif kind == 'two_factor' %}<path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z"/><path d="M9 12l2 2 4-4"/>
   {% elif kind == 'cancel' %}<path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-15-6.7L3 13"/>
   {% else %}<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>{% endif %}
 </svg>

@@ -1,0 +1,20 @@
+{% extends "_popup_layout.html" if popup else "base.html" %}
+{% block title %}{{ t('attribute.add_value') }} – {{ app_name }}{% endblock %}
+{% block content %}
+{% set action = '/attributes/' ~ attribute.id ~ '/values' %}
+<h1{% if popup %} id="popup-title"{% endif %}>{{ t('attribute.add_value') }}</h1>
+<p><strong>{{ attribute.name }}</strong></p>
+{% if error %}<p role="alert"><mark>{{ t(error) }}</mark></p>{% endif %}
+<form method="post" action="{{ action }}" novalidate{% if popup %} hx-post="{{ action }}" hx-target="#popup-body" hx-swap="innerHTML"{% endif %}>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label for="value">{{ t('attribute.field.value') }}</label>
+  <input type="text" id="value" name="value" maxlength="50" autocomplete="off"{% if popup %} autofocus{% endif %}{% if error %} aria-invalid="true"{% endif %} value="{{ values.get('value', '') }}">
+  <label for="abbreviation">{{ t('attribute.field.abbreviation') }}</label>
+  <input type="text" id="abbreviation" name="abbreviation" maxlength="10" autocomplete="off"{% if error %} aria-invalid="true"{% endif %} value="{{ values.get('abbreviation', '') }}">
+  <div class="form-actions">
+    <button type="submit">{{ t('attribute.add_value_button') }}</button>
+    {% if popup %}<button type="button" class="secondary outline" data-popup-close>{{ t('article.cancel') }}</button>
+    {% else %}<a href="/attributes" role="button" class="secondary outline">{{ t('article.cancel') }}</a>{% endif %}
+  </div>
+</form>
+{% endblock %}

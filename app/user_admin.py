@@ -66,21 +66,30 @@ def add_user_admin_routes(
             return _user_view(user)
 
     def render_edit(
-        request: Request, user: dict, status_code: int = 200, **context
+        request: Request,
+        user: dict,
+        status_code: int = 200,
+        template: str = "user_edit.html",
+        **context,
     ) -> HTMLResponse:
+        """The role/state form (or, with `template`, the password form): the whole page, or
+        only the form for the pop-up (same template)."""
         context.setdefault(
             "values", {"role": user["role"], "active": "1" if user["active"] else "0"}
         )
         context.setdefault("errors", {})
-        return render(
-            request,
-            "user_edit.html",
-            "nav.settings",
-            status_code=status_code,
-            target=user,
-            is_self=user["id"] == request.state.user.id,
-            roles=ROLES,
-            **context,
+        return varied(
+            render(
+                request,
+                template,
+                "nav.settings",
+                status_code=status_code,
+                popup=wants_popup(request),
+                target=user,
+                is_self=user["id"] == request.state.user.id,
+                roles=ROLES,
+                **context,
+            )
         )
 
     @app.get("/settings/users", response_class=HTMLResponse, dependencies=manage)
@@ -90,7 +99,8 @@ def add_user_admin_routes(
         chosen = chosen_sort(USER_SORT_KEYS, sort, dir)
         with new_session() as db:
             users = [
-                _user_view(user) for user in db.scalars(select(User).order_by(User.username_key))
+                _user_view(user) | {"is_self": user.id == request.state.user.id}
+                for user in db.scalars(select(User).order_by(User.username_key))
             ]
         if chosen:
             key, direction = chosen
@@ -166,20 +176,8 @@ def add_user_admin_routes(
         return RedirectResponse("/settings/users", status_code=303)
 
     @app.get("/settings/users/{user_id}", response_class=HTMLResponse, dependencies=manage)
-    def edit_user_page(
-        request: Request,
-        user_id: int,
-        saved: str | None = None,
-        password_reset: str | None = None,
-        tfa_reset: str | None = None,
-    ) -> HTMLResponse:
-        return render_edit(
-            request,
-            load_user(user_id),
-            saved=saved == "1",
-            password_reset=password_reset == "1",  # noqa: S105 (a flag, not a password)
-            tfa_reset=tfa_reset == "1",
-        )
+    def edit_user_page(request: Request, user_id: int) -> HTMLResponse:
+        return render_edit(request, load_user(user_id))
 
     def change(user_id: int, actor_id: int, raw: dict[str, str]) -> tuple[dict, dict]:
         """Saves role and state; returns the errors (empty when saved) and the user."""
@@ -226,8 +224,7 @@ def add_user_admin_routes(
         if errors:
             values = {"role": raw.get("role", ""), "active": raw.get("active", "")}
             return render_edit(request, user, status_code=422, values=values, errors=errors)
-        # The address is built from the stored user, not from the requested one.
-        return RedirectResponse(f"/settings/users/{int(user['id'])}?saved=1", status_code=303)
+        return confirmed(request, "/settings/users")
 
     def reset(user_id: int, actor_id: int, raw: dict[str, str]) -> tuple[dict, dict]:
         errors = auth.password_errors(raw)
@@ -243,6 +240,14 @@ def add_user_admin_routes(
                 audit.record_change(db, actor_id, "user.password_reset", user.username)
             return errors, _user_view(user)
 
+    @app.get("/settings/users/{user_id}/password", response_class=HTMLResponse, dependencies=manage)
+    def password_page(request: Request, user_id: int) -> HTMLResponse:
+        user = load_user(user_id)
+        if user["id"] == request.state.user.id:
+            # The own password is changed under "Mein Konto" (issue #32), with the old one.
+            raise HTTPException(status_code=409)
+        return render_edit(request, user, template="user_password.html")
+
     @app.post(
         "/settings/users/{user_id}/password", response_class=HTMLResponse, dependencies=manage
     )
@@ -250,9 +255,10 @@ def add_user_admin_routes(
         raw = await read_form(request, ("password", "password_repeat"))
         errors, user = await run_in_threadpool(reset, user_id, request.state.user.id, raw)
         if errors:
-            return render_edit(request, user, status_code=422, errors=errors)
-        target = f"/settings/users/{int(user['id'])}?password_reset=1"
-        return RedirectResponse(target, status_code=303)
+            return render_edit(
+                request, user, status_code=422, template="user_password.html", errors=errors
+            )
+        return confirmed(request, "/settings/users")
 
     def reset_question(
         request: Request, user: dict, status_code: int = 200, error: str | None = None
@@ -291,12 +297,5 @@ def add_user_admin_routes(
         if stored_id is None:
             raise HTTPException(status_code=404)
         if error:
-            if wants_popup(request):
-                return reset_question(request, load_user(stored_id), 422, error)
-            return render_edit(
-                request, load_user(stored_id), status_code=422, errors={"form": error}
-            )
-        # The address is built from the stored user, not from the requested one. The user page
-        # shows the notice, so a pop-up leads there (it loads the page again).
-        address = f"/settings/users/{int(stored_id)}?tfa_reset=1"
-        return confirmed(request, address, leave=True)
+            return reset_question(request, load_user(stored_id), 422, error)
+        return confirmed(request, "/settings/users")

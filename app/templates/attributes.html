@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_data_table.html" import head, actions_head, icon_link with context %}
 {% from "_form_macros.html" import popup_attrs %}
 {% block title %}{{ t('attributes.title') }} – {{ app_name }}{% endblock %}
 {% block content %}
@@ -13,28 +14,36 @@
 <p>{{ t('attributes.intro') }}</p>
 {# Refreshed after the pop-up was saved (app.js). #}
 <div id="attributes-list" data-popup-refresh>
-{% for a in attributes %}
-<article class="detail-card">
-  <h2 class="card-title">{{ a.name }}</h2>
-  <p>{{ a.value_labels | join(', ') }}</p>
-  {% if can('edit') %}
-  <form method="post" action="/attributes/{{ a.id }}/values">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <label for="value-{{ a.id }}">{{ t('attribute.add_value') }}</label>
-    <input type="text" id="value-{{ a.id }}" name="value" maxlength="50" autocomplete="off"{% if errors.get(a.id) %} aria-invalid="true" aria-describedby="value-{{ a.id }}-error"{% endif %}>
-    <label for="abbreviation-{{ a.id }}">{{ t('attribute.field.abbreviation') }}</label>
-    <input type="text" id="abbreviation-{{ a.id }}" name="abbreviation" maxlength="10" autocomplete="off"{% if errors.get(a.id) %} aria-invalid="true" aria-describedby="value-{{ a.id }}-error"{% endif %}>
-    {% if errors.get(a.id) %}<small id="value-{{ a.id }}-error">{{ t(errors[a.id]) }}</small>{% endif %}
-    <button type="submit" class="secondary">{{ t('attribute.add_value_button') }}</button>
-  </form>
-  <p><a {{ popup_attrs('/attributes/' ~ a.id ~ '/delete') }}>{{ t('attribute.delete') }}</a></p>
-  {% endif %}
+{% if attributes %}
+<article class="data-card">
+<div class="data-scroll">
+<table class="data-table">
+  <thead>
+    <tr>
+      {{ head(t('attribute.field.name'), sort_links.name) }}
+      {{ head(t('attribute.col.values')) }}
+      {% if can('edit') %}{{ actions_head() }}{% endif %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for a in attributes %}
+    <tr>
+      <td class="cell-strong">{{ a.name }}</td>
+      <td>{{ a.value_labels | join(', ') }}</td>
+      {% if can('edit') %}
+      <td class="row-actions">{{ icon_link('/attributes/' ~ a.id ~ '/values/new', 'add_value', true, a.name) }} {{ icon_link('/attributes/' ~ a.id ~ '/delete', 'delete', true, a.name) }}</td>
+      {% endif %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
 </article>
 {% else %}
 <article class="empty-hint">
   <p>{{ t('attributes.empty') }}</p>
   {% if can('edit') %}<a {{ popup_attrs('/attributes/new') }} role="button">{{ t('attributes.empty.create') }}</a>{% endif %}
 </article>
-{% endfor %}
+{% endif %}
 </div>
 {% endblock %}

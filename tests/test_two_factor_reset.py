@@ -35,7 +35,6 @@ DE = json.loads((APP_DIR / "locales" / "de.json").read_text(encoding="utf-8"))
 # Invented key, built from repeated words so it does not look like a real secret.
 TEST_KEY = "erfunden-" * 5
 SECOND_NAME = "zweiter-drucker"
-RESET_BUTTON = DE["user.two_factor.reset.submit"]
 
 
 @pytest.fixture(autouse=True)
@@ -106,28 +105,26 @@ def reset(client: AppClient, user_id: int, **kwargs):
 # --- Test cases 1-2: status and button on the user page --------------------------------
 
 
-def test_user_page_shows_two_factor_on_with_reset_button(client: AppClient, employee) -> None:
-    page = client.get(f"/settings/users/{employee[0]}").text
+def test_user_list_shows_two_factor_on_with_reset_action(client: AppClient, employee) -> None:
+    page = client.get("/settings/users").text
 
-    assert DE["user.two_factor.title"] in page
-    assert DE["user.two_factor.status.on"] in page
-    assert RESET_BUTTON in page
-    # The button opens the question in a pop-up (issue #169)
+    assert DE["user.two_factor.on"] in page
+    # The action opens the question in a pop-up (issues #169, #171)
     assert opens_in_popup(page, f"/settings/users/{employee[0]}/2fa-reset")
 
 
-def test_user_page_shows_two_factor_off_without_button(client: AppClient) -> None:
+def test_user_list_shows_two_factor_off_without_action(client: AppClient) -> None:
     user_id = add_user(EMPLOYEE_NAME, "employee")
 
-    page = client.get(f"/settings/users/{user_id}").text
+    page = client.get("/settings/users").text
 
-    assert DE["user.two_factor.status.off"] in page
-    assert RESET_BUTTON not in page
+    assert DE["user.two_factor.off"] in page
+    assert f"/settings/users/{user_id}/2fa-reset" not in page
 
 
 def test_reset_button_asks_for_confirmation(client: AppClient, employee) -> None:
     # The question is a pop-up of the app, not a browser dialog (issue #169).
-    page = client.get(f"/settings/users/{employee[0]}").text
+    page = client.get("/settings/users").text
     question = client.get(f"/settings/users/{employee[0]}/2fa-reset", headers=HX).text
 
     assert "data-confirm" not in page
@@ -144,8 +141,7 @@ def test_after_reset_the_password_is_enough(client: AppClient, employee) -> None
     response = reset(client, employee[0], follow_redirects=False)
 
     assert response.status_code == 303
-    assert response.headers["location"] == f"/settings/users/{employee[0]}?tfa_reset=1"
-    assert DE["user.two_factor.reset.done"] in client.get(response.headers["location"]).text
+    assert response.headers["location"] == "/settings/users"
     assert not is_on(EMPLOYEE_NAME)
     assert password_step(client.app) == "/"
 
@@ -213,8 +209,7 @@ def test_own_page_has_no_reset_button(client: AppClient) -> None:
 
     page = client.get(f"/settings/users/{admin_id}").text
 
-    assert DE["user.two_factor.status.on"] in page
-    assert RESET_BUTTON not in page
+    assert f"/settings/users/{admin_id}/2fa-reset" not in client.get("/settings/users").text
     assert DE["user.two_factor.self"] in page
 
 
@@ -358,7 +353,7 @@ def test_user_list_shows_two_factor_on_or_off(client: AppClient, employee) -> No
 
     assert DE["users.col.two_factor"] in page
     rows = {
-        name: re.search(rf">{re.escape(name)}</a></td>(.*?)</tr>", page, re.DOTALL).group(1)
+        name: re.search(rf">{re.escape(name)}</td>(.*?)</tr>", page, re.DOTALL).group(1)
         for name in (EMPLOYEE_NAME, SECOND_NAME)
     }
     assert DE["user.two_factor.on"] in rows[EMPLOYEE_NAME]

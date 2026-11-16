@@ -29,7 +29,7 @@ def client() -> AppClient:
 
 
 def names_in(html: str) -> list[str]:
-    return re.findall(r'<td class="cell-strong">.*?>(.*?)</a></td>', html)
+    return re.findall(r'<td class="cell-strong">(.*?)</td>', html)
 
 
 # --- Case 1: the user list is a sortable table with chips --------------------------------------
@@ -121,19 +121,16 @@ def test_create_user_without_popup_still_redirects(client: AppClient) -> None:
     assert response.headers["location"] == "/settings/users"
 
 
-# --- Case 4: the edit page is made of cards ----------------------------------------------------
+# --- Case 4: user edit is a pop-up (issue #171, tests in tests/test_style_alignment.py) -------
 
 
-def test_user_edit_page_shows_cards_and_keeps_its_functions(client: AppClient) -> None:
+def test_user_edit_page_keeps_its_function(client: AppClient) -> None:
     user_id = add_user("anna", "employee")
     html = client.get(f"/settings/users/{user_id}").text
 
-    assert html.count('class="detail-card"') >= 3
-    assert f'action="/settings/users/{user_id}/password"' in html
-
+    assert 'name="role"' in html and 'name="active"' in html
     saved = client.post(f"/settings/users/{user_id}", data={"role": "read_only", "active": "1"})
-    assert saved.status_code == 200
-    assert DE["user.saved"] in saved.text
+    assert saved.status_code == 200 and "<h1>" in saved.text  # followed to the list
 
 
 # --- Case 5: backups ---------------------------------------------------------------------------

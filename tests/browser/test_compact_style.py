@@ -36,7 +36,7 @@ def width(page: Page, selector: str) -> float:
 
 
 def test_forms_are_not_stretched_over_the_whole_width(admin_page: Page) -> None:
-    """Settings, account, appearance and attributes: cards and buttons keep a readable width."""
+    """Settings, account and appearance: cards and buttons keep a readable width."""
     if admin_page.viewport_size["width"] < 900:
         pytest.skip("the phone is narrow anyway")
     admin_page.goto("/attributes/new")
@@ -48,7 +48,6 @@ def test_forms_are_not_stretched_over_the_whole_width(admin_page: Page) -> None:
         ("/settings", "main form > .detail-card"),
         ("/account", "main .detail-card"),
         ("/settings/appearance", "main form > .detail-card"),
-        ("/attributes", "main .detail-card"),
     )
     for path, card in cards:
         admin_page.goto(path)

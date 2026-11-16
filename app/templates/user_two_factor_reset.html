@@ -2,7 +2,7 @@
 {% set title_key = 'user.two_factor.reset.submit' %}
 {% set button_key = 'user.two_factor.reset.submit' %}
 {% set action = '/settings/users/' ~ target.id ~ '/2fa-reset' %}
-{% set cancel_url = '/settings/users/' ~ target.id %}
+{% set cancel_url = '/settings/users' %}
 {% set subject = target.username %}
 {% if error %}{% set error_key = error %}{% endif %}
 {% block details %}
