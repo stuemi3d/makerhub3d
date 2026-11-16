@@ -10,6 +10,7 @@ from sqlalchemy import (
     Date,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -255,6 +256,7 @@ class Device(Base):
 
     __tablename__ = "devices"
     __table_args__ = (
+        Index("ux_devices_bambuddy_printer_id", "bambuddy_printer_id", unique=True),
         CheckConstraint("kind IN ('printer', 'dryer')", name="ck_devices_kind"),
         CheckConstraint(
             "kind = 'dryer' OR hours_per_year IS NOT NULL", name="ck_devices_printer_hours"
@@ -272,6 +274,8 @@ class Device(Base):
     hours_per_year: Mapped[Decimal | None] = mapped_column(DecimalText, nullable=True)
     # Percent
     maintenance_pct: Mapped[Decimal] = mapped_column(DecimalText)
+    # Id of the Bambuddy printer this device was taken over from (empty: made by hand)
+    bambuddy_printer_id: Mapped[int | None] = mapped_column(nullable=True)
     active: Mapped[bool] = mapped_column(Boolean, server_default=true())
     created_at: Mapped[datetime] = mapped_column(DateTime)
 

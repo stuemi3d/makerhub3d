@@ -552,7 +552,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     add_user_admin_routes(app, new_session, render, read_form)
     add_log_routes(app, new_session, render, language, settings.timezone)
     add_backup_routes(app, new_session, render, settings)
-    add_device_routes(app, new_session, render, read_form, language)
     bambuddy_cipher = (
         two_factor.Cipher(settings.two_factor_key, purpose="bambuddy")
         if settings.two_factor_key
@@ -565,6 +564,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     add_variant_bulk_routes(app, new_session, render, read_form)
     add_stock_routes(app, new_session, render, read_form, language)
     add_production_routes(app, new_session, bambuddy_cipher, render, read_form, language)
+    add_device_routes(app, new_session, bambuddy_cipher, render, read_form, language)
 
     # Deliberately without login: the container health check calls it. Returns no details.
     @app.get("/healthz", response_class=PlainTextResponse)

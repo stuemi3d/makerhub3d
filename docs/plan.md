@@ -75,7 +75,7 @@ Der Artikel ist der Knotenpunkt; alles andere hängt über die Artikelnummer an 
 | Lagerbewegung | Artikel, Datum, Menge (+/−), Art (Produktion, Verkauf, Korrektur, Storno), Bezug | Produktion oder Verkauf |
 | Verkauf | Artikel, Datum, Menge, Preis pro Stück, Quelle (Hand, RechnungsFee, Haben) | Rechnungsnummer bzw. externe ID |
 | Ignoriert | Bambuddy-Archiv-ID, Datum | nicht relevante Drucke ausblenden |
-| Gerät | Typ (Drucker/Trockner), Name, Anschaffungsdatum und -wert, Nutzungsjahre, Wartungsaufschlag (%), nur Drucker: Druckstunden/Jahr; aktiv/deaktiviert. Restwert und Stundensatz werden nur angezeigt, nicht gespeichert | Drucker aus Bambuddy übernehmbar |
+| Gerät | Typ (Drucker/Trockner), Name, Anschaffungsdatum und -wert, Nutzungsjahre, Wartungsaufschlag (%), nur Drucker: Druckstunden/Jahr; aktiv/deaktiviert; Bambuddy-Drucker-ID, wenn ein Drucker aus Bambuddy übernommen wurde (dann ist der Name gesperrt). Restwert und Stundensatz werden nur angezeigt, nicht gespeichert | Drucker aus Bambuddy übernehmbar (nur lesend); ein Gerät lässt sich löschen, solange keine Produktion daran hängt, sonst nur deaktivieren |
 | Einstellungen | Strompreis (eigen oder aus Bambuddy), Arbeits-Stundensatz, Druckerstundensatz (nur Übergangswert bis M3; danach gilt der Satz aus den Geräten, der Einstellungswert dient nur als Ersatz, solange kein Drucker angelegt ist), Standard-Ausschussquote, Standard-Gewinnaufschlag, Rundung, Spulen-Kategorie für „geschäftlich“, Abweichungsschwelle | – |
 | Benutzer, Änderungsprotokoll | siehe Sicherheit | – |
 
@@ -280,6 +280,7 @@ Der Maintainer hat die frühere Bedingung („erst nach Alltagsnutzung von M1“
 **M3 – Kalkulation**
 
 - [x] Geräte und Stundensätze inkl. Trocknungspauschale (#157)
+- [x] Geräte: Drucker aus Bambuddy übernehmen, Geräte ohne Produktion löschen (#163)
 - [ ] Rechenkern der Kalkulation
 - [ ] 3MF- und G-Code-Auslesen
 - [ ] Seite Kalkulation

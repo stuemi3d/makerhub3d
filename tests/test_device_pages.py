@@ -128,14 +128,6 @@ def test_a_deactivated_dryer_does_not_count_for_the_surcharge(client: AppClient)
     assert "0,0266" in client.get("/settings/devices").text
 
 
-def test_devices_cannot_be_deleted(client: AppClient) -> None:
-    add(client, printer_form())
-    device = stored_devices()[0]
-
-    assert client.post(f"/settings/devices/{device.id}/delete").status_code in (403, 404, 405)
-    assert len(stored_devices()) == 1
-
-
 # --- Wrong input (cases 11-13) -----------------------------------------------------------------
 
 
