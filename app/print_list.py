@@ -46,6 +46,11 @@ class PrintRow:
     electricity_value: Decimal | None = None
     # Print time in seconds (for the machine costs of a production)
     seconds: int | None = None
+    # What Bambuddy knows about the print, stored with the production (issue #148)
+    grams: Decimal | None = None
+    kwh: Decimal | None = None
+    filament_type: str | None = None
+    filament_color: str | None = None
 
 
 @dataclass(frozen=True)
@@ -98,6 +103,10 @@ def _row(archive: Archive, language: str, assigned: dict[int, int], ignored: set
         material_value=archive.material_cost,
         electricity_value=archive.energy_cost,
         seconds=archive.print_seconds,
+        grams=archive.filament_grams,
+        kwh=archive.energy_kwh,
+        filament_type=archive.filament_type,
+        filament_color=archive.filament_color,
     )
 
 

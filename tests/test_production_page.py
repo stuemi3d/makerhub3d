@@ -52,8 +52,10 @@ def raw(
     cost: float | None = 0.5,
     energy: float | None = 0.1,
     seconds: int = 3900,
+    **extra: object,
 ) -> dict:
-    return {
+    """One archive entry as Bambuddy sends it; `extra` overrides or adds fields."""
+    item = {
         "id": archive_id,
         "printer_id": 1,
         "print_name": name or f"Druck {archive_id}",
@@ -70,6 +72,8 @@ def raw(
         "failure_reason": None,
         "created_at": started,
     }
+    item.update(extra)
+    return item
 
 
 def serve(client: AppClient, archives: list[dict], requests: list | None = None) -> None:

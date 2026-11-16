@@ -20,6 +20,8 @@
     {{ t('production.col.date') }}: {{ item.date }} · {{ t('production.col.cost') }}: {{ item.total }}
   </p>
   {% if item.labor %}<p>{{ t('production.detail.labor') }}: {{ item.labor.cost }} · {{ t('production.field.labor_minutes') }}: {{ item.labor.minutes }} · {{ t('production.field.labor_rate') }}: {{ item.labor.rate }}</p>{% endif %}
+  <p class="detail-totals">{{ t('production.detail.totals') }}: {{ item.total_duration or t('table.empty_value') }} · {{ (item.total_grams ~ ' g') if item.total_grams else t('table.empty_value') }} · {{ (item.total_kwh ~ ' kWh') if item.total_kwh else t('table.empty_value') }}</p>
+  {% if item.failed_pieces %}<p>{{ t('production.detail.failed_pieces') }}: {{ item.failed_pieces }}</p>{% endif %}
   {% if item.note %}<p>{{ t('production.col.note') }}: {{ item.note }}</p>{% endif %}
 </article>
 <h2>{{ t('production.detail.prints') }}</h2>
@@ -30,6 +32,10 @@
     <tr>
       {{ head(t('production.col.name')) }}
       {{ head(t('production.col.status')) }}
+      {{ head(t('production.col.duration')) }}
+      {{ head(t('production.col.filament')) }}
+      {{ head(t('production.col.grams'), numeric=true) }}
+      {{ head(t('production.col.kwh'), numeric=true) }}
       {{ head(t('production.col.material'), numeric=true) }}
       {{ head(t('production.col.electricity'), numeric=true) }}
       {{ head(t('production.col.machine'), numeric=true) }}
@@ -42,6 +48,10 @@
     <tr class="detail-print{% if p.failed %} print-failed{% endif %}">
       <td class="cell-strong">#{{ p.archive_id }}</td>
       <td>{{ chip(t('production.status.failed') if p.failed else t('production.status.completed'), 'warn' if p.failed else 'active') }}</td>
+      <td>{{ p.duration or t('table.empty_value') }}</td>
+      <td>{% if p.filament_type or p.colors %}{% for c in p.colors %}<svg class="color-dot" viewBox="0 0 10 10" width="14" height="14" role="img" aria-label="{{ c }}"><title>{{ c }}</title><circle cx="5" cy="5" r="4.5" fill="{{ c }}" stroke="currentColor" stroke-width="0.6"/></svg>{% endfor %}{{ p.filament_type or '' }}{% else %}{{ t('table.empty_value') }}{% endif %}</td>
+      <td class="num">{{ p.grams or t('table.empty_value') }}</td>
+      <td class="num">{{ p.kwh or t('table.empty_value') }}</td>
       <td class="num">{{ p.material }}</td>
       <td class="num">{{ p.electricity }}</td>
       <td class="num">{{ p.machine }}</td>

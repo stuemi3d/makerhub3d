@@ -62,6 +62,9 @@ class Archive:
     material_cost: Decimal | None
     failure_reason: str | None
     created_at: datetime | None = None
+    # Material (e.g. "PLA") and colour codes (e.g. "#FFFFFF,#BB3D43"), as Bambuddy sends them
+    filament_type: str | None = None
+    filament_color: str | None = None
 
     @property
     def printed_on(self) -> date | None:
@@ -111,6 +114,13 @@ def _text(item: dict, name: str, required: bool = False) -> str | None:
     if not isinstance(value, str):
         raise _bad()
     return value
+
+
+def _optional_text(item: dict, name: str) -> str | None:
+    """Text that is only extra information: anything but a text counts as missing, so an odd
+    value never makes the whole list unusable."""
+    value = item.get(name)
+    return value if isinstance(value, str) else None
 
 
 def _int(item: dict, name: str, required: bool = False) -> int | None:
@@ -170,6 +180,8 @@ def _archive(raw: Any) -> Archive:
         material_cost=_decimal(item, "cost"),
         failure_reason=_text(item, "failure_reason"),
         created_at=_time(item, "created_at"),
+        filament_type=_optional_text(item, "filament_type"),
+        filament_color=_optional_text(item, "filament_color"),
     )
 
 

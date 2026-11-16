@@ -9,6 +9,7 @@ The caller holds `stock.booking_lock` and the transaction (like for app.stock); 
 production is for the caller to answer with 404.
 """
 
+import re
 from dataclasses import dataclass
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
@@ -31,6 +32,39 @@ from app.models import (
 CENT = Decimal("0.01")
 MAX_NOTE = 500
 MAX_LABOR = Decimal(1_000_000)
+MAX_PIECES = 1_000_000
+# Grams and kWh from Bambuddy at or above this are nonsense and count as unknown
+MAX_AMOUNT = Decimal(1_000_000)
+MAX_TYPE = 50
+MAX_COLORS = 16
+# Only these reach the database and later an attribute of the page: #RRGGBB or #RRGGBBAA
+_COLOR = re.compile(r"#[0-9A-Fa-f]{6}(?:[0-9A-Fa-f]{2})?")
+
+
+def clean_type(text: str | None) -> str | None:
+    """The material text of Bambuddy on one line, at most 50 characters; empty = None."""
+    cleaned = " ".join((text or "").split())[:MAX_TYPE]
+    return cleaned or None
+
+
+def clean_colors(text: str | None) -> str | None:
+    """The valid colour codes of a comma separated text, upper case; None when none is valid.
+    Everything else is dropped, so that nothing but plain codes is stored."""
+    codes = [part.strip().upper() for part in (text or "").split(",")]
+    valid = [code for code in codes if _COLOR.fullmatch(code)][:MAX_COLORS]
+    return ",".join(valid) or None
+
+
+def color_list(text: str | None) -> list[str]:
+    """The valid colour codes of a stored text, for showing."""
+    cleaned = clean_colors(text)
+    return cleaned.split(",") if cleaned else []
+
+
+def _amount(value: Decimal | None) -> Decimal | None:
+    """An amount from Bambuddy as it is stored; nonsense (negative, not a number, absurdly
+    large) = unknown."""
+    return value if value is not None and value.is_finite() and 0 <= value < MAX_AMOUNT else None
 
 
 @dataclass(frozen=True)
@@ -40,6 +74,12 @@ class PrintInput:
     electricity_cost: Decimal
     machine_cost: Decimal
     failed: bool = False
+    # What Bambuddy knows about the print (issue #148); None = unknown
+    seconds: int | None = None
+    grams: Decimal | None = None
+    kwh: Decimal | None = None
+    filament_type: str | None = None
+    filament_color: str | None = None
 
     @property
     def cost(self) -> Decimal:
@@ -148,8 +188,11 @@ def _check(
     result: ResultInput,
     note: str,
     labor: LaborInput | None = None,
+    failed_pieces: int = 0,
 ) -> tuple[dict[str, str], Article | None]:
     errors: dict[str, str] = {}
+    if not 0 <= failed_pieces <= MAX_PIECES:
+        errors["failed_pieces"] = "production.error.failed_pieces"
 
     ids = [item.archive_id for item in prints]
     if not prints:
@@ -191,13 +234,15 @@ def book(
     prints: list[PrintInput],
     result: ResultInput,
     labor: LaborInput | None = None,
+    failed_pieces: int = 0,
 ) -> tuple[int | None, dict[str, str]]:
     """Books a production and raises the stock of its result article. Returns the id, or the
     errors by field; nothing is stored when there are errors.
 
     The total (prints plus labour) is rounded to the cent and all of it goes to the one result
-    article. Minutes, rate and labour cost are stored as values."""
-    errors, article = _check(db, prints, result, note.strip(), labor)
+    article. Minutes, rate and labour cost are stored as values, and so are the time, grams,
+    kWh and filament of every print and the number of failed pieces (information only)."""
+    errors, article = _check(db, prints, result, note.strip(), labor, failed_pieces)
     if errors:
         return None, errors
 
@@ -213,6 +258,7 @@ def book(
         labor_minutes=labor.minutes,
         labor_rate=labor.rate,
         labor_cost=labor.cost,
+        failed_pieces=failed_pieces,
         user_id=actor_id,
     )
     for print_ in prints:
@@ -224,6 +270,11 @@ def book(
                 wear_cost=Decimal(0),
                 machine_cost=print_.machine_cost,
                 status=PrintStatus.FAILED if print_.failed else PrintStatus.SUCCESS,
+                print_seconds=print_.seconds if print_.seconds and print_.seconds > 0 else None,
+                filament_grams=_amount(print_.grams),
+                energy_kwh=_amount(print_.kwh),
+                filament_type=clean_type(print_.filament_type),
+                filament_colors=clean_colors(print_.filament_color),
             )
         )
     db.add(item)

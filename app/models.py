@@ -177,6 +177,8 @@ class Production(Base):
     labor_minutes: Mapped[Decimal] = mapped_column(DecimalText, server_default="0")
     labor_rate: Mapped[Decimal] = mapped_column(DecimalText, server_default="0")
     labor_cost: Mapped[Decimal] = mapped_column(DecimalText, server_default="0")
+    # Pieces that failed (issue #148); information only, changes neither stock nor cost
+    failed_pieces: Mapped[int] = mapped_column(Integer, server_default="0")
     cancelled: Mapped[bool] = mapped_column(Boolean, server_default=false())
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     prints: Mapped[list["ProductionPrint"]] = relationship(
@@ -206,6 +208,13 @@ class ProductionPrint(Base):
     wear_cost: Mapped[Decimal] = mapped_column(DecimalText)
     machine_cost: Mapped[Decimal] = mapped_column(DecimalText, server_default="0")
     status: Mapped[PrintStatus] = mapped_column(String(10))
+    # Amounts of the print as values when booking (issue #148); empty = Bambuddy did not know
+    print_seconds: Mapped[int | None] = mapped_column(Integer)
+    filament_grams: Mapped[Decimal | None] = mapped_column(DecimalText)
+    energy_kwh: Mapped[Decimal | None] = mapped_column(DecimalText)
+    # Material text and the valid colour codes, comma separated
+    filament_type: Mapped[str | None] = mapped_column(String(50))
+    filament_colors: Mapped[str | None] = mapped_column(String(200))
 
 
 class ProductionResult(Base):
