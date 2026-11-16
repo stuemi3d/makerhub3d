@@ -609,7 +609,7 @@
   "production.col.grams": "Filament (g)",
   "production.col.kwh": "Strom (kWh)",
   "production.col.filament": "Filament",
-  "production.field.failed_pieces": "Fehldruck-Stücke (optional)",
+  "production.field.failed_pieces": "Fehldrucke",
   "production.error.failed_pieces": "Bitte eine ganze Zahl eingeben (von 0 bis 1.000.000).",
   "production.detail.failed_pieces": "Fehldruck-Stücke",
   "production.detail.totals": "Summe"

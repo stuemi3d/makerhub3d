@@ -393,3 +393,25 @@ def test_hints_do_not_overlap_the_fields_and_the_buttons_stay_visible(
         assert box["y"] >= 0 and box["y"] + box["height"] <= height
     assert admin_page.evaluate(SCROLLERS) == 0
     assert fits_screen_width(admin_page)
+
+
+def test_the_failed_pieces_field_is_level_with_the_good_pieces_field(
+    admin_page: Page, fake_bambuddy: str
+) -> None:
+    """Issue #148: the two number fields sit next to each other on the same line, so the label
+    of the second one must not wrap and push its field down."""
+    connect(admin_page, fake_bambuddy)
+    admin_page.goto("/production")
+    admin_page.locator("input[name=prints]").first.check()
+    admin_page.get_by_role("button", name=t("production.create"), exact=True).click()
+    popup = admin_page.locator("#popup")
+    expect(popup.locator("#quantity")).to_be_visible()
+    expect(popup.locator("#failed_pieces")).to_be_visible()
+
+    good = popup.locator("#quantity").bounding_box()
+    failed = popup.locator("#failed_pieces").bounding_box()
+
+    assert good is not None and failed is not None
+    assert abs(good["y"] - failed["y"]) < 1
+    assert failed["x"] > good["x"]
+    assert fits_screen_width(admin_page)
