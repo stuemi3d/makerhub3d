@@ -10,7 +10,7 @@ from alembic import command
 from alembic.autogenerate import compare_metadata
 from alembic.migration import MigrationContext
 from fastapi.testclient import TestClient
-from sqlalchemy import inspect
+from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
 
 from app.config import Settings
@@ -199,8 +199,9 @@ def test_login_migration_keeps_existing_settings(tmp_path: Path) -> None:
     engine = make_engine(tmp_path / "upgrade.db")
     with engine.begin() as connection:
         command.upgrade(alembic_config(connection), "0001")
-    with Session(engine) as session, session.begin():
-        session.get(AppSettings, 1).markup = Decimal("42")
+    # Plain SQL: the models already know columns that later migrations add
+    with engine.begin() as connection:
+        connection.execute(text("UPDATE app_settings SET markup = '42'"))
 
     run_migrations(engine)
 

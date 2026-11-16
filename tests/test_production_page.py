@@ -51,7 +51,6 @@ def raw(
     name: str | None = None,
     cost: float | None = 0.5,
     energy: float | None = 0.1,
-    wear: float | None = None,
     seconds: int = 3900,
 ) -> dict:
     return {
@@ -67,7 +66,6 @@ def raw(
         "filament_used_grams": 10.5,
         "energy_kwh": 0.05,
         "energy_cost": energy,
-        "wear_cost": wear,
         "cost": cost,
         "failure_reason": None,
         "created_at": started,
@@ -176,7 +174,7 @@ def test_everybody_sees_the_list_but_only_admin_and_employee_may_ignore(
 
 
 def test_the_list_shows_name_date_duration_status_and_costs(client: AppClient) -> None:
-    prepared(client, [raw(7, name="Beispiel Clip", cost=0.5, energy=0.01, wear=0.25)])
+    prepared(client, [raw(7, name="Beispiel Clip", cost=0.5, energy=0.01)])
 
     html = client.get("/production").text
 
@@ -185,7 +183,7 @@ def test_the_list_shows_name_date_duration_status_and_costs(client: AppClient) -
     assert "15.11.2026 08:00" in row
     assert "1 h 5 min" in row
     assert DE["production.status.completed"] in row
-    assert "0,5" in row and "0,01" in row and "0,25" in row
+    assert "0,5" in row and "0,01" in row
 
 
 def test_failed_prints_are_red_and_others_are_not(client: AppClient) -> None:
@@ -216,11 +214,11 @@ def test_the_views_split_open_assigned_and_ignored_prints(client: AppClient) -> 
 
 
 def test_missing_costs_show_a_dash(client: AppClient) -> None:
-    prepared(client, [raw(4, status="failed", cost=None, energy=None, wear=None)])
+    prepared(client, [raw(4, status="failed", cost=None, energy=None)])
 
     (row,) = rows(client.get("/production").text)
 
-    assert row.count(DE["table.empty_value"]) >= 3
+    assert row.count(DE["table.empty_value"]) >= 2
 
 
 def test_the_list_can_be_sorted_by_date_and_name(client: AppClient) -> None:

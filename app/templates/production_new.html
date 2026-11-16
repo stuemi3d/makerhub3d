@@ -28,11 +28,15 @@
       <span>{{ p.row.when }}{% if p.row.failed %} <span class="chip chip-warn">{{ t('production.status.failed') }}</span>{% endif %}</span>
     </div>
     <div class="field-grid">
-      {% for part in ('material', 'electricity', 'wear') %}
+      {% for part in ('material', 'electricity', 'machine') %}
       <div>
         <label for="cost_{{ part }}_{{ p.row.archive_id }}">{{ t('production.col.' ~ part) }}</label>
         <input type="text" inputmode="decimal" autocomplete="off" name="cost_{{ part }}_{{ p.row.archive_id }}" id="cost_{{ part }}_{{ p.row.archive_id }}" value="{{ p[part] }}">
         {{ err('cost_' ~ part ~ '_' ~ p.row.archive_id) }}
+        {% if part == 'machine' %}
+        {% if p.row.duration %}<small>{{ t('production.col.duration') }}: {{ p.row.duration }}</small>{% endif %}
+        {% if p.machine_hint %}<small>{{ t(p.machine_hint) }}</small>{% endif %}
+        {% endif %}
       </div>
       {% endfor %}
     </div>

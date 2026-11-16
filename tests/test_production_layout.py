@@ -95,7 +95,7 @@ def test_the_form_uses_labelled_blocks_and_no_table(prepared_client: AppClient) 
     prints = [part.split("<h2")[0] for part in html.split('<div class="form-block print-block')[1:]]
     assert len(prints) == 2
     for block in prints:
-        for part in ("material", "electricity", "wear"):
+        for part in ("material", "electricity", "machine"):
             assert re.search(rf'<label for="cost_{part}_\d+">', block)
     assert len(re.findall(r'<div class="form-block result-block', html)) == 1
     assert '<label for="article">' in html and '<label for="quantity">' in html

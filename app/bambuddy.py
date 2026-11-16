@@ -59,7 +59,6 @@ class Archive:
     filament_grams: Decimal | None
     energy_kwh: Decimal | None
     energy_cost: Decimal | None
-    wear_cost: Decimal | None
     material_cost: Decimal | None
     failure_reason: str | None
     created_at: datetime | None = None
@@ -168,7 +167,6 @@ def _archive(raw: Any) -> Archive:
         filament_grams=_decimal(item, "filament_used_grams"),
         energy_kwh=_decimal(item, "energy_kwh"),
         energy_cost=_decimal(item, "energy_cost"),
-        wear_cost=_decimal(item, "wear_cost"),
         material_cost=_decimal(item, "cost"),
         failure_reason=_text(item, "failure_reason"),
         created_at=_time(item, "created_at"),

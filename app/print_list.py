@@ -39,13 +39,13 @@ class PrintRow:
     failed: bool
     material_cost: str | None
     electricity_cost: str | None
-    wear_cost: str | None
     state: str
     production_id: int | None
     # The same costs as numbers (for the form of a production)
     material_value: Decimal | None = None
     electricity_value: Decimal | None = None
-    wear_value: Decimal | None = None
+    # Print time in seconds (for the machine costs of a production)
+    seconds: int | None = None
 
 
 @dataclass(frozen=True)
@@ -93,12 +93,11 @@ def _row(archive: Archive, language: str, assigned: dict[int, int], ignored: set
         failed=archive.status in FAILED_STATUSES,
         material_cost=_money(archive.material_cost, language),
         electricity_cost=_money(archive.energy_cost, language),
-        wear_cost=_money(archive.wear_cost, language),
         state=state,
         production_id=assigned.get(archive.id),
         material_value=archive.material_cost,
         electricity_value=archive.energy_cost,
-        wear_value=archive.wear_cost,
+        seconds=archive.print_seconds,
     )
 
 
