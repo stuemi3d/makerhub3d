@@ -2,8 +2,8 @@
 
 A production holds any number of prints (Bambuddy archive entries) and exactly one result
 article, which gets all costs. Booking raises its stock; cancelling books a counter movement.
-Productions are never changed or deleted afterwards. Costs, including labour (issue #134),
-are stored as values.
+Productions are never changed or deleted afterwards. Costs, including machine (issue #135)
+and labour (issue #134), are stored as values.
 
 The caller holds `stock.booking_lock` and the transaction (like for app.stock); a missing
 production is for the caller to answer with 404.
@@ -38,12 +38,12 @@ class PrintInput:
     archive_id: int
     material_cost: Decimal
     electricity_cost: Decimal
-    wear_cost: Decimal
+    machine_cost: Decimal
     failed: bool = False
 
     @property
     def cost(self) -> Decimal:
-        return self.material_cost + self.electricity_cost + self.wear_cost
+        return self.material_cost + self.electricity_cost + self.machine_cost
 
 
 @dataclass(frozen=True)
@@ -163,7 +163,7 @@ def _check(
     elif any(item <= 0 for item in ids):
         errors["prints"] = "production.error.print_id"
     elif any(
-        not p.cost.is_finite() or min(p.material_cost, p.electricity_cost, p.wear_cost) < 0
+        not p.cost.is_finite() or min(p.material_cost, p.electricity_cost, p.machine_cost) < 0
         for p in prints
     ):
         errors["prints"] = "production.error.cost"
@@ -221,7 +221,8 @@ def book(
                 archive_id=print_.archive_id,
                 material_cost=print_.material_cost,
                 electricity_cost=print_.electricity_cost,
-                wear_cost=print_.wear_cost,
+                wear_cost=Decimal(0),
+                machine_cost=print_.machine_cost,
                 status=PrintStatus.FAILED if print_.failed else PrintStatus.SUCCESS,
             )
         )

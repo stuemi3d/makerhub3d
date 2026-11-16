@@ -72,7 +72,9 @@ class DetailPrint:
     failed: bool
     material: str
     electricity: str
-    wear: str
+    machine: str
+    # Only set for productions booked before issue #135 (wear taken from Bambuddy)
+    wear: str | None
     total: str
 
 
@@ -101,6 +103,8 @@ class Detail:
     total: str
     # Only set when a working time was booked
     labor: "DetailLabor | None"
+    # Whether any print has an old wear value (then the column is shown)
+    has_wear: bool
     cancelled: bool
     prints: list[DetailPrint]
     results: list[DetailResult]
@@ -123,6 +127,7 @@ def detail(db: Session, production_id: int, language: str) -> Detail | None:
         )
         if item.labor_minutes > 0
         else None,
+        has_wear=any(p.wear_cost > 0 for p in item.prints),
         cancelled=item.cancelled,
         prints=[
             DetailPrint(
@@ -130,8 +135,11 @@ def detail(db: Session, production_id: int, language: str) -> Detail | None:
                 failed=p.status == PrintStatus.FAILED,
                 material=money_text(p.material_cost, language),
                 electricity=money_text(p.electricity_cost, language),
-                wear=money_text(p.wear_cost, language),
-                total=money_text(p.material_cost + p.electricity_cost + p.wear_cost, language),
+                machine=money_text(p.machine_cost, language),
+                wear=money_text(p.wear_cost, language) if p.wear_cost > 0 else None,
+                total=money_text(
+                    p.material_cost + p.electricity_cost + p.machine_cost + p.wear_cost, language
+                ),
             )
             for p in item.prints
         ],

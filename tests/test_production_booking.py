@@ -15,6 +15,7 @@ from sqlalchemy import select
 
 from app.main import create_app
 from app.models import (
+    AppSettings,
     ChangeLogEntry,
     Production,
     StockMovement,
@@ -29,21 +30,31 @@ DE = json.loads((ROOT / "app" / "locales" / "de.json").read_text(encoding="utf-8
 EN = json.loads((ROOT / "app" / "locales" / "en.json").read_text(encoding="utf-8"))
 D = Decimal
 
-# Three prints with known costs: 3.00 + 0.50 + 1.00, 2.00 + 0.25 + 0.50, a failed one with
-# 1.00 + 0.10 + 0.20, and one that is still running.
+# Three prints with known costs, at a machine rate of 3.60 EUR/h one second costs 0.001 EUR:
+# 3.00 + 0.50 + 1.00 (1000 s), 2.00 + 0.25 + 0.50 (500 s), a failed one with 1.00 + 0.10 + 0.20
+# (200 s), and one that is still running.
+MACHINE_RATE = "3.60"
 ARCHIVES = [
     raw(9, "2026-11-15T12:00:00", status="printing", name="Laufender Druck"),
     raw(
-        8, "2026-11-15T11:00:00", status="failed", name="Fehldruck", cost=1.0, energy=0.1, wear=0.2
+        8,
+        "2026-11-15T11:00:00",
+        status="failed",
+        name="Fehldruck",
+        cost=1.0,
+        energy=0.1,
+        seconds=200,
     ),
-    raw(7, "2026-11-15T10:00:00", name="Druck B", cost=2.0, energy=0.25, wear=0.5),
-    raw(6, "2026-11-15T09:00:00", name="Druck A", cost=3.0, energy=0.5, wear=1.0),
-    raw(5, "2026-11-14T09:00:00", name="Druck ohne Kosten", cost=None, energy=None, wear=None),
+    raw(7, "2026-11-15T10:00:00", name="Druck B", cost=2.0, energy=0.25, seconds=500),
+    raw(6, "2026-11-15T09:00:00", name="Druck A", cost=3.0, energy=0.5, seconds=1000),
+    raw(5, "2026-11-14T09:00:00", name="Druck ohne Kosten", cost=None, energy=None),
 ]
 
 
 def setup_prints(client: AppClient) -> None:
     prepared(client, ARCHIVES)
+    with db() as session, session.begin():
+        session.get(AppSettings, 1).machine_rate = D(MACHINE_RATE)
 
 
 def form(ids: list[int], result: tuple[int, str], **extra: object):
@@ -211,7 +222,7 @@ def test_the_form_has_the_costs_from_bambuddy_and_a_hint_for_missing_ones(
 
     assert re.search(r'name="cost_material_6"[^>]*value="3"', html)
     assert re.search(r'name="cost_electricity_6"[^>]*value="0,5"', html)
-    assert re.search(r'name="cost_wear_6"[^>]*value="1"', html)
+    assert re.search(r'name="cost_machine_6"[^>]*value="1"', html)
     assert re.search(r'name="cost_material_5"[^>]*value=""', html)
     assert DE["production.cost_missing"] in html
     assert html.count(DE["production.cost_missing"]) == 1
@@ -220,7 +231,9 @@ def test_the_form_has_the_costs_from_bambuddy_and_a_hint_for_missing_ones(
 
 def test_missing_costs_count_as_zero_and_edited_costs_win(prepared_client: AppClient) -> None:
     article_id = add_article()
-    data = form([5, 6], (article_id, "2"), cost_material_6="4,50", cost_wear_6="")
+    data = form(
+        [5, 6], (article_id, "2"), cost_material_6="4,50", cost_machine_6="", cost_machine_5=""
+    )
 
     send(prepared_client, data)
 
@@ -270,7 +283,7 @@ def count_movements() -> int:
 def test_bambuddy_costs_with_many_decimals_are_rounded_in_the_form_and_can_be_booked(
     client: AppClient,
 ) -> None:
-    prepared(client, [raw(1, cost=0.123456, energy=0.00005, wear=1.0)])
+    prepared(client, [raw(1, cost=0.123456, energy=0.00005)])
     article_id = add_article()
 
     html = client.get("/production/new?prints=1").text
@@ -289,7 +302,7 @@ def test_bambuddy_costs_with_many_decimals_are_rounded_in_the_form_and_can_be_bo
 def test_the_total_is_rounded_to_the_cent(prepared_client: AppClient) -> None:
     article_id = add_article()
     data = form(
-        [6], (article_id, "1"), cost_material_6="0,005", cost_electricity_6="0", cost_wear_6="0"
+        [6], (article_id, "1"), cost_material_6="0,005", cost_electricity_6="0", cost_machine_6="0"
     )
 
     assert send(prepared_client, data).status_code == 303

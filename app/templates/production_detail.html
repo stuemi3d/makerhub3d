@@ -32,7 +32,8 @@
       {{ head(t('production.col.status')) }}
       {{ head(t('production.col.material'), numeric=true) }}
       {{ head(t('production.col.electricity'), numeric=true) }}
-      {{ head(t('production.col.wear'), numeric=true) }}
+      {{ head(t('production.col.machine'), numeric=true) }}
+      {% if item.has_wear %}{{ head(t('production.col.wear'), numeric=true) }}{% endif %}
       {{ head(t('production.col.print_total'), numeric=true) }}
     </tr>
   </thead>
@@ -43,7 +44,8 @@
       <td>{{ chip(t('production.status.failed') if p.failed else t('production.status.completed'), 'warn' if p.failed else 'active') }}</td>
       <td class="num">{{ p.material }}</td>
       <td class="num">{{ p.electricity }}</td>
-      <td class="num">{{ p.wear }}</td>
+      <td class="num">{{ p.machine }}</td>
+      {% if item.has_wear %}<td class="num">{{ p.wear or t('table.empty_value') }}</td>{% endif %}
       <td class="num">{{ p.total }}</td>
     </tr>
     {% endfor %}

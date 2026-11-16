@@ -43,6 +43,8 @@ class AppSettings(Base):
     electricity_price: Mapped[Decimal] = mapped_column(DecimalText)
     # Euro per hour of work
     labour_rate: Mapped[Decimal] = mapped_column(DecimalText)
+    # Euro per hour of printing (issue #135); machine costs = print hours x this rate
+    machine_rate: Mapped[Decimal] = mapped_column(DecimalText, server_default="0")
     # Percent
     scrap_rate: Mapped[Decimal] = mapped_column(DecimalText)
     # Percent
@@ -200,7 +202,9 @@ class ProductionPrint(Base):
     # Euro
     material_cost: Mapped[Decimal] = mapped_column(DecimalText)
     electricity_cost: Mapped[Decimal] = mapped_column(DecimalText)
+    # Only filled in productions booked before issue #135; new ones store 0
     wear_cost: Mapped[Decimal] = mapped_column(DecimalText)
+    machine_cost: Mapped[Decimal] = mapped_column(DecimalText, server_default="0")
     status: Mapped[PrintStatus] = mapped_column(String(10))
 
 

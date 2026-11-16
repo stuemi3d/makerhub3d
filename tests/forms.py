@@ -5,6 +5,7 @@ def valid_form(**overrides: str) -> dict[str, str]:
     form = {
         "electricity_price": "0,30",
         "labour_rate": "15,00",
+        "machine_rate": "0",
         "scrap_rate": "5",
         "markup": "30",
         "rounding": "ends_90",

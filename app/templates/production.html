@@ -46,7 +46,6 @@
       {{ head(t('production.col.status')) }}
       {{ head(t('production.col.material'), numeric=true) }}
       {{ head(t('production.col.electricity'), numeric=true) }}
-      {{ head(t('production.col.wear'), numeric=true) }}
       {{ actions_head() }}
     </tr>
   </thead>
@@ -62,7 +61,6 @@
       <td>{{ chip(t('production.status.' ~ p.status) if p.status in ('completed', 'failed', 'printing', 'cancelled') else p.status, 'warn' if p.failed else ('active' if p.status == 'completed' else 'inactive')) }}</td>
       <td class="num">{{ p.material_cost if p.material_cost else t('table.empty_value') }}</td>
       <td class="num">{{ p.electricity_cost if p.electricity_cost else t('table.empty_value') }}</td>
-      <td class="num">{{ p.wear_cost if p.wear_cost else t('table.empty_value') }}</td>
       <td class="row-actions">
         {% if can('edit') and p.state != 'assigned' %}
         <form class="icon-form" method="post" action="/production/{{ 'unignore' if p.state == 'ignored' else 'ignore' }}">

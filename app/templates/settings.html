@@ -22,7 +22,7 @@ id="{{ name }}" name="{{ name }}"{% if errors.get(name) %} aria-invalid="true" a
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <article class="detail-card">
     <h2 class="card-title">{{ t('settings.section.costs') }}</h2>
-    {% for name in ['electricity_price', 'labour_rate', 'scrap_rate', 'markup'] %}
+    {% for name in ['electricity_price', 'labour_rate', 'machine_rate', 'scrap_rate', 'markup'] %}
     <label for="{{ name }}">{{ t('settings.field.' ~ name) }}</label>
     <input type="text" inputmode="decimal" autocomplete="off" {{ field_attrs(name) }} value="{{ values.get(name, '') }}">
     {{ feedback(name) }}

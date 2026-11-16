@@ -110,6 +110,8 @@ def add_production_routes(
         preview: dict[str, str] | None = None,
     ) -> HTMLResponse:
         errors = errors or {}
+        with new_session() as db:
+            rate = production_form.machine_rate(db)
         found = {row.archive_id: row for row in prints.rows}
         shown = []
         for archive_id in draft.ids:
@@ -117,6 +119,8 @@ def add_production_routes(
             if row is None:
                 continue
             sent = draft.costs.get(archive_id, {})
+            machine = production_form.machine_default(row.seconds, rate)
+            hint = production_form.machine_hint(row, rate)
 
             def value(part: str, shown_value, sent=sent) -> str:
                 if sent.get(part) is not None:
@@ -128,8 +132,9 @@ def add_production_routes(
                     "row": row,
                     "material": value("material", row.material_value),
                     "electricity": value("electricity", row.electricity_value),
-                    "wear": value("wear", row.wear_value),
-                    "missing": None in (row.material_value, row.electricity_value, row.wear_value),
+                    "machine": value("machine", machine),
+                    "missing": None in (row.material_value, row.electricity_value),
+                    "machine_hint": None if machine is not None else hint,
                 }
             )
         with new_session() as db:

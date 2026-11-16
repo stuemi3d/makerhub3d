@@ -19,7 +19,7 @@ from app.production import LaborInput, PrintInput, ResultInput
 
 MAX_PRINTS = 100
 MAX_NOTE = 500
-COST_PARTS = ("material", "electricity", "wear")
+COST_PARTS = ("material", "electricity", "machine")
 _DECIMAL = re.compile(r"\d{1,9}(?:[.,]\d{1,4})?")
 _LABOR = re.compile(r"\d{1,6}(?:[.,]\d{1,4})?")
 _WHOLE = re.compile(r"\d{1,9}")
@@ -49,6 +49,28 @@ def money_text(value: Decimal, language: str) -> str:
     while text.endswith("0") and len(text.rsplit(".", 1)[1]) > 2:
         text = text[:-1]
     return text.replace(".", ",") if language == "de" else text
+
+
+def machine_default(seconds: int | None, rate: Decimal) -> Decimal | None:
+    """Print hours x hourly machine rate, to 4 decimals; None when there is no duration or the
+    rate is 0 (then the field stays empty and counts as 0)."""
+    if seconds is None or rate <= 0:
+        return None
+    return (Decimal(seconds) / 3600 * rate).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
+
+
+def machine_rate(db: Session) -> Decimal:
+    settings = db.get(AppSettings, 1)
+    return settings.machine_rate if settings else Decimal(0)
+
+
+def machine_hint(row: PrintRow, rate: Decimal) -> str | None:
+    """The translation key of why the machine field is empty, or None."""
+    if row.seconds is None:
+        return "production.machine_missing.duration"
+    if rate <= 0:
+        return "production.machine_missing.rate"
+    return None
 
 
 @dataclass
@@ -110,14 +132,14 @@ class Checked:
     labor: LaborInput | None = None
 
 
-def _cost(draft: Draft, row: PrintRow, part: str, errors: dict[str, str]) -> Decimal:
+def _cost(draft: Draft, row: PrintRow, part: str, errors: dict[str, str], rate: Decimal) -> Decimal:
     sent = draft.costs.get(row.archive_id, {}).get(part)
     if sent is None:
         # Not sent (first visit or a missing field): what Bambuddy says, empty = 0
         shown = {
             "material": row.material_value,
             "electricity": row.electricity_value,
-            "wear": row.wear_value,
+            "machine": machine_default(row.seconds, rate),
         }[part]
         return (shown or Decimal(0)).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
     if not sent.strip():
@@ -133,6 +155,7 @@ def check(db: Session, draft: Draft, found: dict[int, PrintRow], today: date) ->
     """Checks what the form can say by itself. `found` are the prints Bambuddy knows."""
     checked = Checked()
     errors = checked.errors
+    rate = machine_rate(db)
 
     if not draft.ids:
         errors["prints"] = "production.error.no_print"
@@ -142,11 +165,11 @@ def check(db: Session, draft: Draft, found: dict[int, PrintRow], today: date) ->
             errors["prints"] = "production.error.print_unusable"
             continue
         cost_errors: dict[str, str] = {}
-        material = _cost(draft, row, "material", cost_errors)
-        electricity = _cost(draft, row, "electricity", cost_errors)
-        wear = _cost(draft, row, "wear", cost_errors)
+        material = _cost(draft, row, "material", cost_errors, rate)
+        electricity = _cost(draft, row, "electricity", cost_errors, rate)
+        machine = _cost(draft, row, "machine", cost_errors, rate)
         errors.update(cost_errors)
-        checked.prints.append(PrintInput(archive_id, material, electricity, wear, row.failed))
+        checked.prints.append(PrintInput(archive_id, material, electricity, machine, row.failed))
 
     article = db.get(Article, int(draft.article)) if _WHOLE.fullmatch(draft.article) else None
     if article is None or not article.active:

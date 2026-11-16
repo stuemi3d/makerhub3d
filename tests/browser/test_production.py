@@ -27,7 +27,6 @@ PRINTS = [
         "print_time_seconds": 3900,
         "actual_time_seconds": 3900,
         "energy_cost": 0.01,
-        "wear_cost": 0.25,
         "cost": 0.5,
         "created_at": "2026-11-15T08:00:00",
     },
@@ -42,7 +41,6 @@ PRINTS = [
         "print_time_seconds": 600,
         "actual_time_seconds": None,
         "energy_cost": None,
-        "wear_cost": None,
         "cost": None,
         "created_at": "2026-11-14T08:00:00",
     },
@@ -327,5 +325,39 @@ def test_the_labour_fields_fit_and_the_preview_adds_labour_costs(
     expect(popup.locator(".preview-total")).to_contain_text(t("production.preview.labor"))
     expect(popup.locator(".preview-total")).to_contain_text("30")
     expect(popup.locator("#labor_minutes")).to_have_value("60")
+    assert admin_page.evaluate(SCROLLERS) == 0
+    assert fits_screen_width(admin_page)
+
+
+def test_the_machine_field_uses_the_rate_from_the_settings(
+    admin_page: Page, fake_bambuddy: str, viewport_name: str
+) -> None:
+    """Issue #135, case 10: rate in the settings, prefilled machine costs (1 h 5 min x 12 EUR
+    = 13 EUR), hint when the rate is 0, and nothing scrolls sideways."""
+    connect(admin_page, fake_bambuddy)
+    # The database is shared by both screen sizes: start from rate 0
+    admin_page.goto("/settings")
+    admin_page.fill("#machine_rate", "0")
+    admin_page.locator("main form[action='/settings'] button[type=submit]").click()
+    expect(admin_page.locator("#machine_rate")).to_have_value("0")
+    admin_page.goto("/production")
+    admin_page.locator("input[name=prints]").first.check()
+    admin_page.get_by_role("button", name=t("production.create"), exact=True).click()
+    popup = admin_page.locator("#popup")
+    expect(popup.locator("input[name=cost_machine_3]")).to_have_value("")
+    expect(popup).to_contain_text(t("production.machine_missing.rate"))
+
+    admin_page.goto("/settings")
+    admin_page.fill("#machine_rate", "12")
+    admin_page.locator("main form[action='/settings'] button[type=submit]").click()
+    expect(admin_page.locator("#machine_rate")).to_have_value("12")
+    assert fits_screen_width(admin_page)
+
+    admin_page.goto("/production")
+    admin_page.locator("input[name=prints]").first.check()
+    admin_page.get_by_role("button", name=t("production.create"), exact=True).click()
+    popup = admin_page.locator("#popup")
+    expect(popup.locator("input[name=cost_machine_3]")).to_have_value("13")
+    expect(popup).to_contain_text("1 h 5 min")
     assert admin_page.evaluate(SCROLLERS) == 0
     assert fits_screen_width(admin_page)
