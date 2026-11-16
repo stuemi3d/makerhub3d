@@ -57,9 +57,7 @@ Die App hat einen festen Stil. Neue Funktionen sollen sich **überall gleich** a
 2. **Anlegen, Bearbeiten und Löschen sind Pop-ups im selben Stil** (technisch: `popup_attrs`, `_popup_layout.html`; nach dem Speichern wird die Liste aktualisiert). Das Löschen ist ein Pop-up mit Name, Rückfrage, Schaltfläche „Endgültig löschen“ und „Abbrechen“; beim endgültigen Löschen eines Artikels kommt wie im Plan das Abtippen der Artikelnummer dazu. **Nie** Browser-Dialoge (`window.confirm`, `alert`, `data-confirm`): Sie sehen fremd aus, und eingebettet in Bambuddy blockiert der Browser sie still, dann passiert beim Klick nichts.
 3. **Übersichten sind Tabellen** mit dem gemeinsamen Baustein (`_data_table.html`): sortierbare Spaltenköpfe, Chips für Status, Aktionen als **Symbol-Buttons in der Spalte ganz rechts** (`icon_link`, `icon_post`), keine Text-Buttons in Zeilen. Die Aktionsspalte steht in jeder Tabelle an derselben Stelle.
 4. Serverseitige Prüfungen bleiben immer bestehen; die Oberfläche blendet nur aus, was nicht erlaubt ist.
-5. **Bekannte Abweichungen** vom Soll (werden in eigenen Aufgaben angeglichen, nicht als Vorbild nehmen):
-   - Noch eine eigene Seite statt Pop-up: „Benutzer bearbeiten“.
-   - Noch nicht der gemeinsame Tabellen-Baustein oder noch Text-Buttons: Attribute („Wert hinzufügen“) und die Tabelle in „Varianten anlegen“.
+5. **Bekannte Abweichungen** vom Soll: derzeit keine. Entdeckst du eine, nimm sie hier auf und gleiche sie in einer eigenen Aufgabe an.
 
 ## Browser-Tests (Playwright)
 

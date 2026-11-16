@@ -161,10 +161,10 @@ def test_without_the_pop_up_saving_still_redirects(client: AppClient) -> None:
 # --- Case 7: attributes are cards, adding a value works as before ------------------------------
 
 
-def test_attributes_are_cards_and_a_value_can_be_added(client: AppClient) -> None:
+def test_attributes_are_a_table_and_a_value_can_be_added(client: AppClient) -> None:
     make_attribute(client)
     html = client.get("/attributes").text
-    assert 'class="detail-card"' in html and "rot" in html
+    assert 'class="data-table"' in html and "rot" in html
 
     client.post(
         f"/attributes/{attributes()[0].id}/values", data={"value": "grün", "abbreviation": "gr"}

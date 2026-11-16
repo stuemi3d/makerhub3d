@@ -33,7 +33,7 @@ def test_attribute_and_template_pages_work_on_every_screen(
     admin_page.fill("#values", "rot = rt\nblau = bl")
     dialog.locator(f"button[type=submit]:has-text('{t('article.create')}')").click()
     expect(dialog).not_to_be_visible()
-    expect(admin_page.get_by_text(attribute)).to_be_visible()
+    expect(admin_page.get_by_role("cell", name=attribute, exact=True)).to_be_visible()
     expect(admin_page.get_by_text("rot (rt), blau (bl)").first).to_be_visible()
     assert fits_screen_width(admin_page)
 

@@ -425,8 +425,7 @@ def test_forms_have_the_new_fields(client: AppClient) -> None:
     attribute_id = attributes()[0].id
 
     assert 'name="number"' in client.get("/templates/new").text
-    assert 'name="abbreviation"' in client.get("/attributes").text
-    assert f'id="abbreviation-{attribute_id}"' in client.get("/attributes").text
+    assert 'name="abbreviation"' in client.get(f"/attributes/{attribute_id}/values/new").text
 
 
 def test_employee_can_add_numbers(client: AppClient, employee: AppClient) -> None:

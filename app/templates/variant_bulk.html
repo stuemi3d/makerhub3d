@@ -1,4 +1,5 @@
 {% extends "_popup_layout.html" if popup else "base.html" %}
+{% from "_data_table.html" import head with context %}
 {% block title %}{{ t('variant.bulk.title') }} – {{ app_name }}{% endblock %}
 {% block content %}
 {% if not popup %}
@@ -20,12 +21,13 @@
 {% set action = '/templates/' ~ tpl.id ~ '/variants/all' %}
 <form method="post" action="{{ action }}" novalidate{% if popup %} hx-post="{{ action }}" hx-target="#popup-body" hx-swap="innerHTML"{% endif %}>
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <article class="data-card">
   <div class="data-scroll">
   <table class="data-table">
     <thead>
       <tr>
-        {% for f in attr_fields %}<th scope="col">{{ f.name }}</th>{% endfor %}
-        <th scope="col">{{ t('article.field.number') }}</th>
+        {% for f in attr_fields %}{{ head(f.name) }}{% endfor %}
+        {{ head(t('article.field.number')) }}
       </tr>
     </thead>
     <tbody>
@@ -47,6 +49,7 @@
     </tbody>
   </table>
   </div>
+  </article>
   <p><small>{{ t('variant.bulk.hint').format(count=new_count) }}</small></p>
   {% if not new_count %}
   <p role="status">{{ t('variant.bulk.nothing_new') }}</p>

@@ -1,80 +1,50 @@
-{% extends "base.html" %}
-{% from "_form_macros.html" import field_attrs, feedback, popup_attrs %}
+{% extends "_popup_layout.html" if popup else "base.html" %}
+{% from "_form_macros.html" import field_attrs, feedback %}
 {% block title %}{{ target.username }} – {{ app_name }}{% endblock %}
 {% block content %}
+{% if not popup %}
 {% set settings_tab = 'users' %}
 {% include "_settings_tabs.html" %}
-<h1>{{ target.username }}</h1>
-{% if saved %}
-<p role="status"><ins>{{ t('user.saved') }}</ins></p>
 {% endif %}
-{% if password_reset %}
-<p role="status"><ins>{{ t('user.reset.done') }}</ins></p>
-{% endif %}
-{% if tfa_reset %}
-<p role="status"><ins>{{ t('user.two_factor.reset.done') }}</ins></p>
-{% endif %}
+{% set action = '/settings/users/' ~ target.id %}
+<h1{% if popup %} id="popup-title"{% endif %}>{{ target.username }}</h1>
+<p><small>{{ t('user.edit.title') }}</small></p>
 {% if errors.get('form') %}
 <p role="alert"><mark>{{ t(errors['form']) }}</mark></p>
 {% elif errors %}
 <p role="alert"><mark>{{ t('user.has_errors') }}</mark></p>
 {% endif %}
-
-<article class="detail-card">
-  <h2 class="card-title">{{ t('user.edit.title') }}</h2>
-  {% if is_self %}
-  <p>{{ t('role.' ~ target.role) }} · {{ t('user.status.active') }}</p>
-  <p><small>{{ t('user.hint.self') }}</small></p>
-  {% else %}
-  <form method="post" action="/settings/users/{{ target.id }}" novalidate>
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <label for="role">{{ t('user.field.role') }}</label>
-    <select {{ field_attrs('role', errors) }}>
-      {% for role in roles %}
-      <option value="{{ role }}"{% if values.get('role') == role %} selected{% endif %}>{{ t('role.' ~ role) }}</option>
-      {% endfor %}
-    </select>
-    {{ feedback('role', errors, t, 'user.hint.') }}
-    <label for="active">{{ t('user.field.active') }}</label>
-    <select {{ field_attrs('active', errors) }}>
-      {% for choice in ['1', '0'] %}
-      <option value="{{ choice }}"{% if values.get('active') == choice %} selected{% endif %}>{{ t('user.active.' ~ choice) }}</option>
-      {% endfor %}
-    </select>
-    {{ feedback('active', errors, t, 'user.hint.') }}
-    {% if target.locked_minutes %}
-    <p><small>{{ t('user.status.locked').format(minutes=target.locked_minutes) }}</small></p>
-    {% endif %}
+{% if is_self %}
+<p>{{ t('role.' ~ target.role) }} · {{ t('user.status.active') }}</p>
+<p><small>{{ t('user.hint.self') }}</small></p>
+<p><small>{{ t('user.two_factor.self') }}</small></p>
+{% if popup %}<div class="form-actions"><button type="button" class="secondary outline" data-popup-close>{{ t('article.cancel') }}</button></div>
+{% else %}<p><a href="/settings/users">{{ t('users.back') }}</a></p>{% endif %}
+{% else %}
+<form method="post" action="{{ action }}" novalidate{% if popup %} hx-post="{{ action }}" hx-target="#popup-body" hx-swap="innerHTML"{% endif %}>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label for="role">{{ t('user.field.role') }}</label>
+  <select {{ field_attrs('role', errors) }}{% if popup %} autofocus{% endif %}>
+    {% for role in roles %}
+    <option value="{{ role }}"{% if values.get('role') == role %} selected{% endif %}>{{ t('role.' ~ role) }}</option>
+    {% endfor %}
+  </select>
+  {{ feedback('role', errors, t, 'user.hint.') }}
+  <label for="active">{{ t('user.field.active') }}</label>
+  <select {{ field_attrs('active', errors) }}>
+    {% for choice in ['1', '0'] %}
+    <option value="{{ choice }}"{% if values.get('active') == choice %} selected{% endif %}>{{ t('user.active.' ~ choice) }}</option>
+    {% endfor %}
+  </select>
+  {{ feedback('active', errors, t, 'user.hint.') }}
+  {% if target.locked_minutes %}
+  <p><small>{{ t('user.status.locked').format(minutes=target.locked_minutes) }}</small></p>
+  {% endif %}
+  <div class="form-actions">
     <button type="submit">{{ t('user.save') }}</button>
-  </form>
-  {% endif %}
-</article>
-
-{% if not is_self %}
-<article class="detail-card">
-  <h2 class="card-title">{{ t('user.reset.title') }}</h2>
-  <p>{{ t('user.reset.intro') }}</p>
-  <form method="post" action="/settings/users/{{ target.id }}/password" novalidate>
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <label for="password">{{ t('user.field.new_password') }}</label>
-    <input type="password" autocomplete="new-password" {{ field_attrs('password', errors) }}>
-    {{ feedback('password', errors, t, 'user.hint.') }}
-    <label for="password_repeat">{{ t('user.field.password_repeat') }}</label>
-    <input type="password" autocomplete="new-password" {{ field_attrs('password_repeat', errors) }}>
-    {{ feedback('password_repeat', errors, t, 'user.hint.') }}
-    <button type="submit" class="secondary">{{ t('user.reset.submit') }}</button>
-  </form>
-</article>
+    {% if popup %}<button type="button" class="secondary outline" data-popup-close>{{ t('article.cancel') }}</button>
+    {% else %}<a href="/settings/users" role="button" class="secondary outline">{{ t('article.cancel') }}</a>{% endif %}
+  </div>
+</form>
 {% endif %}
-<article class="detail-card">
-  <h2 class="card-title">{{ t('user.two_factor.title') }}</h2>
-  <p>{{ t('user.two_factor.status.on' if target.two_factor else 'user.two_factor.status.off') }}</p>
-  {% if is_self %}
-  <p><small>{{ t('user.two_factor.self') }}</small></p>
-  {% elif target.two_factor %}
-  <p>{{ t('user.two_factor.reset.intro') }}</p>
-  <a {{ popup_attrs('/settings/users/' ~ target.id ~ '/2fa-reset') }} role="button" class="secondary">{{ t('user.two_factor.reset.submit') }}</a>
-  {% endif %}
-</article>
-<p><a href="/settings/users">{{ t('users.back') }}</a></p>
 {% endblock %}
