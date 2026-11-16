@@ -12,6 +12,7 @@ import sys
 import time
 import urllib.request
 from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -89,10 +90,12 @@ def _wait_until_ready(url: str, process: subprocess.Popen, log_file: Path) -> No
     pytest.fail(f"Test app did not start:\n{log_file.read_text(encoding='utf-8')}")
 
 
-@pytest.fixture(scope="session")
-def live_server(tmp_path_factory: pytest.TempPathFactory) -> Iterator[LiveServer]:
+@contextmanager
+def _run_app(
+    tmp_path_factory: pytest.TempPathFactory, name: str, extra_env: dict[str, str] | None = None
+) -> Iterator[LiveServer]:
     """The app as a separate process on a free local port, with one admin in a temp folder."""
-    data_dir = tmp_path_factory.mktemp("browser-app") / "data"
+    data_dir = tmp_path_factory.mktemp(name) / "data"
     data_dir.mkdir()
     _create_admin(data_dir)
     port = _free_port()
@@ -103,6 +106,7 @@ def live_server(tmp_path_factory: pytest.TempPathFactory) -> Iterator[LiveServer
         MAKERHUB_DATA_DIR=str(data_dir),
         MAKERHUB_INSECURE_COOKIES="true",
         MAKERHUB_2FA_KEY=TWO_FACTOR_KEY,
+        **(extra_env or {}),
     )
     log_file = data_dir.parent / "app.log"
     with log_file.open("w", encoding="utf-8") as log:
@@ -122,6 +126,12 @@ def live_server(tmp_path_factory: pytest.TempPathFactory) -> Iterator[LiveServer
                 process.wait(timeout=10)
             except subprocess.TimeoutExpired:
                 process.kill()
+
+
+@pytest.fixture(scope="session")
+def live_server(tmp_path_factory: pytest.TempPathFactory) -> Iterator[LiveServer]:
+    with _run_app(tmp_path_factory, "browser-app") as server:
+        yield server
 
 
 @pytest.fixture(params=list(VIEWPORTS))
@@ -151,6 +161,9 @@ def browser_type_launch_args(browser_type_launch_args: dict) -> dict:
         f"--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE {HOST}",
         f"--proxy-server={HOST}:9",
         f"--proxy-bypass-list={HOST}",
+        # The embedding tests (issue #152) show the app in a frame of another local address;
+        # Chromium's check between two local addresses would block that. Still only 127.0.0.1.
+        "--disable-features=LocalNetworkAccessChecks,BlockInsecurePrivateNetworkRequests",
     ]
     return {**browser_type_launch_args, "args": args}
 
