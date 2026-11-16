@@ -299,6 +299,19 @@ def add_device_routes(
             db.delete(device)
             audit.record_change(db, actor_id, "device.deleted", device.name)
 
+    @app.get(
+        f"{LIST_ADDRESS}/{{device_id}}/delete", response_class=HTMLResponse, dependencies=manage
+    )
+    def delete_device_page(request: Request, device_id: int) -> HTMLResponse:
+        with new_session() as db:
+            device = loaded(db, device_id)
+            if device_usage.is_in_use(db, device_id):
+                raise HTTPException(status_code=409)
+            name = device.name
+        return render(
+            request, "device_delete.html", "nav.settings", device_id=device_id, device_name=name
+        )
+
     @app.post(f"{LIST_ADDRESS}/{{device_id}}/delete", dependencies=manage)
     async def delete_device(request: Request, device_id: int) -> Response:
         await read_form(request, ())

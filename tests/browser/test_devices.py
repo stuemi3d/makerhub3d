@@ -58,7 +58,7 @@ def test_devices_are_created_in_popups_on_every_screen(
 
 
 def test_a_device_is_deleted_after_asking(admin_page: Page, viewport_name: str) -> None:
-    """Issue #163: the delete button asks first; the device is gone after OK."""
+    """Issue #163: the delete link opens a question page; the device is gone after confirming."""
     dryer = f"Löschtrockner {viewport_name}"
     admin_page.goto("/settings/devices")
     admin_page.get_by_role("button", name=t("device.new.dryer"), exact=True).click()
@@ -71,16 +71,17 @@ def test_a_device_is_deleted_after_asking(admin_page: Page, viewport_name: str) 
     expect(dialog).not_to_be_visible()
     assert fits_screen_width(admin_page)
 
-    # Cancelling the question keeps the device.
-    questions: list[str] = []
-    admin_page.once(
-        "dialog", lambda question: (questions.append(question.message), question.dismiss())
-    )
+    # The question is a page of its own like for articles, not a browser dialog (those are
+    # blocked in an iframe and look foreign). Cancelling keeps the device.
     row_of(admin_page, dryer).get_by_role("button", name=t("device.delete")).click()
-    assert questions == [t("device.delete.confirm")]
+    expect(admin_page.locator("h1")).to_have_text(t("device.delete.title"))
+    expect(admin_page.locator("main")).to_contain_text(dryer)
+    assert fits_screen_width(admin_page)
+    admin_page.get_by_role("link", name=t("article.cancel")).click()
     expect(row_of(admin_page, dryer)).to_be_visible()
 
-    admin_page.once("dialog", lambda question: question.accept())
     row_of(admin_page, dryer).get_by_role("button", name=t("device.delete")).click()
+    admin_page.get_by_role("button", name=t("device.delete.button")).click()
+    expect(admin_page.locator("h1")).to_have_text(t("device.title"))
     expect(row_of(admin_page, dryer)).to_have_count(0)
     assert fits_screen_width(admin_page)

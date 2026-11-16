@@ -301,10 +301,34 @@ def test_deleting_needs_the_form_token(client: AppClient) -> None:
     assert len(stored_devices()) == 1
 
 
-def test_the_delete_button_asks_first(client: AppClient) -> None:
+def test_delete_asks_on_its_own_page_not_in_a_browser_dialog(client: AppClient) -> None:
+    # A browser dialog is blocked silently when the app is embedded in Bambuddy (iframe),
+    # so the question is a page of its own in the style of the article deletion.
     add(client, printer_form())
+    device = stored_devices()[0]
+    address = f"/settings/devices/{device.id}/delete"
 
-    assert "data-confirm=" in client.get("/settings/devices").text
+    assert "data-confirm" not in client.get("/settings/devices").text
+    assert f'href="{address}"' in client.get("/settings/devices").text
+    page = client.get(address).text
+    assert "Drucker A" in page
+    assert 'aria-label="breadcrumb"' in page
+    assert f'action="{address}"' in page
+    assert len(stored_devices()) == 1
+
+
+def test_the_question_page_is_refused_for_a_device_in_use_and_for_others(
+    client: AppClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    add(client, printer_form())
+    address = f"/settings/devices/{stored_devices()[0].id}/delete"
+    add_user(EMPLOYEE_NAME, "employee")
+    with client_as(EMPLOYEE_NAME) as other:
+        assert other.get(address).status_code == 403
+    monkeypatch.setattr(device_usage, "is_in_use", lambda db, device_id: True)
+
+    assert client.get(address).status_code == 409
+    assert client.get("/settings/devices/999/delete").status_code == 404
 
 
 # --- Migration (case 12) -----------------------------------------------------------------------

@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}{{ t('device.delete.title') }} – {{ app_name }}{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb">
+  <ul>
+    <li><a href="/settings">{{ t('nav.settings') }}</a></li>
+    <li><a href="/settings/devices">{{ t('device.title') }}</a></li>
+    <li>{{ t('device.delete.title') }}</li>
+  </ul>
+</nav>
+<h1>{{ t('device.delete.title') }}</h1>
+<p><strong>{{ device_name }}</strong></p>
+<article class="detail-card">
+  <p>{{ t('device.delete.confirm') }}</p>
+</article>
+<form method="post" action="/settings/devices/{{ device_id }}/delete">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <button type="submit" class="secondary">{{ t('device.delete.button') }}</button>
+</form>
+<p><a href="/settings/devices">{{ t('article.cancel') }}</a></p>
+{% endblock %}
