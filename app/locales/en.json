@@ -617,7 +617,7 @@
   "production.detail.totals": "Total",
   "settings.tab.devices": "Devices",
   "device.title": "Devices",
-  "device.intro": "Printers and dryers with their hourly rates. A printer's rate comes from purchase price, useful life and print hours per year; the dryers are spread over all print hours as one shared surcharge. Electricity is not included. Devices are never deleted, only deactivated.",
+  "device.intro": "Printers and dryers with their hourly rates. A printer's rate comes from purchase price, useful life and print hours per year; the dryers are spread over all print hours as one shared surcharge. Electricity is not included. A printer can be taken over from Bambuddy. A device can be deleted as long as no production hangs on it; otherwise it can only be deactivated.",
   "device.new.printer": "Add printer",
   "device.new.dryer": "Add dryer",
   "device.section.printers": "Printers",
@@ -657,5 +657,13 @@
   "log.action.device.created": "Device created",
   "log.action.device.updated": "Device changed",
   "log.action.device.deactivated": "Device deactivated",
-  "log.action.device.activated": "Device activated"
+  "log.action.device.activated": "Device activated",
+  "log.action.device.deleted": "Device deleted",
+  "device.delete": "Delete",
+  "device.delete.confirm": "Really delete this device? This cannot be undone.",
+  "device.import.hint": "The name comes from Bambuddy. Then you add the values for the hourly rate.",
+  "device.import.manual": "Create by hand",
+  "device.import.not_set_up": "Bambuddy is not set up yet. The printer is created by hand.",
+  "device.import.locked": "The name comes from Bambuddy and cannot be changed here.",
+  "device.error.bambuddy_id": "This printer is no longer in Bambuddy or has already been taken over."
 }

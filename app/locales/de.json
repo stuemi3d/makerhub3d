@@ -617,7 +617,7 @@
   "production.detail.totals": "Summe",
   "settings.tab.devices": "Geräte",
   "device.title": "Geräte",
-  "device.intro": "Drucker und Trockner mit ihren Stundensätzen. Der Stundensatz eines Druckers kommt aus Anschaffung, Nutzungsdauer und Druckstunden pro Jahr; die Trockner werden als gemeinsamer Aufschlag auf alle Druckstunden verteilt. Strom ist nicht enthalten. Geräte werden nie gelöscht, nur deaktiviert.",
+  "device.intro": "Drucker und Trockner mit ihren Stundensätzen. Der Stundensatz eines Druckers kommt aus Anschaffung, Nutzungsdauer und Druckstunden pro Jahr; die Trockner werden als gemeinsamer Aufschlag auf alle Druckstunden verteilt. Strom ist nicht enthalten. Ein Drucker aus Bambuddy kann übernommen werden. Ein Gerät lässt sich löschen, solange keine Produktion daran hängt; sonst bleibt nur Deaktivieren.",
   "device.new.printer": "Drucker hinzufügen",
   "device.new.dryer": "Trockner hinzufügen",
   "device.section.printers": "Drucker",
@@ -657,5 +657,13 @@
   "log.action.device.created": "Gerät angelegt",
   "log.action.device.updated": "Gerät geändert",
   "log.action.device.deactivated": "Gerät deaktiviert",
-  "log.action.device.activated": "Gerät aktiviert"
+  "log.action.device.activated": "Gerät aktiviert",
+  "log.action.device.deleted": "Gerät gelöscht",
+  "device.delete": "Löschen",
+  "device.delete.confirm": "Dieses Gerät wirklich löschen? Das lässt sich nicht rückgängig machen.",
+  "device.import.hint": "Der Name kommt aus Bambuddy. Danach ergänzt du die Werte für den Stundensatz.",
+  "device.import.manual": "Von Hand anlegen",
+  "device.import.not_set_up": "Bambuddy ist noch nicht eingerichtet. Der Drucker wird von Hand angelegt.",
+  "device.import.locked": "Der Name kommt aus Bambuddy und lässt sich hier nicht ändern.",
+  "device.error.bambuddy_id": "Dieser Drucker ist in Bambuddy nicht (mehr) vorhanden oder schon übernommen."
 }

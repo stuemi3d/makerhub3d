@@ -802,3 +802,17 @@ main .detail-card:not(.auth-box) > form [type="submit"] {
   margin-right: 0.25rem;
   vertical-align: -0.15rem;
 }
+
+/* Choice of a Bambuddy printer in the device pop-up */
+.choice-list {
+  list-style: none;
+  padding: 0;
+}
+.choice-list li {
+  padding: 0;
+  margin-bottom: 0.5rem;
+}
+.choice-list [role="button"] {
+  width: 100%;
+  text-align: left;
+}

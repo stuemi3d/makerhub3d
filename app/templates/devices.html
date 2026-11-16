@@ -9,6 +9,14 @@
   <button type="submit" class="secondary outline">{{ t('device.deactivate' if d.active else 'device.activate') }}</button>
 </form>
 {% endmacro %}
+{% macro remove(d) %}
+{% if d.deletable %}
+<form class="icon-form" method="post" action="/settings/devices/{{ d.id }}/delete" data-confirm="{{ t('device.delete.confirm') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <button type="submit" class="secondary outline">{{ t('device.delete') }}</button>
+</form>
+{% endif %}
+{% endmacro %}
 {% macro status(d) %}{{ chip(t('device.status.active' if d.active else 'device.status.inactive'), 'active' if d.active else 'inactive') }}{% endmacro %}
 {% block content %}
 {% set settings_tab = 'devices' %}
@@ -54,7 +62,7 @@
       <td class="num">{{ d.maintenance_pct }}</td>
       <td>{{ d.bought_on }}</td>
       <td class="cell-status">{{ status(d) }}</td>
-      <td class="row-actions">{{ icon_link('/settings/devices/' ~ d.id ~ '/edit', 'edit', true, d.name) }} {{ toggle(d) }}</td>
+      <td class="row-actions">{{ icon_link('/settings/devices/' ~ d.id ~ '/edit', 'edit', true, d.name) }} {{ toggle(d) }} {{ remove(d) }}</td>
     </tr>
     {% endfor %}
   </tbody>
@@ -93,7 +101,7 @@
       <td class="num">{{ d.maintenance_pct }}</td>
       <td>{{ d.bought_on }}</td>
       <td class="cell-status">{{ status(d) }}</td>
-      <td class="row-actions">{{ icon_link('/settings/devices/' ~ d.id ~ '/edit', 'edit', true, d.name) }} {{ toggle(d) }}</td>
+      <td class="row-actions">{{ icon_link('/settings/devices/' ~ d.id ~ '/edit', 'edit', true, d.name) }} {{ toggle(d) }} {{ remove(d) }}</td>
     </tr>
     {% endfor %}
   </tbody>

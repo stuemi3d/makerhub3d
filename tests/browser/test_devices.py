@@ -55,3 +55,32 @@ def test_devices_are_created_in_popups_on_every_screen(
     row_of(admin_page, dryer).get_by_role("button", name=t("device.deactivate")).click()
     expect(row_of(admin_page, dryer)).to_contain_text(t("device.status.inactive"))
     assert fits_screen_width(admin_page)
+
+
+def test_a_device_is_deleted_after_asking(admin_page: Page, viewport_name: str) -> None:
+    """Issue #163: the delete button asks first; the device is gone after OK."""
+    dryer = f"Löschtrockner {viewport_name}"
+    admin_page.goto("/settings/devices")
+    admin_page.get_by_role("button", name=t("device.new.dryer"), exact=True).click()
+    dialog = admin_page.locator("dialog#popup")
+    dialog.locator("#name").fill(dryer)
+    dialog.locator("#bought_on").fill("2025-12-17")
+    dialog.locator("#price").fill("100")
+    dialog.locator("#years").fill("5")
+    dialog.locator("button[type=submit]").click()
+    expect(dialog).not_to_be_visible()
+    assert fits_screen_width(admin_page)
+
+    # Cancelling the question keeps the device.
+    questions: list[str] = []
+    admin_page.once(
+        "dialog", lambda question: (questions.append(question.message), question.dismiss())
+    )
+    row_of(admin_page, dryer).get_by_role("button", name=t("device.delete")).click()
+    assert questions == [t("device.delete.confirm")]
+    expect(row_of(admin_page, dryer)).to_be_visible()
+
+    admin_page.once("dialog", lambda question: question.accept())
+    row_of(admin_page, dryer).get_by_role("button", name=t("device.delete")).click()
+    expect(row_of(admin_page, dryer)).to_have_count(0)
+    assert fits_screen_width(admin_page)
