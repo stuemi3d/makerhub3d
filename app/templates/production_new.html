@@ -75,6 +75,11 @@
         <input type="text" inputmode="numeric" autocomplete="off" name="quantity" id="quantity" value="{{ draft.quantity }}">
         {{ err('quantity') }}
       </div>
+      <div>
+        <label for="failed_pieces">{{ t('production.field.failed_pieces') }}</label>
+        <input type="text" inputmode="numeric" autocomplete="off" name="failed_pieces" id="failed_pieces" value="{{ draft.failed_pieces }}">
+        {{ err('failed_pieces') }}
+      </div>
       {% if preview %}
       <div>
         <span class="field-label">{{ t('production.col.per_piece') }}</span>

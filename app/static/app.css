@@ -795,3 +795,10 @@ main .detail-card:not(.auth-box) > form [type="submit"] {
 .print-block.print-failed {
   color: var(--mh-danger-text);
 }
+
+/* Small colour swatch for the filament of a print; the colour comes from a validated code,
+   never from free text */
+.color-dot {
+  margin-right: 0.25rem;
+  vertical-align: -0.15rem;
+}

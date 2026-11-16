@@ -15,7 +15,7 @@ from starlette.datastructures import FormData
 
 from app.models import AppSettings, Article
 from app.print_list import PrintRow
-from app.production import LaborInput, PrintInput, ResultInput
+from app.production import MAX_PIECES, LaborInput, PrintInput, ResultInput
 
 MAX_PRINTS = 100
 MAX_NOTE = 500
@@ -88,6 +88,8 @@ class Draft:
     # Labour: None when the form did not send it (then no time and the rate of the settings)
     labor_minutes: str | None = None
     labor_rate: str | None = None
+    # Failed pieces (issue #148); empty = none
+    failed_pieces: str = ""
     action: str = "preview"
 
 
@@ -116,6 +118,7 @@ def read(form: FormData | None, ids: list[str] | None = None) -> Draft:
     draft.quantity = (text("quantity") or "").strip()
     draft.date = (text("date") or "").strip()
     draft.note = (text("note") or "").strip()
+    draft.failed_pieces = (text("failed_pieces") or "").strip()
     action = text("action")
     draft.labor_minutes = (text("labor_minutes") or "").strip() if "labor_minutes" in form else None
     draft.labor_rate = (text("labor_rate") or "").strip() if "labor_rate" in form else None
@@ -130,6 +133,7 @@ class Checked:
     result: ResultInput | None = None
     booked_on: date | None = None
     labor: LaborInput | None = None
+    failed_pieces: int = 0
 
 
 def _cost(draft: Draft, row: PrintRow, part: str, errors: dict[str, str], rate: Decimal) -> Decimal:
@@ -169,7 +173,20 @@ def check(db: Session, draft: Draft, found: dict[int, PrintRow], today: date) ->
         electricity = _cost(draft, row, "electricity", cost_errors, rate)
         machine = _cost(draft, row, "machine", cost_errors, rate)
         errors.update(cost_errors)
-        checked.prints.append(PrintInput(archive_id, material, electricity, machine, row.failed))
+        checked.prints.append(
+            PrintInput(
+                archive_id,
+                material,
+                electricity,
+                machine,
+                row.failed,
+                seconds=row.seconds,
+                grams=row.grams,
+                kwh=row.kwh,
+                filament_type=row.filament_type,
+                filament_color=row.filament_color,
+            )
+        )
 
     article = db.get(Article, int(draft.article)) if _WHOLE.fullmatch(draft.article) else None
     if article is None or not article.active:
@@ -177,6 +194,12 @@ def check(db: Session, draft: Draft, found: dict[int, PrintRow], today: date) ->
     quantity = int(draft.quantity) if _WHOLE.fullmatch(draft.quantity) else 0
     if quantity <= 0:
         errors["quantity"] = "production.error.quantity"
+    if not draft.failed_pieces:
+        checked.failed_pieces = 0
+    elif _WHOLE.fullmatch(draft.failed_pieces) and int(draft.failed_pieces) <= MAX_PIECES:
+        checked.failed_pieces = int(draft.failed_pieces)
+    else:
+        errors["failed_pieces"] = "production.error.failed_pieces"
     if article is not None and "article" not in errors and "quantity" not in errors:
         checked.result = ResultInput(article.id, quantity)
 

@@ -243,6 +243,7 @@ def add_production_routes(
                 checked.prints,
                 checked.result,
                 checked.labor,
+                checked.failed_pieces,
             )
         if production_id is None:
             return form_page(request, draft, prints, 422, errors)

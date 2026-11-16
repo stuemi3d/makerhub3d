@@ -605,5 +605,12 @@
   "production.preview.print": "Print costs",
   "production.preview.labor": "Labour costs",
   "production.detail.labor": "Labour costs",
-  "production.error.labor_number": "Please enter a number (not negative, at most 6 digits before and 4 after the decimal point)."
+  "production.error.labor_number": "Please enter a number (not negative, at most 6 digits before and 4 after the decimal point).",
+  "production.col.grams": "Filament (g)",
+  "production.col.kwh": "Electricity (kWh)",
+  "production.col.filament": "Filament",
+  "production.field.failed_pieces": "Failed pieces (optional)",
+  "production.error.failed_pieces": "Please enter a whole number (from 0 to 1,000,000).",
+  "production.detail.failed_pieces": "Failed pieces",
+  "production.detail.totals": "Total"
 }

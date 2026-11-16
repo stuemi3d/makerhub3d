@@ -605,5 +605,12 @@
   "production.preview.print": "Druckkosten",
   "production.preview.labor": "Arbeitskosten",
   "production.detail.labor": "Arbeitskosten",
-  "production.error.labor_number": "Bitte eine Zahl eingeben (nicht negativ, höchstens 6 Stellen vor und 4 nach dem Komma)."
+  "production.error.labor_number": "Bitte eine Zahl eingeben (nicht negativ, höchstens 6 Stellen vor und 4 nach dem Komma).",
+  "production.col.grams": "Filament (g)",
+  "production.col.kwh": "Strom (kWh)",
+  "production.col.filament": "Filament",
+  "production.field.failed_pieces": "Fehldruck-Stücke (optional)",
+  "production.error.failed_pieces": "Bitte eine ganze Zahl eingeben (von 0 bis 1.000.000).",
+  "production.detail.failed_pieces": "Fehldruck-Stücke",
+  "production.detail.totals": "Summe"
 }

@@ -7,7 +7,7 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app import stock, table_sort
+from app import print_list, production, stock, table_sort
 from app.models import Article, PrintStatus, Production
 from app.production_form import input_text, money_text
 
@@ -66,6 +66,11 @@ def arranged(
     return shown, links
 
 
+def _number(value: Decimal | int | None, language: str) -> str | None:
+    """An amount without trailing zeros, or None when unknown."""
+    return None if value is None else input_text(Decimal(value), language)
+
+
 @dataclass(frozen=True)
 class DetailPrint:
     archive_id: int
@@ -76,6 +81,12 @@ class DetailPrint:
     # Only set for productions booked before issue #135 (wear taken from Bambuddy)
     wear: str | None
     total: str
+    # Amounts as stored (issue #148); None = unknown
+    duration: str | None
+    grams: str | None
+    kwh: str | None
+    filament_type: str | None
+    colors: list[str]
 
 
 @dataclass(frozen=True)
@@ -106,8 +117,18 @@ class Detail:
     # Whether any print has an old wear value (then the column is shown)
     has_wear: bool
     cancelled: bool
+    failed_pieces: int
+    # Sums over the prints that know the value; None when no print does
+    total_duration: str | None
+    total_grams: str | None
+    total_kwh: str | None
     prints: list[DetailPrint]
     results: list[DetailResult]
+
+
+def _sum(values: list[Decimal | int | None]) -> Decimal | int | None:
+    known = [v for v in values if v is not None]
+    return sum(known) if known else None
 
 
 def detail(db: Session, production_id: int, language: str) -> Detail | None:
@@ -129,6 +150,10 @@ def detail(db: Session, production_id: int, language: str) -> Detail | None:
         else None,
         has_wear=any(p.wear_cost > 0 for p in item.prints),
         cancelled=item.cancelled,
+        failed_pieces=item.failed_pieces,
+        total_duration=print_list.format_duration(_sum([p.print_seconds for p in item.prints])),
+        total_grams=_number(_sum([p.filament_grams for p in item.prints]), language),
+        total_kwh=_number(_sum([p.energy_kwh for p in item.prints]), language),
         prints=[
             DetailPrint(
                 archive_id=p.archive_id,
@@ -140,6 +165,11 @@ def detail(db: Session, production_id: int, language: str) -> Detail | None:
                 total=money_text(
                     p.material_cost + p.electricity_cost + p.machine_cost + p.wear_cost, language
                 ),
+                duration=print_list.format_duration(p.print_seconds),
+                grams=_number(p.filament_grams, language),
+                kwh=_number(p.energy_kwh, language),
+                filament_type=production.clean_type(p.filament_type),
+                colors=production.color_list(p.filament_colors),
             )
             for p in item.prints
         ],
