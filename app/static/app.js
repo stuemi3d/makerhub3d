@@ -208,3 +208,78 @@ if (window.htmx) {
   window.addEventListener("pageshow", update);
   update();
 })();
+
+// Embedded in another page (issue #152, e.g. in Bambuddy): the outer address never changes, so a
+// reload of the outer page starts this app on its start page again. Remember the last page for
+// this browser tab only (sessionStorage: gone when the tab or app is closed) and go back to it
+// when the app starts on the dashboard from outside. Nothing is sent to the server. Not embedded,
+// the address in the browser already keeps the page, so nothing happens.
+(() => {
+  const KEY = "makerhub.lastPage";
+  // Set while a return to the remembered page is under way and removed by that page itself. When
+  // it is still set at the next start, that page never showed up (e.g. it was deleted and the
+  // server answered with a bare error): then stay on the dashboard instead of trying it again.
+  const PENDING = "makerhub.returning";
+  let embedded = false;
+  try {
+    embedded = window.self !== window.top;
+  } catch (error) {
+    embedded = true;
+  }
+  if (!embedded) return;
+  const store = (() => {
+    try {
+      return window.sessionStorage;
+    } catch (error) {
+      return null; // storage blocked: simply no remembering
+    }
+  })();
+  if (!store) return;
+
+  // Only a path of this app: starts with one slash, no second slash or backslash, no control
+  // characters, and it stays on this origin when resolved.
+  const isOwnPath = (value) => {
+    if (typeof value !== "string" || !value.startsWith("/") || value.startsWith("//")) return false;
+    if (value.includes("\\") || /[\u0000- \u007f]/.test(value)) return false;
+    try {
+      return new URL(value, window.location.origin).origin === window.location.origin;
+    } catch (error) {
+      return false;
+    }
+  };
+
+  const path = window.location.pathname;
+  const here = path + window.location.search;
+  const entry = performance.getEntriesByType("navigation")[0];
+  const status = entry && entry.responseStatus ? entry.responseStatus : 200;
+  const noPage = ["/login", "/login/code", "/setup", "/logout"];
+
+  // Login pages and error pages are no place to come back to; logging out forgets everything.
+  if (noPage.includes(path) || status >= 400) {
+    store.removeItem(KEY);
+    store.removeItem(PENDING);
+    return;
+  }
+
+  // Started from outside (the referrer is another origin or empty) on the dashboard: return.
+  // Coming from a link of this app (same origin, e.g. the brand link) stays on the dashboard.
+  let fromOutside = true;
+  try {
+    fromOutside = !document.referrer || new URL(document.referrer).origin !== window.location.origin;
+  } catch (error) {
+    fromOutside = true;
+  }
+  const saved = store.getItem(KEY);
+  // The back button keeps the old referrer, so it must not count as "started from outside".
+  const viaBackButton = entry && entry.type === "back_forward";
+  if (here === "/" && fromOutside && !viaBackButton && saved && saved !== "/") {
+    if (isOwnPath(saved) && !store.getItem(PENDING)) {
+      store.setItem(PENDING, "1");
+      window.location.replace(saved);
+      return;
+    }
+    store.removeItem(KEY);
+  }
+  store.removeItem(PENDING);
+  store.setItem(KEY, here);
+})();
