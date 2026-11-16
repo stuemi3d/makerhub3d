@@ -13,14 +13,15 @@ from decimal import ROUND_HALF_UP, Decimal
 from sqlalchemy.orm import Session
 from starlette.datastructures import FormData
 
-from app.models import Article
+from app.models import AppSettings, Article
 from app.print_list import PrintRow
-from app.production import PrintInput, ResultInput
+from app.production import LaborInput, PrintInput, ResultInput
 
 MAX_PRINTS = 100
 MAX_NOTE = 500
 COST_PARTS = ("material", "electricity", "wear")
 _DECIMAL = re.compile(r"\d{1,9}(?:[.,]\d{1,4})?")
+_LABOR = re.compile(r"\d{1,6}(?:[.,]\d{1,4})?")
 _WHOLE = re.compile(r"\d{1,9}")
 _ISO_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
 # Bambuddy statuses of prints that are over, so that they can be booked
@@ -62,6 +63,9 @@ class Draft:
     quantity: str = ""
     date: str = ""
     note: str = ""
+    # Labour: None when the form did not send it (then no time and the rate of the settings)
+    labor_minutes: str | None = None
+    labor_rate: str | None = None
     action: str = "preview"
 
 
@@ -91,6 +95,8 @@ def read(form: FormData | None, ids: list[str] | None = None) -> Draft:
     draft.date = (text("date") or "").strip()
     draft.note = (text("note") or "").strip()
     action = text("action")
+    draft.labor_minutes = (text("labor_minutes") or "").strip() if "labor_minutes" in form else None
+    draft.labor_rate = (text("labor_rate") or "").strip() if "labor_rate" in form else None
     draft.action = action if action in ("preview", "book") else "preview"
     return draft
 
@@ -101,6 +107,7 @@ class Checked:
     prints: list[PrintInput] = field(default_factory=list)
     result: ResultInput | None = None
     booked_on: date | None = None
+    labor: LaborInput | None = None
 
 
 def _cost(draft: Draft, row: PrintRow, part: str, errors: dict[str, str]) -> Decimal:
@@ -164,4 +171,22 @@ def check(db: Session, draft: Draft, found: dict[int, PrintRow], today: date) ->
         checked.booked_on = today
     if len(draft.note) > MAX_NOTE:
         errors["note"] = "production.error.note_long"
+    _labor(db, draft, checked)
     return checked
+
+
+def _labor(db: Session, draft: Draft, checked: Checked) -> None:
+    """Minutes (empty = 0) and the hourly rate (not sent = the one of the settings)."""
+    values: dict[str, Decimal] = {}
+    for name, sent in (("labor_minutes", draft.labor_minutes), ("labor_rate", draft.labor_rate)):
+        if not sent:
+            values[name] = Decimal(0)
+        elif _LABOR.fullmatch(sent):
+            values[name] = Decimal(sent.replace(",", "."))
+        else:
+            checked.errors[name] = "production.error.labor_number"
+    if draft.labor_rate is None:
+        settings = db.get(AppSettings, 1)
+        values["labor_rate"] = settings.labour_rate if settings else Decimal(0)
+    if "labor_minutes" not in checked.errors and "labor_rate" not in checked.errors:
+        checked.labor = LaborInput(values["labor_minutes"], values["labor_rate"])

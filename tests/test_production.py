@@ -609,3 +609,116 @@ def test_single_result_migration_stops_clearly_when_a_production_has_two_article
 
     with sqlite3.connect(database) as connection:
         assert connection.execute("SELECT COUNT(*) FROM production_results").fetchone() == (2,)
+
+
+# --- Issue #134: labour costs ------------------------------------------------------------------
+
+
+def labor_book(minutes: str, rate: str = "30", prints=None, quantity: int = 1):
+    article_id = add_article()
+    prints = prints or [print_(1, "3.00", "0.50", "1.00")]
+    with db() as session, session.begin():
+        return production.book(
+            session,
+            None,
+            TODAY,
+            "",
+            prints,
+            ResultInput(article_id, quantity),
+            production.LaborInput(D(minutes), D(rate)),
+        )
+
+
+def test_labour_cost_is_minutes_over_sixty_times_the_rate_and_part_of_the_total() -> None:
+    production_id, errors = labor_book("90")
+
+    assert errors == {}
+    item = get_production(production_id)
+    assert (item.labor_minutes, item.labor_rate, item.labor_cost) == (D("90"), D("30"), D("45.00"))
+    # prints 4.50 + labour 45.00, all of it on the one result article
+    assert item.total_cost == D("49.50")
+    assert item.results[0].allocated_cost == D("49.50")
+
+
+def test_without_labour_the_production_is_as_before() -> None:
+    production_id, _ = one_production()
+
+    item = get_production(production_id)
+    assert (item.labor_minutes, item.labor_cost) == (D(0), D(0))
+    assert item.total_cost == D("4.50")
+
+
+def test_zero_minutes_mean_no_labour_cost_whatever_the_rate_is() -> None:
+    production_id, _ = labor_book("0", "99")
+
+    assert get_production(production_id).labor_cost == D(0)
+
+
+def test_labour_cost_is_rounded_to_the_cent() -> None:
+    # 10 minutes at 10.00 = 1.6666... -> 1.67
+    production_id, _ = labor_book("10", "10", [print_(1, "0", "0", "0")])
+
+    item = get_production(production_id)
+    assert item.labor_cost == D("1.67") and item.total_cost == D("1.67")
+
+
+def test_the_preview_costs_split_print_labour_and_total() -> None:
+    labor = production.LaborInput(D("90"), D("30"))
+
+    assert production.costs([print_(1, "3.00", "0.50", "1.00")], labor) == (
+        D("4.50"),
+        D("45.00"),
+        D("49.50"),
+    )
+    assert production.costs([print_(1)], None) == (D("4.50"), D(0), D("4.50"))
+
+
+@pytest.mark.parametrize(
+    ("minutes", "rate"),
+    [("-1", "30"), ("10", "-1"), ("1000000", "30"), ("10", "1000000"), ("NaN", "30")],
+)
+def test_bad_labour_values_are_refused_and_nothing_is_stored(minutes: str, rate: str) -> None:
+    _, errors = labor_book(minutes, rate)
+
+    assert errors
+    assert set(errors) <= {"labor_minutes", "labor_rate"}
+    assert count(Production) == 0 and count(StockMovement) == 0
+
+
+def test_labour_is_in_the_change_log_and_cancelling_keeps_it_untouched() -> None:
+    production_id, _ = labor_book("90")
+    assert cancel(production_id) is None
+
+    with db() as session:
+        booked = session.scalars(
+            select(ChangeLogEntry).where(ChangeLogEntry.action == "production.booked")
+        ).one()
+        assert {"field": "labor_cost", "old": "", "new": "45.00"} in json.loads(booked.details)
+    item = get_production(production_id)
+    assert (item.labor_cost, item.total_cost, item.cancelled) == (D("45.00"), D("49.50"), True)
+
+
+def test_labour_migration_keeps_old_productions_and_can_be_undone(tmp_path: Path) -> None:
+    database = tmp_path / "labor.db"
+    engine = make_engine(database)
+    with engine.begin() as connection:
+        command.upgrade(alembic_config(connection), "0016")
+    with sqlite3.connect(database) as connection:
+        connection.execute(
+            "INSERT INTO productions (id, booked_on, created_at, note, total_cost, cancelled)"
+            " VALUES (1, '2026-11-15', '2026-11-15 10:00:00', 'alt', '4.50', 0)"
+        )
+
+    run_migrations(engine)
+
+    with sqlite3.connect(database) as connection:
+        assert connection.execute(
+            "SELECT total_cost, labor_minutes, labor_rate, labor_cost FROM productions"
+        ).fetchall() == [("4.50", "0", "0", "0")]
+    with engine.begin() as connection:
+        command.downgrade(alembic_config(connection), "0016")
+    with sqlite3.connect(database) as connection:
+        assert connection.execute("SELECT note, total_cost FROM productions").fetchall() == [
+            ("alt", "4.50")
+        ]
+    run_migrations(engine)

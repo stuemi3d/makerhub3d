@@ -65,8 +65,27 @@
       {% endif %}
     </div>
   </div>
+
+  <h2>{{ t('production.detail.labor') }}</h2>
+  <div class="form-block labor-block">
+    <div class="field-grid">
+      <div>
+        <label for="labor_minutes">{{ t('production.field.labor_minutes') }}</label>
+        <input type="text" inputmode="decimal" autocomplete="off" name="labor_minutes" id="labor_minutes" value="{{ labor_minutes }}">
+        {{ err('labor_minutes') }}
+      </div>
+      <div>
+        <label for="labor_rate">{{ t('production.field.labor_rate') }}</label>
+        <input type="text" inputmode="decimal" autocomplete="off" name="labor_rate" id="labor_rate" value="{{ labor_rate }}">
+        {{ err('labor_rate') }}
+      </div>
+    </div>
+  </div>
   {% if preview %}
-  <p class="preview-total"><strong>{{ t('production.preview.total') }}: {{ preview.total }}</strong> <small>{{ t('production.preview.hint') }}</small></p>
+  <p class="preview-total">
+    {{ t('production.preview.print') }}: {{ preview.print }} · {{ t('production.preview.labor') }}: {{ preview.labor }}<br>
+    <strong>{{ t('production.preview.total') }}: {{ preview.total }}</strong> <small>{{ t('production.preview.hint') }}</small>
+  </p>
   {% endif %}
 
   <article class="detail-card">

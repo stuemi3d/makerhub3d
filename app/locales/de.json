@@ -594,5 +594,11 @@
   "production.error.cost_number": "Bitte eine Zahl mit höchstens 4 Nachkommastellen eingeben (nicht negativ).",
   "production.error.date": "Bitte ein gültiges Datum eingeben, nicht in der Zukunft.",
   "production.col.print_total": "Summe (€)",
-  "production.selected": "gewählt"
+  "production.selected": "gewählt",
+  "production.field.labor_minutes": "Arbeitszeit (Minuten)",
+  "production.field.labor_rate": "Stundensatz (€/h)",
+  "production.preview.print": "Druckkosten",
+  "production.preview.labor": "Arbeitskosten",
+  "production.detail.labor": "Arbeitskosten",
+  "production.error.labor_number": "Bitte eine Zahl eingeben (nicht negativ, höchstens 6 Stellen vor und 4 nach dem Komma)."
 }

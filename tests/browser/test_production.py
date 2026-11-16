@@ -293,3 +293,39 @@ def test_the_preview_keeps_working_after_a_mistake_and_changes_the_cost_per_piec
     assert per_piece.inner_text() != first
     expect(popup.locator("#quantity")).to_have_value("4")
     assert fits_screen_width(admin_page)
+
+
+def test_the_labour_fields_fit_and_the_preview_adds_labour_costs(
+    admin_page: Page, fake_bambuddy: str, viewport_name: str
+) -> None:
+    """Issue #134, case 10: time and rate are in the form, the preview splits the costs, and
+    nothing scrolls sideways."""
+    connect(admin_page, fake_bambuddy)
+    number = f"PRD-LAB-{viewport_name}"
+    admin_page.goto("/articles/new")
+    admin_page.fill("#number", number)
+    admin_page.fill("#name", "Halter")
+    admin_page.locator(f"button[type=submit]:has-text('{t('article.create')}')").click()
+    expect(admin_page.locator("h1")).to_contain_text("Halter")
+    admin_page.goto("/production")
+    admin_page.locator("input[name=prints]").first.check()
+    admin_page.get_by_role("button", name=t("production.create"), exact=True).click()
+    popup = admin_page.locator("#popup")
+
+    expect(popup.locator("#labor_minutes")).to_have_value("")
+    expect(popup.locator("#labor_rate")).not_to_have_value("")
+    assert admin_page.evaluate(SCROLLERS) == 0
+    assert fits_screen_width(admin_page)
+
+    popup.locator("#article").select_option(label=f"{number} · Halter")
+    popup.locator("#quantity").fill("2")
+    popup.locator("#labor_minutes").fill("60")
+    popup.locator("#labor_rate").fill("30")
+    click_and_wait(
+        admin_page, popup.get_by_role("button", name=t("production.preview"), exact=True)
+    )
+    expect(popup.locator(".preview-total")).to_contain_text(t("production.preview.labor"))
+    expect(popup.locator(".preview-total")).to_contain_text("30")
+    expect(popup.locator("#labor_minutes")).to_have_value("60")
+    assert admin_page.evaluate(SCROLLERS) == 0
+    assert fits_screen_width(admin_page)

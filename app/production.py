@@ -2,7 +2,8 @@
 
 A production holds any number of prints (Bambuddy archive entries) and exactly one result
 article, which gets all costs. Booking raises its stock; cancelling books a counter movement.
-Productions are never changed or deleted afterwards. Costs are stored as values.
+Productions are never changed or deleted afterwards. Costs, including labour (issue #134),
+are stored as values.
 
 The caller holds `stock.booking_lock` and the transaction (like for app.stock); a missing
 production is for the caller to answer with 404.
@@ -29,6 +30,7 @@ from app.models import (
 
 CENT = Decimal("0.01")
 MAX_NOTE = 500
+MAX_LABOR = Decimal(1_000_000)
 
 
 @dataclass(frozen=True)
@@ -45,6 +47,19 @@ class PrintInput:
 
 
 @dataclass(frozen=True)
+class LaborInput:
+    """Working time of the whole production and the hourly rate for it."""
+
+    minutes: Decimal
+    rate: Decimal
+
+    @property
+    def cost(self) -> Decimal:
+        """Minutes / 60 x rate, rounded to the cent."""
+        return (self.minutes / 60 * self.rate).quantize(CENT, rounding=ROUND_HALF_UP)
+
+
+@dataclass(frozen=True)
 class ResultInput:
     article_id: int
     quantity: int
@@ -58,20 +73,23 @@ class PreviewRow:
 
 
 def preview(
-    db: Session, prints: list[PrintInput], result: ResultInput
+    db: Session, prints: list[PrintInput], result: ResultInput, labor: LaborInput | None = None
 ) -> tuple[dict[str, str], Decimal, PreviewRow | None]:
     """What booking would allocate: the errors, the total and the result article with all costs.
     Nothing is stored."""
-    errors, article = _check(db, prints, result, "")
+    errors, article = _check(db, prints, result, "", labor)
     if errors:
         return errors, Decimal(0), None
-    total = _total(prints)
+    total = costs(prints, labor)[2]
     return {}, total, PreviewRow(article, result.quantity, total)
 
 
-def _total(prints: list[PrintInput]) -> Decimal:
-    """The sum of all print costs, rounded to the cent."""
-    return sum((item.cost for item in prints), Decimal(0)).quantize(CENT, rounding=ROUND_HALF_UP)
+def costs(prints: list[PrintInput], labor: LaborInput | None) -> tuple[Decimal, Decimal, Decimal]:
+    """Print cost, labour cost and the total (print + labour), all rounded to the cent."""
+    labor_cost = labor.cost if labor else Decimal(0)
+    printed = sum((item.cost for item in prints), Decimal(0))
+    total = (printed + labor_cost).quantize(CENT, rounding=ROUND_HALF_UP)
+    return total - labor_cost, labor_cost, total
 
 
 def assigned_archive_ids(db: Session) -> set[int]:
@@ -125,7 +143,11 @@ def unignore(db: Session, actor_id: int | None, archive_id: int) -> None:
 
 
 def _check(
-    db: Session, prints: list[PrintInput], result: ResultInput, note: str
+    db: Session,
+    prints: list[PrintInput],
+    result: ResultInput,
+    note: str,
+    labor: LaborInput | None = None,
 ) -> tuple[dict[str, str], Article | None]:
     errors: dict[str, str] = {}
 
@@ -154,6 +176,10 @@ def _check(
 
     if len(note) > MAX_NOTE:
         errors["note"] = "production.error.note_long"
+    if labor is not None:
+        for name, value in (("labor_minutes", labor.minutes), ("labor_rate", labor.rate)):
+            if not value.is_finite() or not 0 <= value < MAX_LABOR:
+                errors[name] = "production.error.labor_number"
     return errors, article
 
 
@@ -164,16 +190,19 @@ def book(
     note: str,
     prints: list[PrintInput],
     result: ResultInput,
+    labor: LaborInput | None = None,
 ) -> tuple[int | None, dict[str, str]]:
     """Books a production and raises the stock of its result article. Returns the id, or the
     errors by field; nothing is stored when there are errors.
 
-    The total is rounded to the cent and all of it goes to the one result article."""
-    errors, article = _check(db, prints, result, note.strip())
+    The total (prints plus labour) is rounded to the cent and all of it goes to the one result
+    article. Minutes, rate and labour cost are stored as values."""
+    errors, article = _check(db, prints, result, note.strip(), labor)
     if errors:
         return None, errors
 
-    total = _total(prints)
+    labor = labor or LaborInput(Decimal(0), Decimal(0))
+    total = costs(prints, labor)[2]
     now = auth.utcnow()
 
     item = Production(
@@ -181,6 +210,9 @@ def book(
         created_at=now,
         note=note.strip(),
         total_cost=total,
+        labor_minutes=labor.minutes,
+        labor_rate=labor.rate,
+        labor_cost=labor.cost,
         user_id=actor_id,
     )
     for print_ in prints:
@@ -221,6 +253,7 @@ def book(
         str(item.id),
         [
             {"field": "total_cost", "old": "", "new": str(total)},
+            {"field": "labor_cost", "old": "", "new": str(labor.cost)},
             {"field": "articles", "old": "", "new": f"{article.number} x {result.quantity}"},
             {"field": "prints", "old": "", "new": ", ".join(str(p.archive_id) for p in prints)},
         ],

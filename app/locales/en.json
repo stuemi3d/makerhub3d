@@ -594,5 +594,11 @@
   "production.error.cost_number": "Please enter a number with at most 4 decimals (not negative).",
   "production.error.date": "Please enter a valid date, not in the future.",
   "production.col.print_total": "Sum (€)",
-  "production.selected": "chosen"
+  "production.selected": "chosen",
+  "production.field.labor_minutes": "Working time (minutes)",
+  "production.field.labor_rate": "Hourly rate (€/h)",
+  "production.preview.print": "Print costs",
+  "production.preview.labor": "Labour costs",
+  "production.detail.labor": "Labour costs",
+  "production.error.labor_number": "Please enter a number (not negative, at most 6 digits before and 4 after the decimal point)."
 }

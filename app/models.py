@@ -168,8 +168,13 @@ class Production(Base):
     # UTC without time zone
     created_at: Mapped[datetime] = mapped_column(DateTime)
     note: Mapped[str] = mapped_column(String(500), server_default="")
-    # Euro; the sum of all print costs
+    # Euro; the sum of all print costs plus the labour cost
     total_cost: Mapped[Decimal] = mapped_column(DecimalText)
+    # Labour (issue #134), stored as values: minutes, the hourly rate used (Euro per hour) and
+    # the labour cost (Euro, already part of total_cost)
+    labor_minutes: Mapped[Decimal] = mapped_column(DecimalText, server_default="0")
+    labor_rate: Mapped[Decimal] = mapped_column(DecimalText, server_default="0")
+    labor_cost: Mapped[Decimal] = mapped_column(DecimalText, server_default="0")
     cancelled: Mapped[bool] = mapped_column(Boolean, server_default=false())
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     prints: Mapped[list["ProductionPrint"]] = relationship(

@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app import stock, table_sort
 from app.models import Article, PrintStatus, Production
-from app.production_form import money_text
+from app.production_form import input_text, money_text
 
 SORT_KEYS = ("date", "cost")
 DEFAULT_SORT = ("date", "desc")
@@ -87,11 +87,20 @@ class DetailResult:
 
 
 @dataclass(frozen=True)
+class DetailLabor:
+    minutes: str
+    rate: str
+    cost: str
+
+
+@dataclass(frozen=True)
 class Detail:
     id: int
     date: str
     note: str
     total: str
+    # Only set when a working time was booked
+    labor: "DetailLabor | None"
     cancelled: bool
     prints: list[DetailPrint]
     results: list[DetailResult]
@@ -107,6 +116,13 @@ def detail(db: Session, production_id: int, language: str) -> Detail | None:
         date=stock.format_date(item.booked_on, language),
         note=item.note,
         total=money_text(item.total_cost, language),
+        labor=DetailLabor(
+            minutes=input_text(item.labor_minutes, language),
+            rate=money_text(item.labor_rate, language),
+            cost=money_text(item.labor_cost, language),
+        )
+        if item.labor_minutes > 0
+        else None,
         cancelled=item.cancelled,
         prints=[
             DetailPrint(
