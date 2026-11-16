@@ -17,7 +17,14 @@ from app.permissions import Permission, requires
 from app.settings_form import DECIMAL_FIELDS, format_decimal
 
 PAGE_SIZE = 50
-_DECIMAL_NAMES = {field.name for field in DECIMAL_FIELDS} | {"selling_price"}
+_DECIMAL_NAMES = {field.name for field in DECIMAL_FIELDS} | {
+    "selling_price",
+    "price",
+    "years",
+    "hours_per_year",
+    "maintenance_pct",
+}
+_DEVICE_FIELDS = {"bought_on", "price", "years", "hours_per_year", "maintenance_pct"}
 _ARTICLE_FIELDS = {
     "number",
     "name",
@@ -39,6 +46,8 @@ def _label(field: str, language: str) -> str:
         return translate(language, f"article.field.{field}")
     if field in _STOCK_FIELDS:
         return translate(language, f"stock.field.{field}")
+    if field in _DEVICE_FIELDS:
+        return translate(language, f"device.field.{field}")
     key = "user.field.role" if field == "role" else f"settings.field.{field}"
     return translate(language, key)
 
