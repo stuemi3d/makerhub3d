@@ -279,7 +279,7 @@ Der Maintainer hat die frühere Bedingung („erst nach Alltagsnutzung von M1“
 
 **M3 – Kalkulation**
 
-- [ ] Geräte und Stundensätze inkl. Trocknungspauschale
+- [x] Geräte und Stundensätze inkl. Trocknungspauschale (#157)
 - [ ] Rechenkern der Kalkulation
 - [ ] 3MF- und G-Code-Auslesen
 - [ ] Seite Kalkulation

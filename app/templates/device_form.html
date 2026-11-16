@@ -1,0 +1,40 @@
+{% extends "_popup_layout.html" if popup else "base.html" %}
+{% from "_form_macros.html" import field_attrs, feedback %}
+{% set title_key = 'device.form.' ~ ('edit' if device_id else 'new') ~ '.' ~ kind %}
+{% block title %}{{ t(title_key) }} – {{ app_name }}{% endblock %}
+{% block content %}
+{% set action = '/settings/devices/' ~ device_id ~ '/edit' if device_id else '/settings/devices/new' %}
+<h1{% if popup %} id="popup-title"{% endif %}>{{ t(title_key) }}</h1>
+{% if errors %}
+<p role="alert"><mark>{{ t('article.has_errors') }}</mark></p>
+{% endif %}
+<form method="post" action="{{ action }}" novalidate{% if popup %} hx-post="{{ action }}" hx-target="#popup-body" hx-swap="innerHTML"{% endif %}>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <input type="hidden" name="kind" value="{{ kind }}">
+  <label for="name">{{ t('device.field.name') }}</label>
+  <input type="text" maxlength="100" autocomplete="off" {{ field_attrs('name', errors) }}{% if popup %} autofocus{% endif %} value="{{ values.get('name', '') }}">
+  {{ feedback('name', errors, t, 'device.hint.') }}
+  <label for="bought_on">{{ t('device.field.bought_on') }}</label>
+  <input type="date" {{ field_attrs('bought_on', errors) }} value="{{ values.get('bought_on', '') }}">
+  {{ feedback('bought_on', errors, t, 'device.hint.') }}
+  <label for="price">{{ t('device.field.price') }}</label>
+  <input type="text" inputmode="decimal" autocomplete="off" {{ field_attrs('price', errors) }} value="{{ values.get('price', '') }}">
+  {{ feedback('price', errors, t, 'device.hint.') }}
+  <label for="years">{{ t('device.field.years') }}</label>
+  <input type="text" inputmode="decimal" autocomplete="off" {{ field_attrs('years', errors) }} value="{{ values.get('years', '') }}">
+  {{ feedback('years', errors, t, 'device.hint.') }}
+  {% if kind == 'printer' %}
+  <label for="hours_per_year">{{ t('device.field.hours_per_year') }}</label>
+  <input type="text" inputmode="decimal" autocomplete="off" {{ field_attrs('hours_per_year', errors) }} value="{{ values.get('hours_per_year', '') }}">
+  {{ feedback('hours_per_year', errors, t, 'device.hint.') }}
+  {% endif %}
+  <label for="maintenance_pct">{{ t('device.field.maintenance_pct') }}</label>
+  <input type="text" inputmode="decimal" autocomplete="off" {{ field_attrs('maintenance_pct', errors) }} value="{{ values.get('maintenance_pct', '0') }}">
+  {{ feedback('maintenance_pct', errors, t, 'device.hint.') }}
+  <div class="form-actions">
+    <button type="submit">{{ t('device.save') }}</button>
+    {% if popup %}<button type="button" class="secondary outline" data-popup-close>{{ t('article.cancel') }}</button>
+    {% else %}<a href="/settings/devices" role="button" class="secondary outline">{{ t('article.cancel') }}</a>{% endif %}
+  </div>
+</form>
+{% endblock %}

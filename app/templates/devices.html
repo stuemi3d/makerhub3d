@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% from "_data_table.html" import head, actions_head, icon_link, chip with context %}
+{% from "_form_macros.html" import popup_attrs %}
+{% block title %}{{ t('device.title') }} – {{ app_name }}{% endblock %}
+{% macro toggle(d) %}
+<form class="icon-form" method="post" action="/settings/devices/{{ d.id }}/active">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <input type="hidden" name="active" value="{{ '0' if d.active else '1' }}">
+  <button type="submit" class="secondary outline">{{ t('device.deactivate' if d.active else 'device.activate') }}</button>
+</form>
+{% endmacro %}
+{% macro status(d) %}{{ chip(t('device.status.active' if d.active else 'device.status.inactive'), 'active' if d.active else 'inactive') }}{% endmacro %}
+{% block content %}
+{% set settings_tab = 'devices' %}
+{% include "_settings_tabs.html" %}
+<div class="page-head">
+  <h1>{{ t('device.title') }}</h1>
+  <div class="page-actions">
+    <a {{ popup_attrs('/settings/devices/new?kind=printer') }} role="button">{{ t('device.new.printer') }}</a>
+    <a {{ popup_attrs('/settings/devices/new?kind=dryer') }} role="button" class="secondary">{{ t('device.new.dryer') }}</a>
+  </div>
+</div>
+<p><small>{{ t('device.intro') }}</small></p>
+{# Refreshed after the pop-up was saved (app.js). #}
+<div id="devices-list" data-popup-refresh>
+<h2>{{ t('device.section.printers') }}</h2>
+{% if printers %}
+<article class="data-card">
+<div class="data-scroll">
+<table class="data-table">
+  <thead>
+    <tr>
+      {{ head(t('device.field.name')) }}
+      {{ head(t('device.col.rate'), none, true) }}
+      {{ head(t('device.col.residual'), none, true) }}
+      {{ head(t('device.field.price'), none, true) }}
+      {{ head(t('device.field.years'), none, true) }}
+      {{ head(t('device.field.hours_per_year'), none, true) }}
+      {{ head(t('device.field.maintenance_pct'), none, true) }}
+      {{ head(t('device.field.bought_on')) }}
+      {{ head(t('device.col.status')) }}
+      {{ actions_head() }}
+    </tr>
+  </thead>
+  <tbody>
+    {% for d in printers %}
+    <tr>
+      <td class="cell-strong">{{ d.name }}</td>
+      <td class="num">{{ d.rate }}</td>
+      <td class="num">{{ d.residual }}</td>
+      <td class="num">{{ d.price }}</td>
+      <td class="num">{{ d.years }}</td>
+      <td class="num">{{ d.hours_per_year }}</td>
+      <td class="num">{{ d.maintenance_pct }}</td>
+      <td>{{ d.bought_on }}</td>
+      <td class="cell-status">{{ status(d) }}</td>
+      <td class="row-actions">{{ icon_link('/settings/devices/' ~ d.id ~ '/edit', 'edit', true, d.name) }} {{ toggle(d) }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+</article>
+{% else %}
+<article class="empty-hint"><p>{{ t('device.empty.printers') }}</p></article>
+{% endif %}
+<h2>{{ t('device.section.dryers') }}</h2>
+{% if dryers %}
+<article class="data-card">
+<div class="data-scroll">
+<table class="data-table">
+  <thead>
+    <tr>
+      {{ head(t('device.field.name')) }}
+      {{ head(t('device.col.yearly'), none, true) }}
+      {{ head(t('device.col.residual'), none, true) }}
+      {{ head(t('device.field.price'), none, true) }}
+      {{ head(t('device.field.years'), none, true) }}
+      {{ head(t('device.field.maintenance_pct'), none, true) }}
+      {{ head(t('device.field.bought_on')) }}
+      {{ head(t('device.col.status')) }}
+      {{ actions_head() }}
+    </tr>
+  </thead>
+  <tbody>
+    {% for d in dryers %}
+    <tr>
+      <td class="cell-strong">{{ d.name }}</td>
+      <td class="num">{{ d.yearly }}</td>
+      <td class="num">{{ d.residual }}</td>
+      <td class="num">{{ d.price }}</td>
+      <td class="num">{{ d.years }}</td>
+      <td class="num">{{ d.maintenance_pct }}</td>
+      <td>{{ d.bought_on }}</td>
+      <td class="cell-status">{{ status(d) }}</td>
+      <td class="row-actions">{{ icon_link('/settings/devices/' ~ d.id ~ '/edit', 'edit', true, d.name) }} {{ toggle(d) }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+</article>
+{% else %}
+<article class="empty-hint"><p>{{ t('device.empty.dryers') }}</p></article>
+{% endif %}
+<article class="detail-card">
+  <h2 class="card-title">{{ t('device.surcharge.title') }}</h2>
+  <p><strong>{{ surcharge }} €/h</strong></p>
+  <p><small>{{ t('device.surcharge.hint') }}</small></p>
+</article>
+</div>
+{% endblock %}

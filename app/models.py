@@ -246,6 +246,36 @@ class IgnoredPrint(Base):
     ignored_on: Mapped[date] = mapped_column(Date)
 
 
+class Device(Base):
+    """A printer or a dryer with the values for its hourly rate (issue #157).
+
+    Residual value and rates are calculated on the pages (app/devices.py), never stored.
+    Devices are never deleted, only switched off.
+    """
+
+    __tablename__ = "devices"
+    __table_args__ = (
+        CheckConstraint("kind IN ('printer', 'dryer')", name="ck_devices_kind"),
+        CheckConstraint(
+            "kind = 'dryer' OR hours_per_year IS NOT NULL", name="ck_devices_printer_hours"
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    kind: Mapped[str] = mapped_column(String(10))
+    name: Mapped[str] = mapped_column(String(100))
+    bought_on: Mapped[date] = mapped_column(Date)
+    # Euro
+    price: Mapped[Decimal] = mapped_column(DecimalText)
+    years: Mapped[Decimal] = mapped_column(DecimalText)
+    # Print hours per year; only printers have them
+    hours_per_year: Mapped[Decimal | None] = mapped_column(DecimalText, nullable=True)
+    # Percent
+    maintenance_pct: Mapped[Decimal] = mapped_column(DecimalText)
+    active: Mapped[bool] = mapped_column(Boolean, server_default=true())
+    created_at: Mapped[datetime] = mapped_column(DateTime)
+
+
 class UserRole(StrEnum):
     """Fixed roles from the plan (section 8); their rights are in app/permissions.py."""
 
