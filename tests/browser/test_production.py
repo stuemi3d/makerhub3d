@@ -361,3 +361,35 @@ def test_the_machine_field_uses_the_rate_from_the_settings(
     expect(popup).to_contain_text("1 h 5 min")
     assert admin_page.evaluate(SCROLLERS) == 0
     assert fits_screen_width(admin_page)
+
+
+def test_hints_do_not_overlap_the_fields_and_the_buttons_stay_visible(
+    admin_page: Page, fake_bambuddy: str, viewport_name: str
+) -> None:
+    """Issue #146, cases 5, 7 and 10: a hint under a field starts below the field, the
+    buttons are on the screen without scrolling, and nothing scrolls sideways."""
+    connect(admin_page, fake_bambuddy)
+    admin_page.goto("/settings")
+    admin_page.fill("#machine_rate", "0")
+    admin_page.locator("main form[action='/settings'] button[type=submit]").click()
+    expect(admin_page.locator("#machine_rate")).to_have_value("0")
+    admin_page.goto("/production")
+    for box in admin_page.locator("input[name=prints]").all():
+        box.check()
+    admin_page.get_by_role("button", name=t("production.create"), exact=True).click()
+    popup = admin_page.locator("#popup")
+    expect(popup.locator("#article")).to_be_visible()
+
+    field = popup.locator("#cost_machine_3")
+    hint = popup.locator("small", has_text=t("production.machine_missing.rate")).first
+    expect(hint).to_be_visible()
+    assert hint.bounding_box()["y"] >= field.bounding_box()["y"] + field.bounding_box()["height"]
+
+    height = admin_page.evaluate("window.innerHeight")
+    for name in ("production.preview", "production.book"):
+        button = popup.get_by_role("button", name=t(name), exact=True)
+        expect(button).to_be_visible()
+        box = button.bounding_box()
+        assert box["y"] >= 0 and box["y"] + box["height"] <= height
+    assert admin_page.evaluate(SCROLLERS) == 0
+    assert fits_screen_width(admin_page)

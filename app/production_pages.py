@@ -160,7 +160,6 @@ def add_production_routes(
             prints=prints,
             draft=draft,
             shown_prints=shown,
-            any_missing=any(item["missing"] for item in shown),
             articles=articles,
             errors=errors,
             preview=preview,
