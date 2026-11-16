@@ -166,7 +166,7 @@ def test_print_numbers_link_to_bambuddy_when_an_address_is_set(client: AppClient
 
     for number in (41, 42):
         link = re.search(rf'<a href="([^"]+)"[^>]*>\s*#{number}\s*</a>', html)
-        assert link and link.group(1).startswith("http://bambuddy.example.com:8000/")
+        assert link and link.group(1) == "http://bambuddy.example.com:8000/archives"
     assert 'target="_blank"' in html and "noopener" in html
 
 
