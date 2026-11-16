@@ -58,8 +58,8 @@ Die App hat einen festen Stil. Neue Funktionen sollen sich **überall gleich** a
 3. **Übersichten sind Tabellen** mit dem gemeinsamen Baustein (`_data_table.html`): sortierbare Spaltenköpfe, Chips für Status, Aktionen als **Symbol-Buttons in der Spalte ganz rechts** (`icon_link`, `icon_post`), keine Text-Buttons in Zeilen. Die Aktionsspalte steht in jeder Tabelle an derselben Stelle.
 4. Serverseitige Prüfungen bleiben immer bestehen; die Oberfläche blendet nur aus, was nicht erlaubt ist.
 5. **Bekannte Abweichungen** vom Soll (werden in eigenen Aufgaben angeglichen, nicht als Vorbild nehmen):
-   - Noch eigene Seiten statt Pop-ups: Löschen von Artikeln (auch „Endgültig löschen“), Vorlagen und Attributen, „Produktion stornieren“ und „Benutzer bearbeiten“.
-   - Noch `data-confirm` statt Pop-up: Löschen von Geräten und „Zwei-Faktor zurücksetzen“ (Benutzer).
+   - Noch eigene Seiten statt Pop-ups: Löschen von Artikeln (auch „Endgültig löschen“), Vorlagen, Attributen und Geräten, „Produktion stornieren“ und „Benutzer bearbeiten“.
+   - Noch `data-confirm` statt Pop-up: „Zwei-Faktor zurücksetzen“ (Benutzer).
    - Noch nicht der gemeinsame Tabellen-Baustein oder noch Text-Buttons: Geräte-Tabelle, Attribute („Wert hinzufügen“) und die Tabelle in „Varianten anlegen“.
 
 ## Browser-Tests (Playwright)
