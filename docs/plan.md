@@ -266,7 +266,7 @@ Der Maintainer hat die frühere Bedingung („erst nach Alltagsnutzung von M1“
 - [x] Produktion: Maschinenkosten = Druckstunden × Druckerstundensatz (zunächst ein Wert in den Einstellungen) statt Verschleiß aus Bambuddy (#135)
 - [x] Dashboard: Liste „Noch nicht zugeordnet“ (Drucke aus dem Bambuddy-Archiv, die weder in einer Produktion stehen noch ignoriert sind) (#119, #129)
 - [x] Produktion: Druckzeit, Filament (g), Strom (kWh), Material und Farben pro Druck sowie Fehldruck-Stücke als Werte speichern (#148)
-- [ ] Artikel-Detail: Produktionen und Kosten pro Stück, Links zu Bambuddy
+- [x] Artikel-Detail: Produktionen und Kosten pro Stück, Links zu Bambuddy (#120)
 
 **M3 – Kalkulation**
 

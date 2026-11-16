@@ -18,7 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, object_session
 
-from app import article_purge, audit, auth, stock, variants
+from app import article_productions, article_purge, audit, auth, stock, variants
 from app.article_form import FIELD_NAMES, form_values, number_key, validate
 from app.models import Article
 from app.permissions import Permission, requires
@@ -247,6 +247,7 @@ def add_article_routes(
         counts = {section: 0 for section in SECTIONS}
         with new_session() as db:
             counts["stock"] = stock.count_movements(db, article_id)
+            counts["productions"] = article_productions.count(db, article_id)
             blocked = article_purge.blocking(db, article_id)
         return render(
             request,
@@ -512,6 +513,20 @@ def add_article_routes(
                 rows=rows,
                 sort_links=links,
                 current_stock=current_stock,
+            )
+        if section == "productions":
+            article = load(article_id)
+            with new_session() as db:
+                shown, totals = article_productions.rows(db, language, article_id)
+                address = article_productions.bambuddy_address(db)
+            return render(
+                request,
+                "article_productions.html",
+                "nav.articles",
+                article=article,
+                rows=shown,
+                totals=totals,
+                bambuddy_address=address,
             )
         return render(
             request,

@@ -298,6 +298,8 @@
   "article.tile.stock": "Lager",
   "article.tile.sales": "Verkäufe",
   "article.tile.analysis": "Auswertung",
+  "article.productions.empty": "Noch keine Produktionen.",
+  "article.productions.totals": "Summe (ohne stornierte)",
   "article.section.empty": "Noch keine Einträge.",
   "log.action.article.created": "Artikel angelegt",
   "log.action.article.changed": "Artikel geändert",
