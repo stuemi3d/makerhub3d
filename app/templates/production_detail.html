@@ -19,6 +19,7 @@
     {{ chip(t('production.state.cancelled') if item.cancelled else t('production.state.active'), 'inactive' if item.cancelled else 'active') }}
     {{ t('production.col.date') }}: {{ item.date }} · {{ t('production.col.cost') }}: {{ item.total }}
   </p>
+  {% if item.labor %}<p>{{ t('production.detail.labor') }}: {{ item.labor.cost }} · {{ t('production.field.labor_minutes') }}: {{ item.labor.minutes }} · {{ t('production.field.labor_rate') }}: {{ item.labor.rate }}</p>{% endif %}
   {% if item.note %}<p>{{ t('production.col.note') }}: {{ item.note }}</p>{% endif %}
 </article>
 <h2>{{ t('production.detail.prints') }}</h2>

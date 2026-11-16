@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from app import print_list, production, production_form, production_view, stock
 from app.article_pages import wants_popup
-from app.models import Article
+from app.models import AppSettings, Article
 from app.permissions import Permission, requires
 from app.two_factor import Cipher
 
@@ -139,6 +139,13 @@ def add_production_routes(
                     select(Article).where(Article.active.is_(True)).order_by(Article.number_key)
                 )
             ]
+            settings = db.get(AppSettings, 1)
+            default_rate = settings.labour_rate if settings else None
+        labor_rate = (
+            draft.labor_rate
+            if draft.labor_rate is not None
+            else production_form.input_text(default_rate, language)
+        )
         return render(
             request,
             "production_new.html",
@@ -152,6 +159,8 @@ def add_production_routes(
             articles=articles,
             errors=errors,
             preview=preview,
+            labor_minutes=draft.labor_minutes or "",
+            labor_rate=labor_rate,
             today=date.today().isoformat(),
         )
 
@@ -207,10 +216,15 @@ def add_production_routes(
             return form_page(request, draft, prints, 422, checked.errors)
         if draft.action == "preview":
             with new_session() as db:
-                errors, total, line = production.preview(db, checked.prints, checked.result)
+                errors, total, line = production.preview(
+                    db, checked.prints, checked.result, checked.labor
+                )
             if errors:
                 return form_page(request, draft, prints, 422, errors)
+            printed, labor_cost, _ = production.costs(checked.prints, checked.labor)
             shown = {
+                "print": production_form.money_text(printed, language),
+                "labor": production_form.money_text(labor_cost, language),
                 "total": production_form.money_text(total, language),
                 "cost": production_form.money_text(line.cost, language),
                 "per_piece": production_form.money_text(line.cost / line.quantity, language),
@@ -224,6 +238,7 @@ def add_production_routes(
                 draft.note,
                 checked.prints,
                 checked.result,
+                checked.labor,
             )
         if production_id is None:
             return form_page(request, draft, prints, 422, errors)
