@@ -26,7 +26,7 @@ from app.article_form import (
     number_key,
     validate_defaults,
 )
-from app.article_pages import saved_in_popup, wants_popup
+from app.article_pages import confirmed, saved_in_popup, varied, wants_popup
 from app.models import (
     Article,
     ArticleAttributeValue,
@@ -363,7 +363,15 @@ def add_template_routes(
     def delete_attribute_page(request: Request, attribute_id: int) -> HTMLResponse:
         with new_session() as db:
             attribute = attribute_view(db, attribute_or_404(db, attribute_id))
-        return render(request, "attribute_delete.html", "nav.articles", attribute=attribute)
+        return varied(
+            render(
+                request,
+                "attribute_delete.html",
+                "nav.articles",
+                popup=wants_popup(request),
+                attribute=attribute,
+            )
+        )
 
     def delete_attribute(attribute_id: int, actor_id: int) -> None:
         with new_session() as db, db.begin():
@@ -377,7 +385,7 @@ def add_template_routes(
     @app.post("/attributes/{attribute_id}/delete", dependencies=edit)
     async def delete_attribute_route(request: Request, attribute_id: int) -> Response:
         await run_in_threadpool(delete_attribute, attribute_id, request.state.user.id)
-        return RedirectResponse("/attributes", status_code=303)
+        return confirmed(request, "/attributes")
 
     # ----- templates ------------------------------------------------------------------------
 
@@ -677,7 +685,15 @@ def add_template_routes(
                 # Only once all variants are deleted (plan, section 4).
                 raise HTTPException(status_code=409)
             template = template_view(db, stored)
-        return render(request, "template_delete.html", "nav.articles", tpl=template)
+        return varied(
+            render(
+                request,
+                "template_delete.html",
+                "nav.articles",
+                popup=wants_popup(request),
+                tpl=template,
+            )
+        )
 
     def delete_template(template_id: int, actor_id: int) -> None:
         with new_session() as db, db.begin():
@@ -691,4 +707,5 @@ def add_template_routes(
     @app.post("/templates/{template_id}/delete", dependencies=edit)
     async def delete_template_route(request: Request, template_id: int) -> Response:
         await run_in_threadpool(delete_template, template_id, request.state.user.id)
-        return RedirectResponse("/templates", status_code=303)
+        # The template page is gone, so a pop-up leads to the list.
+        return confirmed(request, "/templates", leave=True)

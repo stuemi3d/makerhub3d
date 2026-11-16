@@ -312,7 +312,6 @@ def test_delete_asks_on_its_own_page_not_in_a_browser_dialog(client: AppClient) 
     assert f'href="{address}"' in client.get("/settings/devices").text
     page = client.get(address).text
     assert "Drucker A" in page
-    assert 'aria-label="breadcrumb"' in page
     assert f'action="{address}"' in page
     assert len(stored_devices()) == 1
 

@@ -15,7 +15,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app import audit, auth
-from app.article_pages import saved_in_popup, wants_popup
+from app.article_pages import confirmed, saved_in_popup, varied, wants_popup
 from app.models import User, UserRole
 from app.permissions import Permission, requires
 from app.table_sort import chosen_sort, sort_links
@@ -254,6 +254,31 @@ def add_user_admin_routes(
         target = f"/settings/users/{int(user['id'])}?password_reset=1"
         return RedirectResponse(target, status_code=303)
 
+    def reset_question(
+        request: Request, user: dict, status_code: int = 200, error: str | None = None
+    ) -> HTMLResponse:
+        return varied(
+            render(
+                request,
+                "user_two_factor_reset.html",
+                "nav.settings",
+                status_code=status_code,
+                popup=wants_popup(request),
+                target=user,
+                error=error,
+            )
+        )
+
+    @app.get(
+        "/settings/users/{user_id}/2fa-reset", response_class=HTMLResponse, dependencies=manage
+    )
+    def two_factor_reset_question(request: Request, user_id: int) -> HTMLResponse:
+        user = load_user(user_id)
+        if user["id"] == request.state.user.id or not user["two_factor"]:
+            # Nothing to reset (own login, or two-factor is off): the user page says why.
+            raise HTTPException(status_code=409)
+        return reset_question(request, user)
+
     @app.post(
         "/settings/users/{user_id}/2fa-reset", response_class=HTMLResponse, dependencies=manage
     )
@@ -266,8 +291,12 @@ def add_user_admin_routes(
         if stored_id is None:
             raise HTTPException(status_code=404)
         if error:
+            if wants_popup(request):
+                return reset_question(request, load_user(stored_id), 422, error)
             return render_edit(
                 request, load_user(stored_id), status_code=422, errors={"form": error}
             )
-        # The address is built from the stored user, not from the requested one.
-        return RedirectResponse(f"/settings/users/{int(stored_id)}?tfa_reset=1", status_code=303)
+        # The address is built from the stored user, not from the requested one. The user page
+        # shows the notice, so a pop-up leads there (it loads the page again).
+        address = f"/settings/users/{int(stored_id)}?tfa_reset=1"
+        return confirmed(request, address, leave=True)

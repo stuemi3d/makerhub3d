@@ -149,9 +149,13 @@ def test_booking_and_cancelling_work_on_every_screen(
     expect(row).to_have_count(1)
     assert fits_screen_width(admin_page)
 
-    row.get_by_role("button", name=t("production.cancel"), exact=True).click()
-    expect(admin_page.locator("h1")).to_have_text(t("production.cancel.title"))
-    admin_page.get_by_role("button", name=t("production.cancel.submit"), exact=True).click()
+    # The question is a pop-up of the app (a symbol button in the row), not a browser dialog.
+    row.get_by_role("link", name=t("table.action.cancel"), exact=False).click()
+    dialog = admin_page.locator("dialog#popup")
+    expect(dialog.locator("h1")).to_have_text(t("production.cancel.title"))
+    assert fits_screen_width(admin_page)
+    dialog.get_by_role("button", name=t("production.cancel.submit"), exact=True).click()
+    expect(dialog).not_to_be_visible()
     expect(admin_page.locator("[role=status]")).to_contain_text(t("production.cancelled_done"))
     expect(admin_page.locator("tr.production-cancelled").filter(has_text=number)).to_have_count(1)
     assert fits_screen_width(admin_page)

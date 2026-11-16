@@ -37,10 +37,10 @@
       <button type="submit" class="secondary outline">{{ t('article.deactivate' if article.active else 'article.activate') }}</button>
     </form>
     {% if can_delete %}
-    <a href="/articles/{{ article.id }}/delete" role="button" class="secondary outline">{{ t('article.delete') }}</a>
+    <a {{ popup_attrs('/articles/' ~ article.id ~ '/delete') }} role="button" class="secondary outline">{{ t('article.delete') }}</a>
     {% endif %}
     {% if can_purge and can('manage') %}
-    <a href="/articles/{{ article.id }}/purge" role="button" class="secondary outline">{{ t('article.purge.button') }}</a>
+    <a {{ popup_attrs('/articles/' ~ article.id ~ '/purge') }} role="button" class="secondary outline">{{ t('article.purge.button') }}</a>
     {% endif %}
   </div>
   {% endif %}

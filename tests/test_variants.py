@@ -847,8 +847,8 @@ def test_template_with_variants_cannot_be_deleted(client: AppClient, setup: Setu
 def test_template_delete_is_a_button_in_the_action_bar(client: AppClient, setup: Setup) -> None:
     html = client.get(f"/templates/{setup.template_id}").text
 
-    link = f'<a href="/templates/{setup.template_id}/delete" role="button"'
-    assert link in html
+    link = f'<a href="/templates/{setup.template_id}/delete" hx-get='
+    assert link in html and 'role="button"' in html[html.index(link) :][:250]
     assert html.index(link) < html.index('id="template-variants"')
     assert DE["template.delete.blocked"] not in html
 

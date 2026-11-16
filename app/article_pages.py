@@ -110,6 +110,27 @@ def saved_in_popup() -> Response:
     return Response(status_code=204, headers={"HX-Trigger": json.dumps({"popup-saved": {}})})
 
 
+def left_popup_to(address: str) -> Response:
+    """The answer to a confirmed pop-up whose page is gone afterwards (e.g. a deleted article):
+    no content; the browser goes to `address` (HTMX follows the header)."""
+    return Response(status_code=204, headers={"HX-Redirect": address})
+
+
+def confirmed(request: Request, address: str, leave: bool = False) -> Response:
+    """The answer after a delete or confirm question was confirmed. In the pop-up it closes and
+    the list is refreshed, or with `leave` the browser goes to `address` (the page behind the
+    pop-up is gone). Without HTMX it is a normal redirect to `address`."""
+    if not wants_popup(request):
+        return RedirectResponse(address, status_code=303)
+    return left_popup_to(address) if leave else saved_in_popup()
+
+
+def varied(response: Response) -> Response:
+    """The same address gives a different answer for HTMX, so caches must tell them apart."""
+    response.headers["Vary"] = "HX-Request"
+    return response
+
+
 def add_article_routes(
     app: FastAPI,
     new_session: Callable[[], Session],
@@ -414,13 +435,16 @@ def add_article_routes(
     @app.get("/articles/{article_id}/delete", response_class=HTMLResponse, dependencies=edit)
     def delete_article_page(request: Request, article_id: int) -> HTMLResponse:
         article, found = delete_view(article_id)
-        return render(
-            request,
-            "article_delete.html",
-            "nav.articles",
-            article=article,
-            counts=found,
-            count_keys=article_purge.COUNT_KEYS,
+        return varied(
+            render(
+                request,
+                "article_delete.html",
+                "nav.articles",
+                popup=wants_popup(request),
+                article=article,
+                counts=found,
+                count_keys=article_purge.COUNT_KEYS,
+            )
         )
 
     def do_delete(article_id: int, actor_id: int) -> None:
@@ -439,7 +463,8 @@ def add_article_routes(
     @app.post("/articles/{article_id}/delete", dependencies=edit)
     async def delete_article(request: Request, article_id: int) -> Response:
         await run_in_threadpool(do_delete, article_id, request.state.user.id)
-        return RedirectResponse("/articles", status_code=303)
+        # The article page is gone, so a pop-up leads to the list.
+        return confirmed(request, "/articles", leave=True)
 
     def purge_view(article_id: int) -> tuple[dict, dict[str, int]]:
         """The article and its counts; 404 when it is gone or nothing hangs on it."""
@@ -451,15 +476,18 @@ def add_article_routes(
 
     def purge_page(request: Request, article_id: int, status_code: int = 200, error: bool = False):
         article, found = purge_view(article_id)
-        return render(
-            request,
-            "article_purge.html",
-            "nav.articles",
-            status_code=status_code,
-            article=article,
-            counts=found,
-            count_keys=article_purge.COUNT_KEYS,
-            error=error,
+        return varied(
+            render(
+                request,
+                "article_purge.html",
+                "nav.articles",
+                status_code=status_code,
+                popup=wants_popup(request),
+                article=article,
+                counts=found,
+                count_keys=article_purge.COUNT_KEYS,
+                error=error,
+            )
         )
 
     @app.get("/articles/{article_id}/purge", response_class=HTMLResponse, dependencies=manage)
@@ -484,7 +512,7 @@ def add_article_routes(
             do_purge, article_id, request.state.user.id, raw.get("number", "")
         )
         if done:
-            return RedirectResponse("/articles?purged=1", status_code=303)
+            return confirmed(request, "/articles?purged=1", leave=True)
         return await run_in_threadpool(purge_page, request, article_id, 422, True)
 
     @app.get("/articles/{article_id}/{section}", response_class=HTMLResponse, dependencies=view)

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_data_table.html" import head, actions_head, chip with context %}
+{% from "_data_table.html" import head, actions_head, chip, icon_link with context %}
 {% block title %}{{ t('production.tab.list') }} – {{ app_name }}{% endblock %}
 {% block content %}
 {% set active = 'productions' %}
@@ -34,7 +34,7 @@
       <td class="num">{{ r.cost_text }}</td>
       <td>{{ chip(t('production.state.cancelled') if r.cancelled else t('production.state.active'), 'inactive' if r.cancelled else 'active') }}</td>
       <td class="row-actions">
-        {% if can('edit') and not r.cancelled %}<a href="/production/{{ r.id }}/cancel" role="button" class="secondary outline">{{ t('production.cancel') }}</a>{% endif %}
+        {% if can('edit') and not r.cancelled %}{{ icon_link('/production/' ~ r.id ~ '/cancel', 'cancel', true, '#' ~ r.id) }}{% endif %}
       </td>
     </tr>
     {% endfor %}

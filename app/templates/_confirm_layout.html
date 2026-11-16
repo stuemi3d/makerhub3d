@@ -1,0 +1,28 @@
+{# Shared build of every delete/confirm question (issue 169): in the pop-up (HTMX) or, without
+   JavaScript, as a page of its own. A page extends this and sets:
+     title_key, action, button_key, cancel_url, subject (bold name), error_key (optional)
+   and may fill the blocks "details" (text under the name) and "fields" (inputs in the form).
+   Without a "button_key" there is no button (the action is not allowed: only a notice). #}
+{% extends "_popup_layout.html" if popup else "base.html" %}
+{% block title %}{{ t(title_key) }} – {{ app_name }}{% endblock %}
+{% block content %}
+<h1{% if popup %} id="popup-title"{% endif %}>{{ t(title_key) }}</h1>
+{% if subject %}<p><strong>{{ subject }}</strong></p>{% endif %}
+{% if error_key %}<p role="alert"><mark>{{ t(error_key) }}</mark></p>{% endif %}
+{% block details %}{% endblock %}
+{% if button_key %}
+<form method="post" action="{{ action }}" autocomplete="off"{% if popup %} hx-post="{{ action }}" hx-target="#popup-body" hx-swap="innerHTML"{% endif %}>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  {% block fields %}{% endblock %}
+  <div class="form-actions">
+    <button type="submit" class="secondary">{{ t(button_key) }}</button>
+    {% if popup %}<button type="button" class="secondary outline" data-popup-close>{{ t('article.cancel') }}</button>
+    {% else %}<a href="{{ cancel_url }}" role="button" class="secondary outline">{{ t('article.cancel') }}</a>{% endif %}
+  </div>
+</form>
+{% elif popup %}
+<div class="form-actions"><button type="button" class="secondary outline" data-popup-close>{{ t('article.cancel') }}</button></div>
+{% else %}
+<p><a href="{{ cancel_url }}">{{ t('article.cancel') }}</a></p>
+{% endif %}
+{% endblock %}

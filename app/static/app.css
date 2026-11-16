@@ -493,6 +493,11 @@
   white-space: nowrap;
 }
 
+/* Tables with many columns let the column heads wrap so the action symbols stay in view. */
+.data-table.wrap-head thead th {
+  white-space: normal;
+}
+
 .data-table thead th a {
   color: inherit;
   text-decoration: none;
@@ -541,12 +546,18 @@
   text-decoration: none;
 }
 
+.icon-btn svg {
+  flex: none;
+}
+
 .icon-form {
   display: inline;
   margin: 0;
 }
 
 button.icon-btn {
+  /* Pico makes form buttons as wide as their cell; a symbol button stays square. */
+  width: 2rem;
   margin-bottom: 0;
   padding: 0;
   background: transparent;

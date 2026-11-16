@@ -264,6 +264,7 @@ Der Maintainer hat die frühere Bedingung („erst nach Alltagsnutzung von M1“
 - [x] 6/6 Übrige Seiten im neuen Stil, Vorlagen-Detail als Karte (#78)
 - [x] Artikel-Dashboard nach dem Vorbild von ERPNext: Von der Übersicht springt man in die jeweilige Liste (Preise, Lagerbuchungen …). Die Kacheln im Artikel-Detail genügen (Entscheidung des Maintainers); Gruppen und „+“-Schnellanlage wie in ERPNext sind nicht nötig
 - [x] Anpassung an Bambuddy: Farben des dunklen Themas, kompakte Schriftgrößen, flache Reiter-Leiste (auch in den Einstellungen), Formulare nicht über die volle Breite (#109, #111, #113)
+- [x] Löschen und Bestätigen überall als Pop-up mit gemeinsamem Baustein (Gerät, Attribut, Vorlage, Artikel, endgültig löschen, Produktion stornieren, Zwei-Faktor zurücksetzen); Geräte-Tabelle mit Symbol-Buttons (#169)
 - [ ] Feinschliff: Logo, Diagramm-Optik, echte Ein/Aus-Schalter, weitere Akzentfarben (optional)
 
 **M2 – Bambuddy-Anbindung und Produktion**
