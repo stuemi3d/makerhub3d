@@ -23,7 +23,7 @@ Diese Datei gilt für jede Claude-Code-Sitzung in diesem Repository. Der vollst�
 3. Branch anlegen: `aufgabe/<issue-nr>-<kurzname>` (von aktuellem `main`).
 4. Zuerst die Tests schreiben, dann den Code.
 5. Lokal muss alles grün sein: `uv run pytest`, `uv run ruff check`, `uv run ruff format --check`. Hat sich eine Seite oder Oberfläche geändert, zusätzlich die Browser-Tests (siehe „Browser-Tests“).
-6. **Unabhängiges Review:** Starte einen Subagenten mit frischem Kontext, der den Diff gegen diese Datei und die Sicherheits-Checkliste unten prüft. Der Subagent läuft mit dem Modell **Sonnet** (spart Nutzungslimit). Behebe, was er findet, oder begründe, warum nicht.
+6. **Unabhängiges Review:** Starte einen Subagenten mit frischem Kontext, der den Diff gegen diese Datei und die Sicherheits-Checkliste unten prüft. Der Subagent läuft mit dem Modell **Sonnet** (spart Nutzungslimit). Er prüft auch, ob der Diff den etablierten Oberflächen-Stil nutzt (Abschnitt „Oberfläche“). Behebe, was er findet, oder begründe, warum nicht.
 7. Commit(s), Push des Branches, Pull Request mit der Vorlage (`.github/pull_request_template.md`), verknüpft mit dem Issue (`Closes #<nr>`).
 8. Kommentare des Maintainers im PR umsetzen, bis er zufrieden ist. **Er merged – nie du.**
 
@@ -48,6 +48,19 @@ In der Schnellspur gilt:
 Erledigt ein Pull Request einen Punkt der Meilensteine in `docs/plan.md` (Abschnitt 10), hakst du ihn dort im selben PR ab (`[x]`).
 
 Halte jeden Pull Request klein. Wird eine Aufgabe größer als gedacht: stoppen, Vorschlag zur Aufteilung machen.
+
+## Oberfläche: den etablierten Stil wiederfinden
+
+Die App hat einen festen Stil. Neue Funktionen sollen sich **überall gleich** anfühlen; eigene Lösungen für schon gelöste Fälle sind ein Fehler. Der Maintainer hat das ausdrücklich verlangt.
+
+1. **Vorbild suchen, dann nachbauen.** Vor jeder neuen Seite oder Aktion das ähnlichste vorhandene Beispiel finden (Templates in `app/templates/`, Bausteine `_data_table.html`, `_form_macros.html`, `_popup_layout.html`) und Aufbau, Texte und Bedienung übernehmen. Gibt es keins, im Issue nachfragen, bevor ein neuer Stil entsteht.
+2. **Anlegen, Bearbeiten und Löschen sind Pop-ups im selben Stil** (technisch: `popup_attrs`, `_popup_layout.html`; nach dem Speichern wird die Liste aktualisiert). Das Löschen ist ein Pop-up mit Name, Rückfrage, Schaltfläche „Endgültig löschen“ und „Abbrechen“; beim endgültigen Löschen eines Artikels kommt wie im Plan das Abtippen der Artikelnummer dazu. **Nie** Browser-Dialoge (`window.confirm`, `alert`, `data-confirm`): Sie sehen fremd aus, und eingebettet in Bambuddy blockiert der Browser sie still, dann passiert beim Klick nichts.
+3. **Übersichten sind Tabellen** mit dem gemeinsamen Baustein (`_data_table.html`): sortierbare Spaltenköpfe, Chips für Status, Aktionen als **Symbol-Buttons in der Spalte ganz rechts** (`icon_link`, `icon_post`), keine Text-Buttons in Zeilen. Die Aktionsspalte steht in jeder Tabelle an derselben Stelle.
+4. Serverseitige Prüfungen bleiben immer bestehen; die Oberfläche blendet nur aus, was nicht erlaubt ist.
+5. **Bekannte Abweichungen** vom Soll (werden in eigenen Aufgaben angeglichen, nicht als Vorbild nehmen):
+   - Noch eigene Seiten statt Pop-ups: Löschen von Artikeln (auch „Endgültig löschen“), Vorlagen, Attributen und Geräten, „Produktion stornieren“ und „Benutzer bearbeiten“.
+   - Noch `data-confirm` statt Pop-up: „Zwei-Faktor zurücksetzen“ (Benutzer).
+   - Noch nicht der gemeinsame Tabellen-Baustein oder noch Text-Buttons: Geräte-Tabelle, Attribute („Wert hinzufügen“) und die Tabelle in „Varianten anlegen“.
 
 ## Browser-Tests (Playwright)
 
