@@ -11,7 +11,7 @@ Das Tool beantwortet für jeden Artikel eine Frage: *Was habe ich kalkuliert, wa
 **Drin (Version 1):**
 
 - Artikelstamm mit Vorlagen und Varianten, jede Variante mit eigener Artikelnummer (z. B. `123456-rt`, automatisch aus Vorlagennummer und Kürzeln der Merkmalswerte zusammengesetzt); Kalkulation ist immer optional
-- Kalkulation für noch nicht gedruckte Teile: Filament aus den Bambuddy-Spulen, Druckzeit und Gramm aus gesliceter 3MF oder G-Code, Strom, Maschine, Ausschussquote, Arbeitszeit, Zusatzteile, Gewinnaufschlag
+- Kalkulation für noch nicht gedruckte Teile: Filament aus den Bambuddy-Spulen, Druckzeit und Gramm aus gesliceter 3MF oder G-Code, Strom, Maschine, Ausschussquote, Arbeitszeit, Gewinnaufschlag
 - Produktion: einen oder mehrere Drucke aus dem Bambuddy-Archiv genau einem Artikel zuordnen; nicht zugeordnete (z. B. private) Drucke bleiben unberührt
 - Lager: Zugänge aus Produktionen, Abgänge vorerst von Hand
 - Auswertung pro Artikel: kalkuliert ↔ produziert ↔ verkauft, als Verlauf; Dashboard als Startseite
@@ -68,7 +68,7 @@ Der Artikel ist der Knotenpunkt; alles andere hängt über die Artikelnummer an 
 | --- | --- | --- |
 | Artikelvorlage | Vorlagennummer, Name, Beschreibung, Merkmale (z. B. Farbe, Größe; jeder Merkmalswert mit Kürzel), Standardwerte für Preis und Mindestbestand, aktiv | nur Vorlage: kein Bestand, kein Verkauf |
 | Artikel | Artikelnummer, Bezeichnung, optional Vorlage + Merkmalswerte (= Variante), Soll-Verkaufspreis, Mindestbestand, aktiv | Artikelnummer = Schlüssel zur Rechnungs-Software |
-| Kalkulation (optional) | Artikel oder Vorlage, Datum, „maßgeblich“-Kennzeichen, Materialzeilen (Spule/Durchschnitt/frei, Gramm, Preis/kg), Druckzeit, Teile pro Platte, Drucker, Ausschussquote %, Rüstzeit pro Platte (Min.), Nacharbeit pro Stück (Min.), Zusatzteile pro Stück, Gewinnaufschlag %, Ergebnis pro Stück (Selbstkosten ohne/mit Arbeitszeit, Verkaufspreis-Vorschlag) | Spule aus Bambuddy (nur gelesen) |
+| Kalkulation (optional) | Artikel oder Vorlage, Datum, „maßgeblich“-Kennzeichen, Materialzeilen (Spule/Durchschnitt/frei, Gramm, Preis/kg), Druckzeit, Teile pro Platte, Drucker, Ausschussquote %, Rüstzeit pro Platte (Min.), Nacharbeit pro Stück (Min.), Gewinnaufschlag %, Ergebnis pro Stück (Selbstkosten ohne/mit Arbeitszeit, Verkaufspreis-Vorschlag) | Spule aus Bambuddy (nur gelesen) |
 | Produktion | Datum, Notiz, Gesamtkosten, Arbeitszeit (Minuten), Stundensatz und Arbeitskosten als Wert, Fehldruck-Stücke (nur zur Information, ändern weder Bestand noch Kosten), storniert | – |
 | Produktion – Drucke | Produktion, Material-, Strom-, Maschinenkosten als Wert (der Verschleiß steckt im Druckerstundensatz und wird nicht aus Bambuddy übernommen), Druckzeit, Filament in Gramm und Strom in kWh als Wert (leer, wenn Bambuddy sie nicht kennt), Filament (Material als Text, Farben als Farbcodes), Status (erfolgreich/fehlgeschlagen) | Bambuddy-Archiv-ID |
 | Produktion – Ergebnis | Produktion, Artikel (genau einer), gute Stück, Kosten (alle Kosten der Produktion) | – |
@@ -128,12 +128,11 @@ Gerechnet wird in dieser Reihenfolge. Standardwerte (Ausschussquote, Gewinnaufsc
 4. **Arbeitszeit pro Stück** (optional, jedes leere Feld = 0):
    - in Stunden = (Rüstzeit pro Platte in Minuten ÷ Teile pro Platte + Nacharbeit pro Stück in Minuten) ÷ 60
    - als Kosten = Arbeitszeit pro Stück in Stunden × Arbeits-Stundensatz
-5. **Zusatzteile pro Stück** = Summe aus Menge × Preis
-6. **Selbstkosten pro Stück** = (3) + Arbeitskosten aus (4) + (5); angezeigt **ohne Arbeitszeit** ((3) + (5)) und **mit Arbeitszeit**
-7. **Verkaufspreis-Vorschlag** = Selbstkosten pro Stück (mit Arbeitszeit) × (1 + Gewinnaufschlag ÷ 100), gerundet
-8. **Verkaufspreis** = der am Artikel hinterlegte Soll-Verkaufspreis, falls gesetzt (bei Varianten ggf. von der Vorlage geerbt, siehe Abschnitt 4); sonst der Verkaufspreis-Vorschlag
-9. **Gewinn pro Stück** = Verkaufspreis − Selbstkosten pro Stück (mit Arbeitszeit)
-10. **Effektiver Stundenlohn** = (Verkaufspreis − Selbstkosten pro Stück ohne Arbeitszeit) ÷ Arbeitszeit pro Stück in Stunden. Ist die Arbeitszeit 0, wird „–“ angezeigt (keine Division).
+5. **Selbstkosten pro Stück** = (3) + Arbeitskosten aus (4); angezeigt **ohne Arbeitszeit** (= (3)) und **mit Arbeitszeit**
+6. **Verkaufspreis-Vorschlag** = Selbstkosten pro Stück (mit Arbeitszeit) × (1 + Gewinnaufschlag ÷ 100), gerundet
+7. **Verkaufspreis** = der am Artikel hinterlegte Soll-Verkaufspreis, falls gesetzt (bei Varianten ggf. von der Vorlage geerbt, siehe Abschnitt 4); sonst der Verkaufspreis-Vorschlag
+8. **Gewinn pro Stück** = Verkaufspreis − Selbstkosten pro Stück (mit Arbeitszeit)
+9. **Effektiver Stundenlohn** = (Verkaufspreis − Selbstkosten pro Stück ohne Arbeitszeit) ÷ Arbeitszeit pro Stück in Stunden. Ist die Arbeitszeit 0, wird „–“ angezeigt (keine Division).
 
 | Baustein | Bezug | Berechnung | Werte |
 | --- | --- | --- | --- |
@@ -143,7 +142,6 @@ Gerechnet wird in dieser Reihenfolge. Standardwerte (Ausschussquote, Gewinnaufsc
 | Ausschussquote | auf Druckkosten | × (1 + Ausschussquote ÷ 100) | Standard aus Einstellungen |
 | Rüstzeit (optional) | pro Platte | Minuten ÷ Teile pro Platte ÷ 60 × Arbeits-Stundensatz | z. B. Platte vorbereiten, Druck starten, abnehmen; leer = 0 |
 | Nacharbeit (optional) | pro Stück | Minuten ÷ 60 × Arbeits-Stundensatz | z. B. Stützen entfernen, entgraten, verpacken; leer = 0 |
-| Zusatzteile | pro Stück | Menge × Preis | freie Liste; später Einkaufspreise aus der Rechnungs-Software |
 | Gewinnaufschlag | auf Selbstkosten | × (1 + Gewinnaufschlag ÷ 100) | Standard aus Einstellungen |
 
 **Stundensatz pro Drucker:** Anschaffungswert ÷ (Nutzungsjahre × Druckstunden pro Jahr) × (1 + Wartungsaufschlag in % ÷ 100). Jeder Drucker hat seinen eigenen Satz. Alle drei Werte (Anschaffungswert, Nutzungsjahre, Druckstunden pro Jahr) sind Pflicht und müssen größer als 0 sein.
@@ -159,7 +157,7 @@ Gerechnet wird in dieser Reihenfolge. Standardwerte (Ausschussquote, Gewinnaufsc
 
 **Strom des Druckers** wird nicht im Stundensatz berechnet, sondern als eigene Zeile aus den kWh des Drucks (Bambuddy).
 
-**Verkaufspreis-Vorschlag:** wie in Schritt 7, gerundet (z. B. auf ,50 oder ,90); Kleinunternehmer-tauglich (ohne Umsatzsteuer). Angezeigt werden Selbstkosten **ohne und mit Arbeitszeit**, Verkaufspreis-Vorschlag, Gewinn pro Stück und effektiver Stundenlohn (Schritte 8–10).
+**Verkaufspreis-Vorschlag:** wie in Schritt 6, immer aufgerundet (je nach Einstellung auf den Cent, ,10, ,50, den nächsten Preis mit ,90 am Ende oder ganze Euro); Kleinunternehmer-tauglich (ohne Umsatzsteuer). Angezeigt werden Selbstkosten **ohne und mit Arbeitszeit**, Verkaufspreis-Vorschlag, Gewinn pro Stück und effektiver Stundenlohn (Schritte 7–9).
 
 **Spulen:** Geschäftliche Spulen werden über das Bambuddy-Feld „Kategorie“ erkannt (Wort in den Einstellungen festlegbar); die Kalkulation zeigt standardmäßig nur diese, mit Schalter „alle Spulen“. Der verwendete Preis wird in der Kalkulation gespeichert.
 
@@ -167,7 +165,7 @@ Gerechnet wird in dieser Reihenfolge. Standardwerte (Ausschussquote, Gewinnaufsc
 
 ## 7. Auswertung und Dashboard
 
-- **Pro Artikel:** kalkulierte vs. tatsächliche Kosten pro Stück, Ø Verkaufspreis, Gewinn pro Stück (€ und %) und effektiver Stundenlohn – berechnet wie in Abschnitt 6 (Schritte 9 und 10), aber mit tatsächlichen Werten: echter Verkaufspreis und tatsächliche Produktionskosten statt Kalkulation (für „ohne Arbeitszeit“ werden die Arbeitskosten der Produktion herausgerechnet); produziert / verkauft / Bestand, Fehldruck-Anteil; Diagramm „Kosten pro Stück über die Zeit“; Warnung bei Abweichung über X % (Standard 15 %).
+- **Pro Artikel:** kalkulierte vs. tatsächliche Kosten pro Stück, Ø Verkaufspreis, Gewinn pro Stück (€ und %) und effektiver Stundenlohn – berechnet wie in Abschnitt 6 (Schritte 8 und 9), aber mit tatsächlichen Werten: echter Verkaufspreis und tatsächliche Produktionskosten statt Kalkulation (für „ohne Arbeitszeit“ werden die Arbeitskosten der Produktion herausgerechnet); produziert / verkauft / Bestand, Fehldruck-Anteil; Diagramm „Kosten pro Stück über die Zeit“; Warnung bei Abweichung über X % (Standard 15 %).
 - **Pro Vorlage:** alle Varianten nebeneinander.
 - **Gesamt (Zeitraum wählbar):** Umsatz, Kosten der verkauften Teile, Rohgewinn, Top/Flop, Lagerwert, Ladenhüter, Fehldruckkosten, CSV-Export.
 - **Kosten verkaufter Teile:** gleitender Durchschnitt; FIFO später umschaltbar.
@@ -283,7 +281,7 @@ Der Maintainer hat die frühere Bedingung („erst nach Alltagsnutzung von M1“
 
 - [x] Geräte und Stundensätze inkl. Trocknungspauschale (#157)
 - [x] Geräte: Drucker aus Bambuddy übernehmen, Geräte ohne Produktion löschen (#163)
-- [ ] Rechenkern der Kalkulation
+- [x] Rechenkern der Kalkulation (#159)
 - [ ] 3MF- und G-Code-Auslesen
 - [ ] Seite Kalkulation
 
@@ -303,6 +301,6 @@ Der Maintainer hat die frühere Bedingung („erst nach Alltagsnutzung von M1“
 - ~~Reicht beim Bambuddy-Key das Recht „Status lesen“ für Archiv und Spulen?~~ Ja: Archiv, Spulen, Drucker und Einstellungen sind mit einem nur lesenden Key abrufbar (geprüft in #117).
 - Liefern die APIs der Rechnungs-Software den Bezahlt-Status? (Prüfung zu Beginn von M5)
 - Risiko: Bambuddy entwickelt sich sehr schnell → Anbindung in einem einzigen Baustein, Tests mit aufgezeichneten Antworten, Verbindungstest in den Einstellungen.
-- ~~**Umfang der tatsächlichen Kosten** (M2/M4)~~ Entschieden (Maintainer): Eine Produktion erfasst Material-, Strom- und **Maschinenkosten** (Druckstunden × Druckerstundensatz; der Verschleiß aus Bambuddy entfällt, weil er schon im Druckerstundensatz steckt, #135) sowie **Arbeitskosten** (Arbeitszeit × Stundensatz, #134). **Zusatzteile** sind in der Produktion noch nicht enthalten und bleiben offen (M3, Kalkulation); die Abweichungswarnung vergleicht deshalb bis dahin nur Druckkosten mit Druckkosten.
-- **Verkaufspreis bei einer Kalkulation an einer Vorlage** (M3): Schritt 8 in Abschnitt 6 geht vom Soll-Verkaufspreis eines Artikels aus; eine Kalkulation an einer Vorlage hat aber keinen Artikel, und für diesen Fall ist kein Preis festgelegt. *Vorschlag:* Es gilt der Standardpreis der Vorlage; ein Wert am Artikel überschreibt ihn.
+- ~~**Umfang der tatsächlichen Kosten** (M2/M4)~~ Entschieden (Maintainer): Eine Produktion erfasst Material-, Strom- und **Maschinenkosten** (Druckstunden × Druckerstundensatz; der Verschleiß aus Bambuddy entfällt, weil er schon im Druckerstundensatz steckt, #135) sowie **Arbeitskosten** (Arbeitszeit × Stundensatz, #134). **Zusatzteile** gibt es in MakerHub 3D nicht (Entscheidung des Maintainers, #159); weder Kalkulation noch Produktion berücksichtigen sie.
+- **Verkaufspreis bei einer Kalkulation an einer Vorlage** (M3): Schritt 7 in Abschnitt 6 geht vom Soll-Verkaufspreis eines Artikels aus; eine Kalkulation an einer Vorlage hat aber keinen Artikel, und für diesen Fall ist kein Preis festgelegt. *Vorschlag:* Es gilt der Standardpreis der Vorlage; ein Wert am Artikel überschreibt ihn.
 - ~~**Druckerstundensatz mit Trocknung** (M3)~~ Entschieden (Maintainer): Satz pro Drucker plus gemeinsamer Trocknungsaufschlag, ohne Strom beim Trockner; Formeln in Abschnitt 6.
