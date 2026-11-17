@@ -11,7 +11,7 @@ Das Tool beantwortet für jeden Artikel eine Frage: *Was habe ich kalkuliert, wa
 **Drin (Version 1):**
 
 - Artikelstamm mit Vorlagen und Varianten, jede Variante mit eigener Artikelnummer (z. B. `123456-rt`, automatisch aus Vorlagennummer und Kürzeln der Merkmalswerte zusammengesetzt); Kalkulation ist immer optional
-- Kalkulation für noch nicht gedruckte Teile: Filament aus den Bambuddy-Spulen, Druckzeit und Gramm aus gesliceter 3MF oder G-Code, Strom, Maschine, Ausschussquote, Arbeitszeit, Gewinnaufschlag
+- Kalkulation für noch nicht gedruckte Teile: Filament aus den Bambuddy-Spulen, Druckzeit und Gramm aus einer gesliceten `.gcode.3mf`-Datei (oder von Hand eingetragen), Strom, Maschine, Ausschussquote, Arbeitszeit, Gewinnaufschlag
 - Produktion: einen oder mehrere Drucke aus dem Bambuddy-Archiv genau einem Artikel zuordnen; nicht zugeordnete (z. B. private) Drucke bleiben unberührt
 - Lager: Zugänge aus Produktionen, Abgänge vorerst von Hand
 - Auswertung pro Artikel: kalkuliert ↔ produziert ↔ verkauft, als Verlauf; Dashboard als Startseite
@@ -68,7 +68,7 @@ Der Artikel ist der Knotenpunkt; alles andere hängt über die Artikelnummer an 
 | --- | --- | --- |
 | Artikelvorlage | Vorlagennummer, Name, Beschreibung, Merkmale (z. B. Farbe, Größe; jeder Merkmalswert mit Kürzel), Standardwerte für Preis und Mindestbestand, aktiv | nur Vorlage: kein Bestand, kein Verkauf |
 | Artikel | Artikelnummer, Bezeichnung, optional Vorlage + Merkmalswerte (= Variante), Soll-Verkaufspreis, Mindestbestand, aktiv | Artikelnummer = Schlüssel zur Rechnungs-Software |
-| Kalkulation (optional) | Artikel oder Vorlage, Datum, „maßgeblich“-Kennzeichen, Materialzeilen (Spule/Durchschnitt/frei, Gramm, Preis/kg), Druckzeit, Teile pro Platte, Drucker, Ausschussquote %, Rüstzeit pro Platte (Min.), Nacharbeit pro Stück (Min.), Gewinnaufschlag %, Ergebnis pro Stück (Selbstkosten ohne/mit Arbeitszeit, Verkaufspreis-Vorschlag) | Spule aus Bambuddy (nur gelesen) |
+| Kalkulation (optional) | Artikel (auch eine Variante, nie eine Vorlage), Datum, „maßgeblich“-Kennzeichen, Art (mit Datei / von Hand), optional die gespeicherte `.gcode.3mf`-Datei, Materialzeilen (Material, Gramm; je Zeile eine oder mehrere Bambuddy-Spulen mit Gramm und Preis/kg als Wert), Druckzeit, Teile pro Platte, Drucker, Ausschussquote %, Rüstzeit pro Platte (Min.), Nacharbeit pro Stück (Min.), Gewinnaufschlag %, Ergebnis pro Stück (Selbstkosten ohne/mit Arbeitszeit, Verkaufspreis-Vorschlag) | Spule aus Bambuddy (nur gelesen) |
 | Produktion | Datum, Notiz, Gesamtkosten, Arbeitszeit (Minuten), Stundensatz und Arbeitskosten als Wert, Fehldruck-Stücke (nur zur Information, ändern weder Bestand noch Kosten), storniert | – |
 | Produktion – Drucke | Produktion, Material-, Strom-, Maschinenkosten als Wert (Maschinenkosten = Druckstunden × Maschinensatz des gewählten Druckers, Satz siehe Abschnitt 6; der Verschleiß steckt im Satz und wird nicht aus Bambuddy übernommen), Druckzeit, Filament in Gramm und Strom in kWh als Wert (leer, wenn Bambuddy sie nicht kennt), Filament (Material als Text, Farben als Farbcodes), Status (erfolgreich/fehlgeschlagen) | Bambuddy-Archiv-ID |
 | Produktion – Ergebnis | Produktion, Artikel (genau einer), gute Stück, Kosten (alle Kosten der Produktion) | – |
@@ -80,7 +80,7 @@ Der Artikel ist der Knotenpunkt; alles andere hängt über die Artikelnummer an 
 | Einstellungen | Strompreis (eigen oder aus Bambuddy), Arbeits-Stundensatz, Standard-Ausschussquote, Standard-Gewinnaufschlag, Rundung, Spulen-Kategorie für „geschäftlich“, Abweichungsschwelle | – |
 | Benutzer, Änderungsprotokoll | siehe Sicherheit | – |
 
-**Vorlagen und Varianten:** Eine Vorlage beschreibt z. B. „Halter A“ mit dem Merkmal Farbe; jede Variante („Halter A rot“, `123456-rt`) ist ein vollwertiger Artikel mit eigener Artikelnummer und eigenem Bestand. Artikel ohne Varianten brauchen keine Vorlage. Preis, Mindestbestand und Kalkulation erbt die Variante von der Vorlage und kann sie überschreiben.
+**Vorlagen und Varianten:** Eine Vorlage beschreibt z. B. „Halter A“ mit dem Merkmal Farbe; jede Variante („Halter A rot“, `123456-rt`) ist ein vollwertiger Artikel mit eigener Artikelnummer und eigenem Bestand. Artikel ohne Varianten brauchen keine Vorlage. Preis und Mindestbestand erbt die Variante von der Vorlage und kann sie überschreiben. Kalkulationen gehören immer zu einem Artikel oder einer Variante, nie zur Vorlage: Größen und Varianten können anders kosten.
 
 **Nummernschema:** Die Vorlage hat eine Vorlagennummer (z. B. `123456`), jeder Merkmalswert ein Kürzel (z. B. blau = `bl`, rot = `rt`, mittel = `m`). Beim Anlegen einer Variante wird die Artikelnummer automatisch zusammengesetzt: Vorlagennummer + Kürzel der gewählten Werte, in der Reihenfolge der Merkmale der Vorlage, getrennt durch `-` (z. B. `123456-bl-m`). Im Formular ist der Vorschlag vor dem Speichern änderbar; die Eindeutigkeit der Artikelnummer wird weiterhin geprüft. Artikel ohne Vorlage bekommen ihre Nummer wie bisher von Hand.
 
@@ -89,9 +89,9 @@ Der Artikel ist der Knotenpunkt; alles andere hängt über die Artikelnummer an 
 1. **Nichts verknüpft:** „Löschen“ mit Rückfrage (Admin und Mitarbeiter; „Nur lesen“ nie).
 2. **Nur Kalkulationen verknüpft:** Löschen möglich (Admin und Mitarbeiter); die Rückfrage nennt, was mitgelöscht wird, und rät zum Deaktivieren.
 3. **Produktionen, Lagerbewegungen oder Verkäufe verknüpft:** für Mitarbeiter nur Deaktivieren, mit erklärendem Hinweis.
-4. **Admin, „Endgültig löschen“:** löscht den Artikel samt allem Zugehörigen. Die Warnung nennt die Anzahl der betroffenen Datensätze und weist darauf hin, dass es nicht rückgängig zu machen ist; zur Bestätigung wird die Artikelnummer abgetippt. Das Änderungsprotokoll hält fest, wer wann welchen Artikel mit wie vielen Datensätzen gelöscht hat. Der Button wird nur angeboten, wenn Stufe 3 gilt (etwas hängt am Artikel). Dies ist die einzige Ausnahme von der Regel „nie löschen, sondern stornieren“; gedacht vor allem für Testdaten zu Beginn.
+4. **Admin, „Endgültig löschen“:** löscht den Artikel samt allem Zugehörigen (bei Kalkulationen auch die gespeicherten Dateien). Die Warnung nennt die Anzahl der betroffenen Datensätze und weist darauf hin, dass es nicht rückgängig zu machen ist; zur Bestätigung wird die Artikelnummer abgetippt. Das Änderungsprotokoll hält fest, wer wann welchen Artikel mit wie vielen Datensätzen gelöscht hat. Der Button wird nur angeboten, wenn Stufe 3 gilt (etwas hängt am Artikel). Dies ist die einzige Ausnahme von der Regel „nie löschen, sondern stornieren“; gedacht vor allem für Testdaten zu Beginn.
 
-**Vorlagen** haben nie Bestand, Produktion oder Verkauf; für sie gelten deshalb nur die Stufen 1 und 2 plus Deaktivieren. Eine Vorlage lässt sich erst löschen, wenn alle ihre Varianten gelöscht sind; ihre Kalkulationen werden dann mitgelöscht (Rückfrage nennt die Anzahl). Eine deaktivierte Vorlage kann nicht mehr für neue Varianten genutzt werden; vorhandene Varianten bleiben unberührt.
+**Vorlagen** haben nie Bestand, Produktion oder Verkauf; für sie gelten deshalb nur die Stufen 1 und 2 plus Deaktivieren. Eine Vorlage lässt sich erst löschen, wenn alle ihre Varianten gelöscht sind. Eine deaktivierte Vorlage kann nicht mehr für neue Varianten genutzt werden; vorhandene Varianten bleiben unberührt.
 
 **Produktion:** fasst beliebig viele Drucke (Platten) und **genau einen Ergebnis-Artikel** zusammen. Dieser Artikel bekommt alle Kosten, ohne Schätzung und ohne Aufteilung. Erlaubt sind: ein Artikel auf einer Platte, derselbe Artikel mehrfach auf einer Platte, ein Artikel über mehrere Platten (z. B. Laterne aus 5 Platten) und derselbe Artikel mehrfach über mehrere Platten; die Kosten pro Stück sind alle Kosten geteilt durch die guten Stück. Vorschau vor dem Buchen. Wer mehrere Artikel druckt, legt je Artikel eine eigene Produktion mit eigenen Platten an. Gemischte Platten mit mehreren Artikeln sind bewusst nicht vorgesehen: Bambuddy liefert nur Kosten pro Druck, und eine Aufteilung nach Stückzahl oder von Hand eingetragener Gewichtung ist zu ungenau. Möglicher späterer Ausbau (nur bei Bedarf): Aufteilung nach dem Filamentgewicht pro Objekt, das sich aus den Objekt-Markierungen im G-Code der Platte berechnen lässt.
 
@@ -99,7 +99,7 @@ Der Artikel ist der Knotenpunkt; alles andere hängt über die Artikelnummer an 
 
 **Ausschuss und Fehldrucke:** Ausschuss auf einer durchgelaufenen Platte wird über weniger gute Stück eingepreist. Fehlgeschlagene Drucke werden rot angezeigt und können der Produktion zugeordnet werden, für die sie gedacht waren (erhöhen dann deren Stückkosten), oder ignoriert werden. Die Auswertung weist den Fehldruck-Anteil pro Artikel aus.
 
-**Mehrere Kalkulationen:** pro Artikel bzw. Vorlage beliebig viele, mit Datum; neue als Kopie einer alten. Eine ist „maßgeblich“ und dient der Auswertung als Soll-Wert. Kalkulationen dürfen frei bearbeitet und gelöscht werden.
+**Mehrere Kalkulationen:** pro Artikel (auch Variante) beliebig viele, mit Datum; neue als Kopie einer alten. Eine ist „maßgeblich“ und dient der Auswertung als Soll-Wert. Kalkulationen dürfen frei bearbeitet und gelöscht werden; beim Löschen wird auch die gespeicherte Datei gelöscht.
 
 ## 5. Seiten
 
@@ -107,7 +107,7 @@ Der Artikel ist der Knotenpunkt; alles andere hängt über die Artikelnummer an 
 | --- | --- |
 | Dashboard (Startseite) | Kennzahlen des Zeitraums, Mindestbestand, nicht zugeordnete Drucke, Warnungen |
 | Artikel | Vorlagen und Artikel anlegen; Variante aus Vorlage erzeugen. Artikel-Detail mit Kacheln **Kalkulationen · Produktionen · Lager · Verkäufe · Auswertung** (jeweils mit Anzahl); Klick öffnet die Tabelle mit Links zur Produktion und zum Bambuddy-Druck |
-| Kalkulation | Teil kalkulieren: Spulen wählen, 3MF/G-Code hochladen oder Werte eintippen, Live-Berechnung, als Kalkulation am Artikel oder an der Vorlage speichern |
+| Kalkulation | „Neue Kalkulation“ am Artikel oder an der Variante: zuerst „mit Datei“ oder „von Hand“, dann Drucker, Werte (aus der `.gcode.3mf` oder eingetippt), Spulen, Arbeit; Live-Berechnung; Speichern nur mit gewähltem Artikel oder gewählter Variante (ohne bleibt es eine Schnellkalkulation), die Datei wird mitgespeichert |
 | Produktion | Liste erfolgreicher und fehlgeschlagener Bambuddy-Drucke; einen oder mehrere auswählen → Produktion mit einem Ergebnis-Artikel und den guten Stück; Kosten pro Stück in der Vorschau prüfen; oder „Ignorieren“ |
 | Lager | Bestand je Artikel, Abgang/Korrektur von Hand, Bewegungsliste |
 | Auswertung | pro Artikel, pro Vorlage und gesamt |
@@ -121,6 +121,15 @@ Der Artikel ist der Knotenpunkt; alles andere hängt über die Artikelnummer an 
 
 ## 6. Kalkulation im Detail
 
+**Ablauf der Seite:** Beim Klick auf „Neue Kalkulation“ (am Artikel oder an der Variante):
+
+1. Man wählt „mit Datei“ oder „von Hand“.
+2. Man wählt den Drucker (aktive Drucker; sein Modell braucht eine Stromtabelle).
+3. Werte: Mit Datei lädt man eine `.gcode.3mf` hoch (nur dieses Format; Größenlimit und Typprüfung); die Seite zeigt übersichtlich Druckzeit sowie Gramm und Zeitanteil je Material und Farbe. Von Hand trägt man diese Werte selbst ein. Die Menge (Teile pro Platte) trägt man immer ein; bei einer Datei ist sie vorbelegt, falls die Datei die Zahl liefert.
+4. Je Position wählt man die Spule(n) aus Bambuddy (siehe „Spulen“ unten).
+5. Optional Rüstzeit und Nacharbeit; Ausschussquote und Gewinnaufschlag kommen als Standard aus den Einstellungen und lassen sich ändern. Die Berechnung läuft live.
+6. Gespeichert wird nur mit gewähltem Artikel oder gewählter Variante (sonst ist „Speichern“ gesperrt, eine Schnellkalkulation ohne Speichern bleibt möglich); die Datei wird mit der Kalkulation gespeichert. Später denkbar: einen Artikel direkt in der Kalkulation anlegen.
+
 Gerechnet wird in dieser Reihenfolge. Standardwerte (Ausschussquote, Gewinnaufschlag, Arbeits-Stundensatz, Rundung) kommen aus den Einstellungen.
 
 **Einheiten:** Eingaben in Gramm, Minuten, Watt und Prozent werden immer ausdrücklich umgerechnet: Prozentwert ÷ 100, Gramm ÷ 1000 → kg, Watt ÷ 1000 → kW, Minuten ÷ 60 → Stunden. Alle Zeiten (Druckzeit, Rüstzeit, Nacharbeit) gehen in Stunden in die Formeln ein.
@@ -133,14 +142,14 @@ Gerechnet wird in dieser Reihenfolge. Standardwerte (Ausschussquote, Gewinnaufsc
    - als Kosten = Arbeitszeit pro Stück in Stunden × Arbeits-Stundensatz
 5. **Selbstkosten pro Stück** = (3) + Arbeitskosten aus (4); angezeigt **ohne Arbeitszeit** (= (3)) und **mit Arbeitszeit**
 6. **Verkaufspreis-Vorschlag** = Selbstkosten pro Stück (mit Arbeitszeit) × (1 + Gewinnaufschlag ÷ 100), gerundet
-7. **Verkaufspreis** = der am Artikel hinterlegte Soll-Verkaufspreis, falls gesetzt (bei Varianten ggf. von der Vorlage geerbt, siehe Abschnitt 4); sonst der Verkaufspreis-Vorschlag
+7. **Verkaufspreis** = der am Artikel hinterlegte Soll-Verkaufspreis, falls gesetzt (bei Varianten ggf. von der Vorlage geerbt, siehe Abschnitt 4); sonst der Verkaufspreis-Vorschlag (so auch bei einer Schnellkalkulation ohne Artikel)
 8. **Gewinn pro Stück** = Verkaufspreis − Selbstkosten pro Stück (mit Arbeitszeit)
 9. **Effektiver Stundenlohn** = (Verkaufspreis − Selbstkosten pro Stück ohne Arbeitszeit) ÷ Arbeitszeit pro Stück in Stunden. Ist die Arbeitszeit 0, wird „–“ angezeigt (keine Division).
 
 | Baustein | Bezug | Berechnung | Werte |
 | --- | --- | --- | --- |
-| Material | pro Platte | Gramm ÷ 1000 × Preis/kg, eine Zeile pro Filament/Farbe | Gramm aus 3MF/G-Code (inkl. Spülmenge); Preisquelle je Zeile: echte Bambuddy-Spule, Durchschnitt passender geschäftlicher Spulen oder frei (z. B. bestellte Spule) |
-| Strom | pro Platte | Summe über die Materialien der Platte: Druckzeit des Materials in Stunden × Verbrauch in kWh pro Stunde × Strompreis pro kWh | Verbrauch je Druckermodell und Material aus der Tabelle des Modells (siehe „Druckermodell“ in Abschnitt 4), nicht mehr als Durchschnitt aus dem Archiv; Zeitanteil je Material aus der 3MF/dem G-Code |
+| Material | pro Platte | Gramm ÷ 1000 × Preis/kg, eine Zeile pro Filament/Farbe | Gramm aus der `.gcode.3mf` (inkl. Spülmenge) oder von Hand; Preis je Zeile von der gewählten Bambuddy-Spule (eine bestellte Spule wird zuerst in Bambuddy angelegt); mehrere Spulen siehe „Spulen“ unten |
+| Strom | pro Platte | Summe über die Materialien der Platte: Druckzeit des Materials in Stunden × Verbrauch in kWh pro Stunde × Strompreis pro kWh | Verbrauch je Druckermodell und Material aus der Tabelle des Modells (siehe „Druckermodell“ in Abschnitt 4), nicht mehr als Durchschnitt aus dem Archiv; Zeitanteil je Material aus der `.gcode.3mf` oder von Hand |
 | Maschine | pro Platte | Druckzeit in Stunden × Maschinensatz | Maschinensatz = Stundensatz des gewählten Druckers + Trocknungsaufschlag (siehe unten) |
 | Ausschussquote | auf Druckkosten | × (1 + Ausschussquote ÷ 100) | Standard aus Einstellungen |
 | Rüstzeit (optional) | pro Platte | Minuten ÷ Teile pro Platte ÷ 60 × Arbeits-Stundensatz | z. B. Platte vorbereiten, Druck starten, abnehmen; leer = 0 |
@@ -162,7 +171,7 @@ Gerechnet wird in dieser Reihenfolge. Standardwerte (Ausschussquote, Gewinnaufsc
 
 **Verkaufspreis-Vorschlag:** wie in Schritt 6, immer aufgerundet (je nach Einstellung auf den Cent, ,10, ,50, den nächsten Preis mit ,90 am Ende oder ganze Euro); Kleinunternehmer-tauglich (ohne Umsatzsteuer). Angezeigt werden Selbstkosten **ohne und mit Arbeitszeit**, Verkaufspreis-Vorschlag, Gewinn pro Stück und effektiver Stundenlohn (Schritte 7–9).
 
-**Spulen:** Geschäftliche Spulen werden über das Bambuddy-Feld „Kategorie“ erkannt (Wort in den Einstellungen festlegbar); die Kalkulation zeigt standardmäßig nur diese, mit Schalter „alle Spulen“. Der verwendete Preis wird in der Kalkulation gespeichert.
+**Spulen:** Geschäftliche Spulen werden über das Bambuddy-Feld „Kategorie“ erkannt (Wort in den Einstellungen festlegbar); die Kalkulation zeigt standardmäßig nur diese, mit Schalter „alle Spulen“. Der verwendete Preis wird in der Kalkulation gespeichert. Pro Position (Material/Farbe) wählt man zuerst eine Spule. Ist ihr Restgewicht kleiner als die benötigten Gramm, erscheint eine weitere Zeile für eine weitere Spule: Die Gramm werden der Reihe nach verteilt (erste Spule bis zu ihrem Restgewicht, der Rest auf die nächste), der Preis wird je Spule gerechnet. Angenommen wird, dass die Spule leergedruckt wird. Deckt keine Spule das Restgewicht ab oder gibt es keine Spule mit passendem Material, bleibt die Position unvollständig und die Kalkulation lässt sich nicht speichern (es wird nie mit 0 gerechnet). Es gibt keinen Durchschnitt und keine freie Preiseingabe; möglicher späterer Ausbau (nur bei Bedarf): ein Kontrollkästchen „von Hand eingeben“.
 
 **Werte aus Bambuddy:** Strompreis und Druckerliste haben einen Schalter „aus Bambuddy übernehmen“; gesetzt = abgeglichen und gesperrt, sonst eigener Wert.
 
@@ -203,6 +212,8 @@ Das Tool wird von Anfang an so gebaut, dass es als Open Source veröffentlicht *
 **Bambuddy:** eigener API-Key mit ausschließlich Leserechten.
 
 **Container:** läuft als normaler Benutzer, kein Docker-Socket, `cap_drop: ALL`, `no-new-privileges`, schreibgeschütztes Dateisystem außer `/data` und temporärem Ordner; die App lauscht im Container auf `0.0.0.0`, der Port wird auf dem Server nur auf `127.0.0.1` veröffentlicht und ist nur über den Reverse Proxy erreichbar. Uploads mit Größenlimit, nur Metadaten auslesen, Schutz gegen manipulierte ZIP-Dateien (3MF), Datei danach löschen.
+
+**Datei-Uploads:** Hochgeladene `.gcode.3mf`-Dateien (Kalkulation) haben ein Größenlimit und eine Typprüfung, werden nur in einem temporären Ordner ausgepackt und unter einem erzeugten Namen in `/data` abgelegt (nie unter dem Dateinamen des Nutzers). Ob die gespeicherten Dateien zur Sicherung gehören, wird in #182 entschieden (Empfehlung: ja).
 
 **Datensicherung:** nächtliche Sicherung der Datenbank nach `/data/backups` über die SQLite-Backup-Funktion; 14 Tages- und 12 Monatssicherungen; automatische Sicherung vor jeder Migration; „Sicherung herunterladen“ für Admins; getestete Wiederherstellung mit Anleitung.
 
@@ -289,7 +300,9 @@ Der Maintainer hat die frühere Bedingung („erst nach Alltagsnutzung von M1“
 - [x] Druckermodelle mit Stromverbrauch je Material, Drucker wählen ihr Modell (#174)
 - [x] Druckermodelle: beliebig viele Zeilen, Handy-Anordnung, Übersicht je Material, Reihenfolge ändern (#177)
 - [x] Produktion: Maschinensatz des Druckers aus den Geräten, Einstellungswert entfällt (#162)
-- [ ] Seite Kalkulation
+- [ ] Kalkulation, Teil 1: von Hand rechnen und am Artikel speichern (#161)
+- [ ] Kalkulation, Teil 2: mit `.gcode.3mf`-Datei (#181)
+- [ ] Kalkulation, Teil 3: Datei mit der Kalkulation speichern (#182)
 
 **M4 – Verkauf und Auswertung**
 
@@ -308,5 +321,5 @@ Der Maintainer hat die frühere Bedingung („erst nach Alltagsnutzung von M1“
 - Liefern die APIs der Rechnungs-Software den Bezahlt-Status? (Prüfung zu Beginn von M5)
 - Risiko: Bambuddy entwickelt sich sehr schnell → Anbindung in einem einzigen Baustein, Tests mit aufgezeichneten Antworten, Verbindungstest in den Einstellungen.
 - ~~**Umfang der tatsächlichen Kosten** (M2/M4)~~ Entschieden (Maintainer): Eine Produktion erfasst Material-, Strom- und **Maschinenkosten** (Druckstunden × Druckerstundensatz; der Verschleiß aus Bambuddy entfällt, weil er schon im Druckerstundensatz steckt, #135) sowie **Arbeitskosten** (Arbeitszeit × Stundensatz, #134). **Zusatzteile** gibt es in MakerHub 3D nicht (Entscheidung des Maintainers, #159); weder Kalkulation noch Produktion berücksichtigen sie.
-- **Verkaufspreis bei einer Kalkulation an einer Vorlage** (M3): Schritt 7 in Abschnitt 6 geht vom Soll-Verkaufspreis eines Artikels aus; eine Kalkulation an einer Vorlage hat aber keinen Artikel, und für diesen Fall ist kein Preis festgelegt. *Vorschlag:* Es gilt der Standardpreis der Vorlage; ein Wert am Artikel überschreibt ihn.
+- ~~**Verkaufspreis bei einer Kalkulation an einer Vorlage** (M3)~~ Entfällt (Entscheidung des Maintainers, #180): Kalkulationen gibt es nur an Artikeln und Varianten, nie an Vorlagen.
 - ~~**Druckerstundensatz mit Trocknung** (M3)~~ Entschieden (Maintainer): Satz pro Drucker plus gemeinsamer Trocknungsaufschlag, ohne Strom beim Trockner; Formeln in Abschnitt 6.
