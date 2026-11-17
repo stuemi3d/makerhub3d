@@ -16,7 +16,7 @@
 {% if errors.get(key) %}<p role="alert"><mark>{{ t(errors[key]) }}</mark></p>{% endif %}
 {% endfor %}
 {% if errors and not errors.get('prints') %}<p role="alert"><mark>{{ t('production.has_errors') }}</mark></p>{% endif %}
-<form method="post" action="/production/new" novalidate{% if popup %} hx-post="/production/new" hx-target="#popup-body" hx-swap="innerHTML"{% endif %}>
+<form id="production-form" method="post" action="/production/new" novalidate{% if popup %} hx-post="/production/new" hx-target="#popup-body" hx-swap="innerHTML"{% endif %}>
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   {% for archive_id in draft.ids %}<input type="hidden" name="prints" value="{{ archive_id }}">{% endfor %}
   <h2>{{ t('production.detail.prints') }}</h2>
@@ -27,6 +27,16 @@
       <span>{{ p.row.when }}{% if p.row.duration %} · {{ p.row.duration }}{% endif %}{% if p.row.failed %} <span class="chip chip-warn">{{ t('production.status.failed') }}</span>{% endif %}</span>
     </div>
     <div class="field-grid">
+      <div class="field-wide">
+        <label for="device_{{ p.row.archive_id }}">{{ t('production.field.device') }}</label>
+        <select name="device_{{ p.row.archive_id }}" id="device_{{ p.row.archive_id }}"{% if popup %} hx-post="/production/new" hx-trigger="change" hx-include="closest form" hx-vals='{"action": "device", "changed": "{{ p.row.archive_id }}"}' hx-target="#production-form" hx-select="#production-form" hx-swap="outerHTML"{% endif %}>
+          <option value="">{{ t('production.choose') }}</option>
+          {% for device_id, device_name in printers %}
+          <option value="{{ device_id }}"{% if p.device == device_id %} selected{% endif %}>{{ device_name }}</option>
+          {% endfor %}
+        </select>
+        {{ err('device_' ~ p.row.archive_id) }}
+      </div>
       {% for part in ('material', 'electricity', 'machine') %}
       <div>
         <label for="cost_{{ part }}_{{ p.row.archive_id }}">{{ t('production.col.' ~ part) }}</label>

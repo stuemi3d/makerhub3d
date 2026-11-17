@@ -20,7 +20,6 @@ DE = json.loads((APP_DIR / "locales" / "de.json").read_text(encoding="utf-8"))
 FIELDS = [
     "electricity_price",
     "labour_rate",
-    "machine_rate",
     "scrap_rate",
     "markup",
     "rounding",

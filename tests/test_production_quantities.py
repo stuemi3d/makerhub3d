@@ -16,8 +16,9 @@ from sqlalchemy import select
 
 from app.bambuddy import BambuddyClient
 from app.db import alembic_config, make_engine, run_migrations
-from app.models import AppSettings, ProductionPrint, StockMovement
+from app.models import ProductionPrint, StockMovement
 from tests.auth import AppClient
+from tests.machine import add_printer
 from tests.test_bambuddy_client import BASE, KEY, fixture
 from tests.test_bambuddy_settings import TEST_SECRET_KEY
 from tests.test_production_booking import field_error, form, productions, send
@@ -80,8 +81,7 @@ def secret_key(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.fixture
 def prepared_client(client: AppClient) -> AppClient:
     prepared(client, ARCHIVES)
-    with db() as session, session.begin():
-        session.get(AppSettings, 1).machine_rate = D("1.00")
+    add_printer("1.00")
     return client
 
 

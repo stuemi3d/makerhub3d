@@ -77,7 +77,9 @@ def test_a_device_is_deleted_after_asking(admin_page: Page, viewport_name: str) 
         "link", name=f"{t('table.action.delete')} {dryer}"
     )
     if viewport_name == "desktop":
-        # All three symbols are in view without scrolling the table sideways.
+        # All three symbols are in view without scrolling the table sideways (the shared
+        # database may hold many devices: look at the row, not at the top of the page).
+        delete_button.scroll_into_view_if_needed()
         expect(delete_button).to_be_in_viewport()
     delete_button.click()
     dialog = admin_page.locator("dialog#popup")
