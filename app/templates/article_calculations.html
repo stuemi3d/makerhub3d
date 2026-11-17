@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% from "_data_table.html" import head, actions_head, chip, icon_link, icon_post with context %}
+{% set title = t('article.tile.calculations') %}
+{% block title %}{{ title }} – {{ article.number }} – {{ app_name }}{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb">
+  <ul>
+    <li><a href="/articles">{{ t('articles.title') }}</a></li>
+    <li><a href="/articles/{{ article.id }}">{{ article.number }}</a></li>
+    <li>{{ title }}</li>
+  </ul>
+</nav>
+<div class="page-head">
+  <h1>{{ title }}</h1>
+  {% if can('edit') %}<a href="/calculation/new?article={{ article.id }}" role="button">{{ t('calc.new') }}</a>{% endif %}
+</div>
+<p>{{ article.number }} · {{ article.name }}</p>
+{% if notice %}<p role="status"><ins>{{ t('calc.notice.' ~ notice) }}</ins></p>{% endif %}
+{% if rows %}
+<article class="data-card">
+<div class="data-scroll">
+<table class="data-table">
+  <thead>
+    <tr>
+      {{ head(t('calc.col.date'), sort_links.date) }}
+      {{ head(t('calc.col.printer'), sort_links.printer) }}
+      {{ head(t('calc.col.cost'), sort_links.cost, numeric=true) }}
+      {{ head(t('calc.col.price'), sort_links.price, numeric=true) }}
+      {{ head(t('calc.col.state')) }}
+      {{ actions_head() }}
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in rows %}
+    <tr class="calc-row" data-id="{{ r.id }}">
+      <td class="cell-strong"><a href="/articles/{{ article.id }}/calculations/{{ r.id }}">{{ r.date }}</a></td>
+      <td>{{ r.printer }}</td>
+      <td class="num">{{ r.cost }}</td>
+      <td class="num">{{ r.price }}</td>
+      <td>{% if r.is_main %}{{ chip(t('calc.chip.main'), 'active') }}{% endif %}</td>
+      <td class="row-actions">
+        {{ icon_link('/articles/' ~ article.id ~ '/calculations/' ~ r.id, 'view', false, r.date) }}
+        {% if can('edit') %}
+        {{ icon_link('/articles/' ~ article.id ~ '/calculations/' ~ r.id ~ '/edit', 'edit', false, r.date) }}
+        {{ icon_link('/calculation/new?article=' ~ article.id ~ '&copy=' ~ r.id, 'copy', false, r.date) }}
+        {% if not r.is_main %}{{ icon_post('/articles/' ~ article.id ~ '/calculations/' ~ r.id ~ '/main', 'main', r.date) }}{% endif %}
+        {{ icon_link('/articles/' ~ article.id ~ '/calculations/' ~ r.id ~ '/delete', 'delete', true, r.date) }}
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+</article>
+{% else %}
+<p>{{ t('calc.list.empty') }}</p>
+{% endif %}
+{% endblock %}

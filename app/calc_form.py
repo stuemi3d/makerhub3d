@@ -32,7 +32,8 @@ MAX_TEXT = 40
 CENT = Decimal("0.01")
 ZERO = Decimal(0)
 _WHOLE = re.compile(r"[0-9]{1,9}")
-ACTIONS = ("calc", "add_row", "printer")
+ACTIONS = ("calc", "add_row", "printer", "save")
+NO_VALUE = "\u2013"
 
 
 @dataclass
@@ -123,10 +124,15 @@ def remaining(spool: Spool) -> Decimal | None:
     return max(spool.label_weight - (spool.weight_used or ZERO), ZERO)
 
 
-def spool_label(spool: Spool, left: Decimal, language: str) -> str:
+def spool_name(spool: Spool) -> str:
+    """The text that is stored with a spool: number, brand, material and colour."""
     name = " ".join(part for part in (spool.brand, spool.material, spool.color_name) if part)
+    return f"#{spool.id} {name}"
+
+
+def spool_label(spool: Spool, left: Decimal, language: str) -> str:
     grams = format(left.quantize(Decimal("1"), rounding=ROUND_HALF_UP), "f")
-    return f"#{spool.id} {name} · {grams} g"
+    return f"{spool_name(spool)} · {grams} g"
 
 
 @dataclass
@@ -148,6 +154,44 @@ class RowView:
     note: str | None = None
 
 
+@dataclass(frozen=True)
+class PlannedSpool:
+    spool_id: int
+    label: str
+    grams: Decimal
+    price_per_kg: Decimal
+
+
+@dataclass(frozen=True)
+class PlannedMaterial:
+    material: str
+    grams: Decimal
+    minutes: Decimal
+    kwh_per_hour: Decimal
+    spools: list[PlannedSpool]
+
+
+@dataclass(frozen=True)
+class Plan:
+    """A complete, valid calculation with everything that is stored when saving it."""
+
+    printer_id: int
+    printer_name: str
+    print_minutes: Decimal
+    pieces: int
+    setup_minutes: Decimal
+    rework_minutes: Decimal
+    scrap_percent: Decimal
+    margin_percent: Decimal
+    power_price: Decimal
+    machine_rate: Decimal
+    labour_rate: Decimal
+    rounding: str
+    target_price: Decimal | None
+    materials: list[PlannedMaterial]
+    result: CalculationResult
+
+
 @dataclass
 class Outcome:
     errors: dict[str, str] = field(default_factory=dict)
@@ -157,6 +201,8 @@ class Outcome:
     # The translation key of a problem with Bambuddy
     spool_problem: str | None = None
     result: dict[str, str] | None = None
+    # The same result as numbers, with what is needed to save it
+    plan: Plan | None = None
 
 
 @dataclass(frozen=True)
@@ -173,6 +219,8 @@ class Context:
     # The target price of the article, when there is one
     target_price: Decimal | None
     language: str
+    # Device id -> name of the printer
+    names: dict[int, str] = field(default_factory=dict)
 
 
 def _positive(text: str) -> Decimal | None:
@@ -209,7 +257,7 @@ def _allocate(
     grams: Decimal | None,
     options: list[tuple[str, str]],
     ctx: Context,
-) -> tuple[list[MaterialLine], int, bool]:
+) -> tuple[list[tuple[Spool, Decimal]], int, bool]:
     """The spool lines of a position, the last spool field that counts (-1 = none) and whether
     the position is complete. Errors are written for the spool fields."""
     by_id = {str(spool.id): spool for spool in ctx.spools}
@@ -229,7 +277,7 @@ def _allocate(
         else:
             seen.add(value)
             chosen.append((slot, value))
-    lines: list[MaterialLine] = []
+    lines: list[tuple[Spool, Decimal]] = []
     last = -1
     rest = grams
     for slot, value in chosen:
@@ -237,7 +285,7 @@ def _allocate(
             break
         spool = by_id[value]
         take = min(rest, remaining(spool) or ZERO)
-        lines.append(MaterialLine(grams=take, price_per_kg=spool.cost_per_kg))
+        lines.append((spool, take))
         last = slot
         rest -= take
     complete = (
@@ -299,6 +347,7 @@ def evaluate(draft: Draft, ctx: Context) -> Outcome:
 
     materials: list[MaterialLine] = []
     power: list[PowerLine] = []
+    planned: list[PlannedMaterial] = []
     filled = 0
     for index, row in enumerate(draft.rows):
         view = RowView(index, row, list(table), [])
@@ -325,35 +374,64 @@ def evaluate(draft: Draft, ctx: Context) -> Outcome:
             view.note = "calc.spool.incomplete"
         if not done:
             complete = False
-        materials += lines
+        materials += [MaterialLine(take, spool.cost_per_kg) for spool, take in lines]
         if material is not None and minutes is not None:
             power.append(PowerLine(minutes, table[material]))
+            if grams is not None and done:
+                planned.append(
+                    PlannedMaterial(
+                        material,
+                        grams,
+                        minutes,
+                        table[material],
+                        [
+                            PlannedSpool(spool.id, spool_name(spool), take, spool.cost_per_kg)
+                            for spool, take in lines
+                        ],
+                    )
+                )
     if show_errors and filled == 0:
         errors["material_0"] = "calc.error.material"
     if errors or not complete or filled == 0 or ctx.spool_problem:
         return out
     try:
-        result = calculate(
-            CalculationInput(
-                materials=materials,
-                print_minutes=print_minutes,
-                pieces_per_plate=pieces,
-                power_lines=power,
-                power_price=ctx.settings.electricity_price,
-                machine_rate=ctx.rates[printer_id],
-                scrap_percent=numbers["scrap"],
-                setup_minutes=numbers["setup_minutes"],
-                rework_minutes=numbers["rework_minutes"],
-                labour_rate=ctx.settings.labour_rate,
-                margin_percent=numbers["margin"],
-                rounding=ctx.settings.rounding,
-                target_price=ctx.target_price,
-            )
+        entry = CalculationInput(
+            materials=materials,
+            print_minutes=print_minutes,
+            pieces_per_plate=pieces,
+            power_lines=power,
+            power_price=ctx.settings.electricity_price,
+            machine_rate=ctx.rates[printer_id],
+            scrap_percent=numbers["scrap"],
+            setup_minutes=numbers["setup_minutes"],
+            rework_minutes=numbers["rework_minutes"],
+            labour_rate=ctx.settings.labour_rate,
+            margin_percent=numbers["margin"],
+            rounding=ctx.settings.rounding,
+            target_price=ctx.target_price,
         )
+        result = calculate(entry)
     except CalculationError:
         errors["print_minutes"] = "calc.error.number"
         return out
     out.result = shown_result(result, ctx.language)
+    out.plan = Plan(
+        printer_id=printer_id,
+        printer_name=ctx.names.get(printer_id, ""),
+        print_minutes=print_minutes,
+        pieces=pieces,
+        setup_minutes=numbers["setup_minutes"],
+        rework_minutes=numbers["rework_minutes"],
+        scrap_percent=numbers["scrap"],
+        margin_percent=numbers["margin"],
+        power_price=ctx.settings.electricity_price,
+        machine_rate=ctx.rates[printer_id],
+        labour_rate=ctx.settings.labour_rate,
+        rounding=str(ctx.settings.rounding),
+        target_price=ctx.target_price,
+        materials=planned,
+        result=result,
+    )
     return out
 
 
@@ -403,5 +481,5 @@ def shown_result(result: CalculationResult, language: str) -> dict[str, str]:
         "suggested": cents(result.suggested_price, language),
         "selling": cents(result.selling_price, language),
         "profit": cents(result.profit, language),
-        "wage": "\u2013" if wage is None else cents(wage, language),
+        "wage": NO_VALUE if wage is None else cents(wage, language),
     }

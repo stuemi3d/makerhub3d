@@ -236,6 +236,89 @@ class ProductionResult(Base):
     movement_id: Mapped[int] = mapped_column(ForeignKey("stock_movements.id"))
 
 
+class Calculation(Base):
+    """A saved calculation of an article or variant (issue #161), all values as they were
+    calculated: later changes of prices, rates or spools never change it."""
+
+    __tablename__ = "calculations"
+    __table_args__ = (CheckConstraint("kind IN ('hand', 'file')", name="ck_calculations_kind"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    article_id: Mapped[int] = mapped_column(ForeignKey("articles.id"), index=True)
+    created_on: Mapped[date] = mapped_column(Date)
+    # UTC without time zone
+    created_at: Mapped[datetime] = mapped_column(DateTime)
+    # By hand or from a file (the file way comes with issue #181)
+    kind: Mapped[str] = mapped_column(String(10), server_default="hand")
+    # The calculation that counts as the target value of the article (at most one per article)
+    is_main: Mapped[bool] = mapped_column(Boolean, server_default=false())
+    # The printer; its name is kept as text because a device can be deleted later
+    printer_id: Mapped[int | None] = mapped_column(ForeignKey("devices.id", ondelete="SET NULL"))
+    printer_name: Mapped[str] = mapped_column(String(100))
+    print_minutes: Mapped[Decimal] = mapped_column(DecimalText)
+    pieces: Mapped[int] = mapped_column(Integer)
+    setup_minutes: Mapped[Decimal] = mapped_column(DecimalText)
+    rework_minutes: Mapped[Decimal] = mapped_column(DecimalText)
+    scrap_percent: Mapped[Decimal] = mapped_column(DecimalText)
+    margin_percent: Mapped[Decimal] = mapped_column(DecimalText)
+    # The rates used (Euro per kWh, Euro per print hour, Euro per hour of work) and the rounding
+    power_price: Mapped[Decimal] = mapped_column(DecimalText)
+    machine_rate: Mapped[Decimal] = mapped_column(DecimalText)
+    labour_rate: Mapped[Decimal] = mapped_column(DecimalText)
+    rounding: Mapped[str] = mapped_column(String(20))
+    # The target price of the article at that time, if there was one
+    target_price: Mapped[Decimal | None] = mapped_column(DecimalText)
+    # The result (Euro), per plate or per piece as named
+    material_per_plate: Mapped[Decimal] = mapped_column(DecimalText)
+    power_per_plate: Mapped[Decimal] = mapped_column(DecimalText)
+    machine_per_plate: Mapped[Decimal] = mapped_column(DecimalText)
+    labour_cost: Mapped[Decimal] = mapped_column(DecimalText)
+    cost_without_labour: Mapped[Decimal] = mapped_column(DecimalText)
+    cost_with_labour: Mapped[Decimal] = mapped_column(DecimalText)
+    suggested_price: Mapped[Decimal] = mapped_column(DecimalText)
+    selling_price: Mapped[Decimal] = mapped_column(DecimalText)
+    profit: Mapped[Decimal] = mapped_column(DecimalText)
+    # Empty when there is no labour time
+    hourly_wage: Mapped[Decimal | None] = mapped_column(DecimalText)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    materials: Mapped[list["CalculationMaterial"]] = relationship(
+        cascade="all, delete-orphan", order_by="CalculationMaterial.position"
+    )
+
+
+class CalculationMaterial(Base):
+    """One material (position) of a calculation with its time share and power use."""
+
+    __tablename__ = "calculation_materials"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    calculation_id: Mapped[int] = mapped_column(ForeignKey("calculations.id"), index=True)
+    position: Mapped[int] = mapped_column(Integer)
+    material: Mapped[str] = mapped_column(String(50))
+    grams: Mapped[Decimal] = mapped_column(DecimalText)
+    # Time share of the material in minutes and its kWh per hour as used
+    minutes: Mapped[Decimal] = mapped_column(DecimalText)
+    kwh_per_hour: Mapped[Decimal] = mapped_column(DecimalText)
+    spools: Mapped[list["CalculationSpool"]] = relationship(
+        cascade="all, delete-orphan", order_by="CalculationSpool.position"
+    )
+
+
+class CalculationSpool(Base):
+    """The part of a position that comes from one Bambuddy spool, with its price as a value."""
+
+    __tablename__ = "calculation_spools"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    material_id: Mapped[int] = mapped_column(ForeignKey("calculation_materials.id"), index=True)
+    position: Mapped[int] = mapped_column(Integer)
+    # The Bambuddy spool id (the spool itself is only read, never stored) and a text for it
+    spool_id: Mapped[int] = mapped_column(Integer)
+    label: Mapped[str] = mapped_column(String(200))
+    grams: Mapped[Decimal] = mapped_column(DecimalText)
+    price_per_kg: Mapped[Decimal] = mapped_column(DecimalText)
+
+
 class IgnoredPrint(Base):
     """A Bambuddy print that does not matter and is hidden from the list of open prints."""
 

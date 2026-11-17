@@ -22,11 +22,12 @@
 <h1>{{ t('calc.title') }}</h1>
 {% if article %}<p>{{ article.number }} · {{ article.name }}</p>{% endif %}
 <p><small>{{ t('calc.intro') }}</small></p>
-<form id="calc-form" method="post" action="/calculation/new" novalidate hx-post="/calculation/new" hx-trigger="change, keyup changed delay:600ms" hx-target="#calc-form" hx-select="#calc-form" hx-swap="outerHTML" hx-sync="this:replace">
+<form id="calc-form" method="post" action="{{ form_action }}" novalidate hx-post="{{ form_action }}" hx-trigger="change, keyup changed delay:600ms" hx-target="#calc-form" hx-select="#calc-form" hx-swap="outerHTML" hx-sync="this:replace">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   {% if article %}<input type="hidden" name="article" value="{{ article.id }}">{% endif %}
   <input type="hidden" name="rows" value="{{ draft.rows|length }}">
 
+  {% if editing %}<p><small>{{ t('calc.editing') }}</small></p>{% endif %}
   {% if outcome.spool_problem %}<p role="alert"><mark>{{ t(outcome.spool_problem) }}</mark></p>{% endif %}
 
   <h2>{{ t('calc.section.print') }}</h2>
@@ -84,7 +85,7 @@
   </div>
   {% endfor %}
   <div class="form-actions">
-    {% if can_add_row %}{# A plain button, so that Enter in a field uses the calculate button, the only submit button #}<button type="button" hx-post="/calculation/new" hx-include="closest form" hx-vals='{"action": "add_row"}' hx-target="#calc-form" hx-select="#calc-form" hx-swap="outerHTML" class="secondary outline">{{ t('calc.add_position') }}</button>{% endif %}
+    {% if can_add_row %}{# A plain button, so that Enter in a field uses the calculate button, the only submit button #}<button type="button" hx-post="{{ form_action }}" hx-include="closest form" hx-vals='{"action": "add_row"}' hx-target="#calc-form" hx-select="#calc-form" hx-swap="outerHTML" class="secondary outline">{{ t('calc.add_position') }}</button>{% endif %}
     <label><input type="checkbox" name="all_spools" value="1"{% if draft.all_spools %} checked{% endif %}> {{ t('calc.all_spools') }}</label>
   </div>
 
@@ -119,8 +120,12 @@
   <p role="status"><small>{{ t('calc.result.none') }}</small></p>
   {% endif %}
 
+  {% if save_failed %}<p role="alert"><mark>{{ t('calc.error.save_incomplete') }}</mark></p>{% endif %}
+  {{ err('article') }}
+  {% if needs_article %}<p><small>{{ t('calc.save.needs_article') }}</small></p>{% endif %}
   <div class="form-actions form-actions-pinned">
     <button type="submit" name="action" value="calc">{{ t('calc.calculate') }}</button>
+    {% if can_save %}<button type="submit" name="action" value="save" class="secondary">{{ t('calc.save') }}</button>{% endif %}
     {% if article %}<a href="/articles/{{ article.id }}/calculations" role="button" class="secondary outline">{{ t('article.cancel') }}</a>{% endif %}
   </div>
 </form>
