@@ -12,3 +12,9 @@ id="{{ name }}" name="{{ name }}"{% if errors.get(name) %} aria-invalid="true" a
 {% macro popup_attrs(href) -%}
 href="{{ href }}" hx-get="{{ href }}" hx-target="#popup-body" hx-swap="innerHTML" data-popup
 {%- endmacro %}
+
+{# A colour from a file as a small filled square (issue 181). A checked colour code only
+   gets here (calc_form.valid_color); it is drawn as an SVG attribute, not as a style. #}
+{% macro swatch(color) -%}
+{% if color %}<svg class="swatch" width="16" height="16" viewBox="0 0 16 16" role="img" aria-label="{{ t('calc.file.color') }} {{ color }}"><rect width="15" height="15" x="0.5" y="0.5" rx="3" fill="{{ color }}" stroke="currentColor" stroke-opacity="0.45"/></svg>{% endif %}
+{%- endmacro %}

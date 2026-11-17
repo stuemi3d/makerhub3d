@@ -1,4 +1,5 @@
 {% extends "_popup_layout.html" if popup else "base.html" %}
+{% from "_form_macros.html" import swatch with context %}
 {% block title %}{{ t('calc.title') }} – {{ app_name }}{% endblock %}
 {% macro err(name) %}{% if errors.get(name) %}<small id="{{ name }}-error" class="field-error">{{ t(errors[name]) }}</small>{% endif %}{% endmacro %}
 {% macro num(name, label_key, value, mode='decimal') %}
@@ -85,7 +86,7 @@
         {% if view.row.file_material %}
         <input type="hidden" name="filemat_{{ i }}" value="{{ view.row.file_material }}">
         <input type="hidden" name="color_{{ i }}" value="{{ view.row.color }}">
-        {% if view.row.color %}<small>{{ t('calc.file.color') }}: {{ view.row.color }}</small>{% endif %}
+        {% if view.row.color %}<small class="swatch-line">{{ swatch(view.row.color) }}</small>{% endif %}
         {% if view.material is none %}<small><mark>{{ t('calc.file.material_unknown')|replace('{material}', view.row.file_material) }}</mark></small>{% endif %}
         {% endif %}
       </div>
