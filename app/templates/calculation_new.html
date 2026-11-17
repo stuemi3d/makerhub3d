@@ -84,7 +84,7 @@
   </div>
   {% endfor %}
   <div class="form-actions">
-    {% if can_add_row %}{# A plain button, so that Enter in a field uses "Berechnen", the only submit button #}<button type="button" hx-post="/calculation/new" hx-include="closest form" hx-vals='{"action": "add_row"}' hx-target="#calc-form" hx-select="#calc-form" hx-swap="outerHTML" class="secondary outline">{{ t('calc.add_position') }}</button>{% endif %}
+    {% if can_add_row %}{# A plain button, so that Enter in a field uses the calculate button, the only submit button #}<button type="button" hx-post="/calculation/new" hx-include="closest form" hx-vals='{"action": "add_row"}' hx-target="#calc-form" hx-select="#calc-form" hx-swap="outerHTML" class="secondary outline">{{ t('calc.add_position') }}</button>{% endif %}
     <label><input type="checkbox" name="all_spools" value="1"{% if draft.all_spools %} checked{% endif %}> {{ t('calc.all_spools') }}</label>
   </div>
 
