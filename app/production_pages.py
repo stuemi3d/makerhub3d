@@ -111,7 +111,9 @@ def add_production_routes(
     ) -> HTMLResponse:
         errors = errors or {}
         with new_session() as db:
-            rate = production_form.machine_rate(db)
+            printers = production_form.load_printers(db)
+        if not printers.rates and "prints" not in errors:
+            errors = {**errors, "prints": "production.error.no_printer"}
         found = {row.archive_id: row for row in prints.rows}
         shown = []
         for archive_id in draft.ids:
@@ -119,8 +121,9 @@ def add_production_routes(
             if row is None:
                 continue
             sent = draft.costs.get(archive_id, {})
-            machine = production_form.machine_default(row.seconds, rate)
-            hint = production_form.machine_hint(row, rate)
+            device = production_form.chosen_device(draft, row, printers)
+            machine = production_form.machine_default(row.seconds, printers.rates.get(device))
+            hint = production_form.machine_hint(row, device)
 
             def value(part: str, shown_value, sent=sent) -> str:
                 if sent.get(part) is not None:
@@ -133,6 +136,7 @@ def add_production_routes(
                     "material": value("material", row.material_value),
                     "electricity": value("electricity", row.electricity_value),
                     "machine": value("machine", machine),
+                    "device": device,
                     "missing": None in (row.material_value, row.electricity_value),
                     "machine_hint": None if machine is not None else hint,
                 }
@@ -160,6 +164,7 @@ def add_production_routes(
             prints=prints,
             draft=draft,
             shown_prints=shown,
+            printers=printers.choices,
             articles=articles,
             errors=errors,
             preview=preview,
@@ -216,6 +221,9 @@ def add_production_routes(
         failed_page, checked, prints = open_form(request, draft)
         if failed_page is not None:
             return failed_page
+        if draft.action == "device":
+            # Another printer was chosen: draw the form again, without checking the rest
+            return form_page(request, draft, prints)
         if checked.errors:
             return form_page(request, draft, prints, 422, checked.errors)
         if draft.action == "preview":

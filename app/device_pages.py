@@ -90,15 +90,7 @@ def add_device_routes(
             deletable = {row.id: not device_usage.is_in_use(db, row.id) for row in rows}
             model_names = {m.id: m.name for m in db.scalars(select(PrinterModel))}
             models = printer_model_pages.model_views(db, language)
-        active = [row for row in rows if row.active]
-        surcharge = devices.drying_surcharge(
-            [
-                devices.dryer_yearly_cost(row.price, row.years, row.maintenance_pct)
-                for row in active
-                if row.kind == "dryer"
-            ],
-            [row.hours_per_year for row in active if row.kind == "printer"],
-        )
+        surcharge = devices.active_surcharge(rows)
         views = [device_view(row, today, deletable[row.id], model_names) for row in rows]
         return {
             "printers": [view for view in views if view["kind"] == "printer"],

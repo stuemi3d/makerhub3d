@@ -10,7 +10,7 @@ from collections.abc import Iterator
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 import pytest
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Locator, Page, expect
 
 from tests.browser.conftest import HOST, t
 from tests.browser.test_pages import fits_screen_width
@@ -82,6 +82,34 @@ def connect(page: Page, address: str) -> None:
     expect(page.locator(".bambuddy-status")).to_contain_text(t("bambuddy.status.ready"))
 
 
+PRINTER = "Produktionsdrucker"
+
+
+def ensure_printer(page: Page) -> None:
+    """A printer for the booking tests; a form needs one, and none is linked to Bambuddy here.
+    The browser tests share one database, so it is created only once."""
+    page.goto("/settings/devices")
+    if page.locator("table.data-table tbody tr").filter(has_text=PRINTER).count() == 0:
+        create_printer(page, PRINTER, "1000")
+
+
+def select_and_wait(page: Page, select: Locator, label: str) -> None:
+    """Chooses a printer and waits until the form is drawn again with its proposal, so that
+    typing on goes into the new form and not into one that is about to be replaced."""
+    with page.expect_response(
+        lambda r: r.url.endswith("/production/new") and r.request.method == "POST"
+    ):
+        select.select_option(label=label)
+    page.wait_for_function(
+        "() => !document.querySelector('.htmx-request, .htmx-swapping, .htmx-settling')"
+    )
+
+
+def choose_printer(page: Page, popup: Locator) -> None:
+    select_and_wait(page, popup.locator("select[name^=device_]").first, PRINTER)
+    expect(popup.locator("input[name^=cost_machine_]").first).not_to_have_value("")
+
+
 def test_list_and_dashboard_fit_the_screen(admin_page: Page, fake_bambuddy: str) -> None:
     connect(admin_page, fake_bambuddy)
 
@@ -127,12 +155,14 @@ def test_booking_and_cancelling_work_on_every_screen(
     admin_page.locator(f"button[type=submit]:has-text('{t('article.create')}')").click()
     expect(admin_page.locator("h1")).to_contain_text("Halter")
 
+    ensure_printer(admin_page)
     admin_page.goto("/production")
     admin_page.locator("tr.print-row").first.locator("input[name=prints]").check()
     admin_page.get_by_role("button", name=t("production.create"), exact=True).click()
     # The form opens in the pop-up over the list of prints
     expect(admin_page.locator("#popup h1")).to_have_text(t("production.new.title"))
     expect(admin_page.locator("#popup")).to_be_visible()
+    choose_printer(admin_page, admin_page.locator("#popup"))
     assert fits_screen_width(admin_page)
 
     admin_page.select_option("#article", label=f"{number} · Halter")
@@ -204,12 +234,14 @@ def test_the_form_has_no_sideways_scrolling_and_a_wide_article_choice(
     admin_page.locator(f"button[type=submit]:has-text('{t('article.create')}')").click()
     expect(admin_page.locator("h1")).to_contain_text("Halter")
 
+    ensure_printer(admin_page)
     admin_page.set_viewport_size({"width": width, "height": 900})
     admin_page.goto("/production")
     admin_page.locator("input[name=prints]").first.check()
     admin_page.get_by_role("button", name=t("production.create"), exact=True).click()
     expect(admin_page.locator("#popup h1")).to_have_text(t("production.new.title"))
     expect(admin_page.locator("#popup")).to_be_visible()
+    choose_printer(admin_page, admin_page.locator("#popup"))
 
     before = admin_page.locator("#article").bounding_box()["width"]
     assert admin_page.evaluate(SCROLLERS) == 0
@@ -264,10 +296,12 @@ def test_the_preview_keeps_working_after_a_mistake_and_changes_the_cost_per_piec
     admin_page.fill("#name", "Halter")
     admin_page.locator(f"button[type=submit]:has-text('{t('article.create')}')").click()
     expect(admin_page.locator("h1")).to_contain_text("Halter")
+    ensure_printer(admin_page)
     admin_page.goto("/production")
     admin_page.locator("input[name=prints]").first.check()
     admin_page.get_by_role("button", name=t("production.create"), exact=True).click()
     popup = admin_page.locator("#popup")
+    choose_printer(admin_page, popup)
     preview = popup.get_by_role("button", name=t("production.preview"), exact=True)
     total = popup.locator(".preview-total")
     per_piece = popup.locator("output.field-static")
@@ -309,10 +343,12 @@ def test_the_labour_fields_fit_and_the_preview_adds_labour_costs(
     admin_page.fill("#name", "Halter")
     admin_page.locator(f"button[type=submit]:has-text('{t('article.create')}')").click()
     expect(admin_page.locator("h1")).to_contain_text("Halter")
+    ensure_printer(admin_page)
     admin_page.goto("/production")
     admin_page.locator("input[name=prints]").first.check()
     admin_page.get_by_role("button", name=t("production.create"), exact=True).click()
     popup = admin_page.locator("#popup")
+    choose_printer(admin_page, popup)
 
     expect(popup.locator("#labor_minutes")).to_have_value("")
     expect(popup.locator("#labor_rate")).not_to_have_value("")
@@ -333,35 +369,45 @@ def test_the_labour_fields_fit_and_the_preview_adds_labour_costs(
     assert fits_screen_width(admin_page)
 
 
-def test_the_machine_field_uses_the_rate_from_the_settings(
+def create_printer(page: Page, name: str, price: str) -> None:
+    """A printer made by hand in the pop-up of the devices page (not linked to Bambuddy)."""
+    page.goto("/settings/devices")
+    page.get_by_role("button", name=t("device.new.printer"), exact=True).click()
+    dialog = page.locator("dialog#popup")
+    dialog.locator("#name").fill(name)
+    dialog.locator("#bought_on").fill("2025-11-09")
+    dialog.locator("#price").fill(price)
+    dialog.locator("#years").fill("5")
+    dialog.locator("#hours_per_year").fill("1000")
+    dialog.locator("button[type=submit]").click()
+    expect(dialog).not_to_be_visible()
+
+
+def test_the_machine_field_follows_the_chosen_printer(
     admin_page: Page, fake_bambuddy: str, viewport_name: str
 ) -> None:
-    """Issue #135, case 10: rate in the settings, prefilled machine costs (1 h 5 min x 12 EUR
-    = 13 EUR), hint when the rate is 0, and nothing scrolls sideways."""
+    """Issue #162, case 3: without a linked printer the field is empty with a hint; choosing a
+    printer fills in its proposal, another printer gives another proposal, and nothing scrolls
+    sideways. (The devices of other tests share the database, so only the change is checked.)"""
     connect(admin_page, fake_bambuddy)
-    # The database is shared by both screen sizes: start from rate 0
-    admin_page.goto("/settings")
-    admin_page.fill("#machine_rate", "0")
-    admin_page.locator("main form[action='/settings'] button[type=submit]").click()
-    expect(admin_page.locator("#machine_rate")).to_have_value("0")
-    admin_page.goto("/production")
-    admin_page.locator("input[name=prints]").first.check()
-    admin_page.get_by_role("button", name=t("production.create"), exact=True).click()
-    popup = admin_page.locator("#popup")
-    expect(popup.locator("input[name=cost_machine_3]")).to_have_value("")
-    expect(popup).to_contain_text(t("production.machine_missing.rate"))
-
-    admin_page.goto("/settings")
-    admin_page.fill("#machine_rate", "12")
-    admin_page.locator("main form[action='/settings'] button[type=submit]").click()
-    expect(admin_page.locator("#machine_rate")).to_have_value("12")
-    assert fits_screen_width(admin_page)
+    cheap, dear = f"Günstig {viewport_name}", f"Teuer {viewport_name}"
+    create_printer(admin_page, cheap, "1000")
+    create_printer(admin_page, dear, "60000")
 
     admin_page.goto("/production")
     admin_page.locator("input[name=prints]").first.check()
     admin_page.get_by_role("button", name=t("production.create"), exact=True).click()
     popup = admin_page.locator("#popup")
-    expect(popup.locator("input[name=cost_machine_3]")).to_have_value("13")
+    machine = popup.locator("input[name=cost_machine_3]")
+    expect(machine).to_have_value("")
+    expect(popup).to_contain_text(t("production.machine_missing.device"))
+
+    select_and_wait(admin_page, popup.locator("#device_3"), cheap)
+    expect(machine).not_to_have_value("")
+    expect(popup).not_to_contain_text(t("production.machine_missing.device"))
+    first = machine.input_value()
+    select_and_wait(admin_page, popup.locator("#device_3"), dear)
+    expect(machine).not_to_have_value(first)
     expect(popup).to_contain_text("1 h 5 min")
     assert admin_page.evaluate(SCROLLERS) == 0
     assert fits_screen_width(admin_page)
@@ -373,10 +419,6 @@ def test_hints_do_not_overlap_the_fields_and_the_buttons_stay_visible(
     """Issue #146, cases 5, 7 and 10: a hint under a field starts below the field, the
     buttons are on the screen without scrolling, and nothing scrolls sideways."""
     connect(admin_page, fake_bambuddy)
-    admin_page.goto("/settings")
-    admin_page.fill("#machine_rate", "0")
-    admin_page.locator("main form[action='/settings'] button[type=submit]").click()
-    expect(admin_page.locator("#machine_rate")).to_have_value("0")
     admin_page.goto("/production")
     for box in admin_page.locator("input[name=prints]").all():
         box.check()
@@ -385,7 +427,7 @@ def test_hints_do_not_overlap_the_fields_and_the_buttons_stay_visible(
     expect(popup.locator("#article")).to_be_visible()
 
     field = popup.locator("#cost_machine_3")
-    hint = popup.locator("small", has_text=t("production.machine_missing.rate")).first
+    hint = popup.locator("small", has_text=t("production.machine_missing.device")).first
     expect(hint).to_be_visible()
     assert hint.bounding_box()["y"] >= field.bounding_box()["y"] + field.bounding_box()["height"]
 

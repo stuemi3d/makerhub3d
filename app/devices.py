@@ -6,6 +6,10 @@ All amounts are `Decimal`. Nothing here rounds: the pages round only when they s
 from collections.abc import Iterable
 from datetime import date
 from decimal import Decimal
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.models import Device
 
 ZERO = Decimal("0")
 HUNDRED = Decimal("100")
@@ -38,6 +42,19 @@ def drying_surcharge(
     if costs == 0 or hours == 0:
         return ZERO
     return costs / hours
+
+
+def active_surcharge(rows: Iterable["Device"]) -> Decimal:
+    """The drying surcharge of the active devices among `rows` (printers and dryers)."""
+    active = [row for row in rows if row.active]
+    return drying_surcharge(
+        [
+            dryer_yearly_cost(row.price, row.years, row.maintenance_pct)
+            for row in active
+            if row.kind == "dryer"
+        ],
+        [row.hours_per_year for row in active if row.kind == "printer"],
+    )
 
 
 def residual_value(price: Decimal, years: Decimal, bought_on: date, today: date) -> Decimal:

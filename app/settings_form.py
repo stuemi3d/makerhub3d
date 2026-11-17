@@ -22,7 +22,6 @@ class DecimalField:
 DECIMAL_FIELDS = (
     DecimalField("electricity_price", 4, Decimal("100")),
     DecimalField("labour_rate", 2, Decimal("10000")),
-    DecimalField("machine_rate", 4, Decimal("10000")),
     DecimalField("scrap_rate", 2, Decimal("100")),
     DecimalField("markup", 2, Decimal("1000")),
     DecimalField("deviation_threshold", 2, Decimal("100")),
@@ -30,7 +29,6 @@ DECIMAL_FIELDS = (
 FIELD_NAMES = (
     "electricity_price",
     "labour_rate",
-    "machine_rate",
     "scrap_rate",
     "markup",
     "rounding",

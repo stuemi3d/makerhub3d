@@ -15,12 +15,12 @@ from sqlalchemy import select
 
 from app.main import create_app
 from app.models import (
-    AppSettings,
     ChangeLogEntry,
     Production,
     StockMovement,
 )
 from tests.auth import EMPLOYEE_NAME, READER_NAME, AppClient, add_user, client_as
+from tests.machine import add_printer
 from tests.test_bambuddy_settings import TEST_SECRET_KEY
 from tests.test_production_page import names, prepared, raw, rows
 from tests.test_stock import add_article, add_movement, db, stock
@@ -53,8 +53,7 @@ ARCHIVES = [
 
 def setup_prints(client: AppClient) -> None:
     prepared(client, ARCHIVES)
-    with db() as session, session.begin():
-        session.get(AppSettings, 1).machine_rate = D(MACHINE_RATE)
+    add_printer(MACHINE_RATE)
 
 
 def form(ids: list[int], result: tuple[int, str], **extra: object):
@@ -284,6 +283,7 @@ def test_bambuddy_costs_with_many_decimals_are_rounded_in_the_form_and_can_be_bo
     client: AppClient,
 ) -> None:
     prepared(client, [raw(1, cost=0.123456, energy=0.00005)])
+    add_printer("1.00")
     article_id = add_article()
 
     html = client.get("/production/new?prints=1").text

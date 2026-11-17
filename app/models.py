@@ -44,8 +44,6 @@ class AppSettings(Base):
     electricity_price: Mapped[Decimal] = mapped_column(DecimalText)
     # Euro per hour of work
     labour_rate: Mapped[Decimal] = mapped_column(DecimalText)
-    # Euro per hour of printing (issue #135); machine costs = print hours x this rate
-    machine_rate: Mapped[Decimal] = mapped_column(DecimalText, server_default="0")
     # Percent
     scrap_rate: Mapped[Decimal] = mapped_column(DecimalText)
     # Percent
