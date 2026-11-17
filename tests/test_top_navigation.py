@@ -65,7 +65,7 @@ def test_unbuilt_entries_are_greyed_out_and_not_links(client: AppClient) -> None
     bar = header(client.get("/").text)
 
     disabled = re.findall(r'<a\b[^>]*aria-disabled="true"[^>]*>(.*?)</a>', bar)
-    assert disabled == [DE[k] for k in ("nav.calculation", "nav.analysis")]
+    assert disabled == [DE["nav.analysis"]]
     assert not re.search(r"<a\b[^>]*aria-disabled[^>]*href=", bar)
 
 

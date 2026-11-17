@@ -11,6 +11,7 @@ from app.calculation import (
     CalculationError,
     CalculationInput,
     MaterialLine,
+    PowerLine,
     calculate,
     round_price,
 )
@@ -181,3 +182,27 @@ def test_14_uses_decimal_without_float_errors() -> None:
     result = calculate(BASE)
     for value in (result.print_per_plate, result.cost_with_labour, result.suggested_price):
         assert isinstance(value, Decimal)
+
+
+# --- Issue #161: power per material with its own time share (test cases 1-3) ---------------
+
+
+def test_161_1_power_adds_the_time_share_of_every_material() -> None:
+    # PLA 60 min at 0.10 kWh/h and PETG 30 min at 0.13 kWh/h, 0.30 EUR/kWh
+    inp = replace(
+        BASE,
+        kwh_per_hour=None,
+        power_lines=[PowerLine(D(60), D("0.10")), PowerLine(D(30), D("0.13"))],
+    )
+    result = calculate(inp)
+    assert result.power_per_plate == D("0.03") + D("0.0195")
+
+
+def test_161_2_without_power_lines_the_result_is_as_before() -> None:
+    assert calculate(replace(BASE, power_lines=[])).power_per_plate == D("0.09")
+
+
+@pytest.mark.parametrize("line", [PowerLine(D(-1), D("0.1")), PowerLine(D(10), D("-0.1"))])
+def test_161_3_negative_power_values_are_refused(line: PowerLine) -> None:
+    with pytest.raises(CalculationError):
+        calculate(replace(BASE, power_lines=[line]))

@@ -32,11 +32,21 @@ class MaterialLine:
 
 
 @dataclass(frozen=True)
+class PowerLine:
+    """The time one material of the plate needs and its power use (kWh per hour)."""
+
+    minutes: Decimal
+    kwh_per_hour: Decimal
+
+
+@dataclass(frozen=True)
 class CalculationInput:
     materials: list[MaterialLine]
     print_minutes: Decimal
     pieces_per_plate: int
     kwh_per_hour: Decimal | None = None
+    # Power per material with its own time share (issue #161); added to `kwh_per_hour` x time
+    power_lines: list[PowerLine] = field(default_factory=list)
     power_price: Decimal | None = None
     machine_rate: Decimal | None = None  # printer hourly rate + drying surcharge
     scrap_percent: Decimal | None = None
@@ -102,6 +112,8 @@ def _check(inp: CalculationInput) -> None:
     ]
     for line in inp.materials:
         numbers += [line.grams, line.price_per_kg]
+    for power_line in inp.power_lines:
+        numbers += [power_line.minutes, power_line.kwh_per_hour]
     if any(number is not None and number < 0 for number in numbers):
         raise CalculationError("values must not be negative")
 
@@ -114,7 +126,9 @@ def calculate(inp: CalculationInput) -> CalculationResult:
 
     # 1-3: print cost
     material = sum((m.grams / THOUSAND * m.price_per_kg for m in inp.materials), ZERO)
-    power = hours * _value(inp.kwh_per_hour) * _value(inp.power_price)
+    kwh = hours * _value(inp.kwh_per_hour)
+    kwh += sum((p.minutes / SIXTY * p.kwh_per_hour for p in inp.power_lines), ZERO)
+    power = kwh * _value(inp.power_price)
     machine = hours * _value(inp.machine_rate)
     per_plate = material + power + machine
     per_piece = per_plate / pieces
