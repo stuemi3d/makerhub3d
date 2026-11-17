@@ -1,15 +1,14 @@
 """Deleting an article for good (issue #47). Admin only.
 
 The only exception to "never delete, only cancel" (plan, section 4): the article goes away
-together with everything that hangs on it. Calculations, productions and sales do not exist
-yet; their counts are 0 until M3 and M4 bring them (and add their deletion here).
-Productions exist since M2 (issue #118).
+together with everything that hangs on it. Calculations (issue #161) and productions
+(issue #118) are deleted with it; sales do not exist yet (their count is 0 until M4).
 """
 
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
-from app import audit, stock
+from app import audit, calc_store, stock
 from app.models import Article, Production, ProductionResult, StockMovement
 
 # The kinds of records that can hang on an article, in the order the warning lists them.
@@ -29,7 +28,7 @@ def count_productions(db: Session, article_id: int) -> int:
 def counts(db: Session, article_id: int) -> dict[str, int]:
     """How many records of each kind hang on the article."""
     return {
-        "calculations": 0,
+        "calculations": calc_store.count(db, article_id),
         "productions": count_productions(db, article_id),
         "stock_movements": stock.count_movements(db, article_id),
         "sales": 0,
@@ -48,6 +47,7 @@ def remove(db: Session, actor_id: int, article: Article) -> None:
     """Deletes an article that nothing blocks (stages 1 and 2) and writes the change log, in
     the caller's transaction."""
     subject = f"{article.number} · {article.name}"
+    calc_store.delete_for_article(db, article.id)
     db.delete(article)
     audit.record_change(db, actor_id, "article.deleted", subject)
 
@@ -56,6 +56,7 @@ def purge(db: Session, actor_id: int, article: Article) -> None:
     """Deletes the article and its records and writes the change log, in the caller's
     transaction (all or nothing)."""
     found = counts(db, article.id)
+    calc_store.delete_for_article(db, article.id)
     # Only the article's result rows go; a production without any result left goes with its
     # prints. The costs of the other articles stay as stored values.
     production_ids = set(

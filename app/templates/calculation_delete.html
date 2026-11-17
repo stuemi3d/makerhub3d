@@ -1,0 +1,7 @@
+{% extends "_confirm_layout.html" %}
+{% set title_key = 'calc.delete' %}
+{% set button_key = 'calc.delete.button' %}
+{% set action = '/articles/' ~ item.article_id ~ '/calculations/' ~ item.id ~ '/delete' %}
+{% set cancel_url = '/articles/' ~ item.article_id ~ '/calculations' %}
+{% set subject = item.article ~ ' · ' ~ item.date %}
+{% block details %}<p>{{ t('calc.delete.confirm') }}</p>{% endblock %}

@@ -35,6 +35,9 @@ class AppClient(TestClient):
         self.csrf_token: str | None = None
 
     def post(self, url: Any, *, data: Any = None, **kwargs: Any) -> Any:
+        # A post without a body (a button) still carries the form token
+        if data is None and not {"json", "files", "content"} & kwargs.keys():
+            data = {}
         if isinstance(data, dict) and "csrf_token" not in data and self.csrf_token:
             data = {**data, "csrf_token": self.csrf_token}
         return super().post(url, data=data, **kwargs)

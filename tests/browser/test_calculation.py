@@ -164,3 +164,81 @@ def test_calculate_by_hand_with_two_spools(
     expect(admin_page.locator("#material_1")).to_be_visible()
     expect(admin_page.locator("#grams_0")).to_have_value("100")
     assert fits_screen_width(admin_page)
+
+
+def create_article(page: Page, number: str, name: str) -> str:
+    """An article made by hand in its form; returns the address of its page."""
+    page.goto("/articles/new")
+    page.fill("#number", number)
+    page.fill("#name", name)
+    page.locator("main form button[type=submit]").click()
+    expect(page.locator("h1")).to_contain_text(number)
+    return page.url
+
+
+def fill_valid_form(page: Page, printer: str) -> None:
+    choose_and_wait(page, page.locator("#printer"), label=printer)
+    type_and_wait(page, page.locator("#print_minutes"), "60")
+    type_and_wait(page, page.locator("#pieces"), "2")
+    choose_and_wait(page, page.locator("#material_0"), label="PLA")
+    type_and_wait(page, page.locator("#grams_0"), "30")
+    type_and_wait(page, page.locator("#minutes_0"), "60")
+    choose_and_wait(page, page.locator("#spool_0_0"), value="1")
+    expect(page.locator("#res-suggested")).to_be_visible()
+
+
+def test_save_copy_make_main_and_delete(
+    admin_page: Page, live_server: LiveServer, fake_bambuddy: str, viewport_name: str
+) -> None:
+    connect(admin_page, fake_bambuddy)
+    printer, model = f"Kalk-Speicher {viewport_name}", f"Kalk-Modell2 {viewport_name}"
+    create_printer(admin_page, printer, "1000")
+    link_model(live_server, printer, model)
+    article = create_article(admin_page, f"KALK-{viewport_name}", "Kalkulierter Halter")
+
+    # A quick calculation cannot be saved: the button is missing
+    admin_page.goto("/calculation/new")
+    expect(admin_page.locator("button[value=save]")).to_have_count(0)
+
+    # From the article: calculate and save
+    admin_page.goto(article + "/calculations")
+    admin_page.get_by_role("button", name=t("calc.new")).first.click()
+    fill_valid_form(admin_page, printer)
+    expect(admin_page.locator("button[value=save]")).to_be_visible()
+    assert fits_screen_width(admin_page)
+    admin_page.locator("button[value=save]").click()
+    expect(admin_page.get_by_text(t("calc.notice.saved"))).to_be_visible()
+    rows = admin_page.locator("tr.calc-row")
+    expect(rows).to_have_count(1)
+    expect(rows.first.locator(".chip")).to_have_text(t("calc.chip.main"))
+    assert fits_screen_width(admin_page)
+
+    # Copy: the values are filled in; saving makes a second one that is not the main one
+    rows.first.get_by_role("link", name=t("table.action.copy"), exact=False).click()
+    expect(admin_page.locator("#grams_0")).to_have_value("30")
+    expect(admin_page.locator("#res-suggested")).to_be_visible()
+    type_and_wait(admin_page, admin_page.locator("#grams_0"), "40")
+    admin_page.locator("button[value=save]").click()
+    expect(rows).to_have_count(2)
+    expect(admin_page.locator("tr.calc-row .chip")).to_have_count(1)
+    assert fits_screen_width(admin_page)
+
+    # Make the other one the main one
+    other = admin_page.locator("tr.calc-row").filter(
+        has=admin_page.get_by_role("button", name=t("table.action.main"), exact=False)
+    )
+    other.get_by_role("button", name=t("table.action.main"), exact=False).click()
+    expect(admin_page.get_by_text(t("calc.notice.main"))).to_be_visible()
+    expect(admin_page.locator("tr.calc-row .chip")).to_have_count(1)
+
+    # Delete in a pop-up, no browser dialog
+    admin_page.locator("tr.calc-row").first.get_by_role(
+        "link", name=t("table.action.delete"), exact=False
+    ).click()
+    dialog = admin_page.locator("dialog#popup")
+    expect(dialog).to_be_visible()
+    assert fits_screen_width(admin_page)
+    dialog.get_by_role("button", name=t("calc.delete.button")).click()
+    expect(dialog).not_to_be_visible()
+    expect(rows).to_have_count(1)
+    assert fits_screen_width(admin_page)

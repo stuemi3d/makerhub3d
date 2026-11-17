@@ -18,7 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, object_session
 
-from app import article_productions, article_purge, audit, auth, stock, variants
+from app import article_productions, article_purge, audit, auth, calc_store, stock, variants
 from app.article_form import FIELD_NAMES, form_values, number_key, validate
 from app.models import Article
 from app.permissions import Permission, requires
@@ -269,6 +269,7 @@ def add_article_routes(
         with new_session() as db:
             counts["stock"] = stock.count_movements(db, article_id)
             counts["productions"] = article_productions.count(db, article_id)
+            counts["calculations"] = calc_store.count(db, article_id)
             blocked = article_purge.blocking(db, article_id)
         return render(
             request,
@@ -520,6 +521,9 @@ def add_article_routes(
         request: Request,
         article_id: int,
         section: str,
+        saved: str | None = None,
+        main: str | None = None,
+        deleted: str | None = None,
         sort: str | None = None,
         direction: str | None = Query(None, alias="dir"),
     ) -> HTMLResponse:
@@ -541,6 +545,26 @@ def add_article_routes(
                 rows=rows,
                 sort_links=links,
                 current_stock=current_stock,
+            )
+        if section == "calculations":
+            article = load(article_id)
+            with new_session() as db:
+                shown = calc_store.rows(db, language, article_id)
+            shown, links = calc_store.arranged(
+                shown, f"/articles/{article_id}/calculations", sort, direction
+            )
+            return render(
+                request,
+                "article_calculations.html",
+                "nav.articles",
+                article=article,
+                rows=shown,
+                sort_links=links,
+                notice="saved"
+                if saved == "1"
+                else "main"
+                if main == "1"
+                else ("deleted" if deleted == "1" else None),
             )
         if section == "productions":
             article = load(article_id)
