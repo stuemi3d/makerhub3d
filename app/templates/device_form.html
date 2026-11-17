@@ -41,6 +41,14 @@
   <input type="text" inputmode="decimal" autocomplete="off" {{ field_attrs('hours_per_year', errors) }} value="{{ values.get('hours_per_year', '') }}">
   {{ feedback('hours_per_year', errors, t, 'device.hint.') }}
   {% endif %}
+  {% if kind == 'printer' %}
+  <label for="printer_model_id">{{ t('device.field.printer_model') }}</label>
+  <select {{ field_attrs('printer_model_id', errors) }}>
+    <option value="">–</option>
+    {% for model_id, model_name in models %}<option value="{{ model_id }}"{% if values.get('printer_model_id') == model_id | string %} selected{% endif %}>{{ model_name }}</option>{% endfor %}
+  </select>
+  {{ feedback('printer_model_id', errors, t, 'device.hint.') }}
+  {% endif %}
   <label for="maintenance_pct">{{ t('device.field.maintenance_pct') }}</label>
   <input type="text" inputmode="decimal" autocomplete="off" {{ field_attrs('maintenance_pct', errors) }} value="{{ values.get('maintenance_pct', '0') }}">
   {{ feedback('maintenance_pct', errors, t, 'device.hint.') }}

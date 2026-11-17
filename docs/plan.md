@@ -75,7 +75,8 @@ Der Artikel ist der Knotenpunkt; alles andere hängt über die Artikelnummer an 
 | Lagerbewegung | Artikel, Datum, Menge (+/−), Art (Produktion, Verkauf, Korrektur, Storno), Bezug | Produktion oder Verkauf |
 | Verkauf | Artikel, Datum, Menge, Preis pro Stück, Quelle (Hand, RechnungsFee, Haben) | Rechnungsnummer bzw. externe ID |
 | Ignoriert | Bambuddy-Archiv-ID, Datum | nicht relevante Drucke ausblenden |
-| Gerät | Typ (Drucker/Trockner), Name, Anschaffungsdatum und -wert, Nutzungsjahre, Wartungsaufschlag (%), nur Drucker: Druckstunden/Jahr; aktiv/deaktiviert; Bambuddy-Drucker-ID, wenn ein Drucker aus Bambuddy übernommen wurde (dann ist der Name gesperrt). Restwert und Stundensatz werden nur angezeigt, nicht gespeichert | Drucker aus Bambuddy übernehmbar (nur lesend); ein Gerät lässt sich löschen, solange keine Produktion daran hängt, sonst nur deaktivieren |
+| Druckermodell | Name (nur aus den Modellen wählbar, die Bambuddy meldet), Tabelle **Material → Stromverbrauch in kWh pro Stunde** (z. B. PLA 0,10; PETG 0,13). Mehrere Drucker desselben Modells nutzen dieselbe Tabelle. Löschen nur, solange kein Drucker das Modell nutzt. Ohne Modell oder ohne Tabelle ist keine Kalkulation möglich (Hinweis: zuerst eine Tabelle anlegen). Passt ein Material aus der Datei nicht genau (z. B. „PLA-CF“ bei „PLA“), wählt der Nutzer ein passendes Material aus der Tabelle und bekommt den Hinweis, den Filamenttyp künftig dort zu hinterlegen; es wird nie geraten und nie mit 0 gerechnet. Ein Ersatzwert in den Einstellungen entfällt. Später denkbar: Knopf an der Tabelle „Durchschnitt aus Bambuddy holen“ | Modelle aus der Bambuddy-Druckerliste (nur lesend) |
+| Gerät | Typ (Drucker/Trockner), Name, Anschaffungsdatum und -wert, Nutzungsjahre, Wartungsaufschlag (%), nur Drucker: Druckstunden/Jahr und Druckermodell (optional; wird bei einem Bambuddy-Drucker automatisch gewählt, wenn ein Modell mit gleichem Namen existiert); aktiv/deaktiviert; Bambuddy-Drucker-ID, wenn ein Drucker aus Bambuddy übernommen wurde (dann ist der Name gesperrt). Restwert und Stundensatz werden nur angezeigt, nicht gespeichert | Drucker aus Bambuddy übernehmbar (nur lesend); ein Gerät lässt sich löschen, solange keine Produktion daran hängt, sonst nur deaktivieren |
 | Einstellungen | Strompreis (eigen oder aus Bambuddy), Arbeits-Stundensatz, Druckerstundensatz (nur Übergangswert bis M3; danach gilt der Satz aus den Geräten, der Einstellungswert dient nur als Ersatz, solange kein Drucker angelegt ist), Standard-Ausschussquote, Standard-Gewinnaufschlag, Rundung, Spulen-Kategorie für „geschäftlich“, Abweichungsschwelle | – |
 | Benutzer, Änderungsprotokoll | siehe Sicherheit | – |
 
@@ -137,7 +138,7 @@ Gerechnet wird in dieser Reihenfolge. Standardwerte (Ausschussquote, Gewinnaufsc
 | Baustein | Bezug | Berechnung | Werte |
 | --- | --- | --- | --- |
 | Material | pro Platte | Gramm ÷ 1000 × Preis/kg, eine Zeile pro Filament/Farbe | Gramm aus 3MF/G-Code (inkl. Spülmenge); Preisquelle je Zeile: echte Bambuddy-Spule, Durchschnitt passender geschäftlicher Spulen oder frei (z. B. bestellte Spule) |
-| Strom | pro Platte | Druckzeit in Stunden × Ø Verbrauch in kWh pro Stunde × Strompreis pro kWh | Ø Verbrauch aus echten Drucken im Bambuddy-Archiv |
+| Strom | pro Platte | Summe über die Materialien der Platte: Druckzeit des Materials in Stunden × Verbrauch in kWh pro Stunde × Strompreis pro kWh | Verbrauch je Druckermodell und Material aus der Tabelle des Modells (siehe „Druckermodell“ in Abschnitt 4), nicht mehr als Durchschnitt aus dem Archiv; Zeitanteil je Material aus der 3MF/dem G-Code |
 | Maschine | pro Platte | Druckzeit in Stunden × Maschinensatz | Maschinensatz = Stundensatz des gewählten Druckers + Trocknungsaufschlag (siehe unten) |
 | Ausschussquote | auf Druckkosten | × (1 + Ausschussquote ÷ 100) | Standard aus Einstellungen |
 | Rüstzeit (optional) | pro Platte | Minuten ÷ Teile pro Platte ÷ 60 × Arbeits-Stundensatz | z. B. Platte vorbereiten, Druck starten, abnehmen; leer = 0 |
@@ -283,6 +284,7 @@ Der Maintainer hat die frühere Bedingung („erst nach Alltagsnutzung von M1“
 - [x] Geräte: Drucker aus Bambuddy übernehmen, Geräte ohne Produktion löschen (#163)
 - [x] Rechenkern der Kalkulation (#159)
 - [x] 3MF- und G-Code-Auslesen (#160)
+- [x] Druckermodelle mit Stromverbrauch je Material, Drucker wählen ihr Modell (#174)
 - [ ] Seite Kalkulation
 
 **M4 – Verkauf und Auswertung**

@@ -1,0 +1,10 @@
+{% extends "_confirm_layout.html" %}
+{% set title_key = 'model.delete.title' %}
+{% if printer_count == 0 %}{% set button_key = 'device.delete.button' %}{% endif %}
+{% set action = '/settings/devices/models/' ~ model_id ~ '/delete' %}
+{% set cancel_url = '/settings/devices' %}
+{% set subject = model_name %}
+{% block details %}
+{% if printer_count %}<p><mark>{{ t('model.delete.in_use') | replace('{n}', printer_count | string) }}</mark></p>
+{% else %}<p>{{ t('model.delete.confirm') }}</p>{% endif %}
+{% endblock %}

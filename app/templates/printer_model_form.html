@@ -1,0 +1,55 @@
+{% extends "_popup_layout.html" if popup else "base.html" %}
+{% from "_form_macros.html" import field_attrs, feedback %}
+{% set title_key = 'model.form.edit' if model_id else 'model.form.new' %}
+{% block title %}{{ t(title_key) }} – {{ app_name }}{% endblock %}
+{% block content %}
+{% set action = '/settings/devices/models/' ~ model_id ~ '/edit' if model_id else '/settings/devices/models/new' %}
+<h1{% if popup %} id="popup-title"{% endif %}>{{ t(title_key) }}</h1>
+{% set blocked = choice and not choice.models %}
+{% if choice and choice.not_set_up %}<p><mark>{{ t('model.hint.not_set_up') }}</mark></p>
+{% elif choice and choice.error %}<p><mark>{{ t(choice.error) }}</mark></p>
+{% elif choice and choice.no_models %}<p><mark>{{ t('model.hint.no_models') }}</mark></p>
+{% elif blocked %}<p><mark>{{ t('model.hint.all_created') }}</mark></p>{% endif %}
+{% if errors.get('name') %}<p role="alert"><mark>{{ t(errors['name']) }}</mark></p>{% endif %}
+{% if errors and not errors.get('name') %}<p role="alert"><mark>{{ t('article.has_errors') }}</mark></p>{% endif %}
+{% if blocked %}
+<div class="form-actions">
+  {% if popup %}<button type="button" class="secondary outline" data-popup-close>{{ t('article.cancel') }}</button>
+  {% else %}<a href="/settings/devices" role="button" class="secondary outline">{{ t('article.cancel') }}</a>{% endif %}
+</div>
+{% else %}
+<form method="post" action="{{ action }}" novalidate{% if popup %} hx-post="{{ action }}" hx-target="#popup-body" hx-swap="innerHTML"{% endif %}>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label for="name">{{ t('model.field.name') }}</label>
+  {% if model_id %}
+  <p id="name"><strong>{{ name }}</strong></p>
+  {% else %}
+  <select id="name" name="name" required>
+    {% for model in choice.models %}<option value="{{ model }}"{% if model == name %} selected{% endif %}>{{ model }}</option>{% endfor %}
+  </select>
+  <small>{{ t('model.hint.name') }}</small>
+  {% endif %}
+  <h2>{{ t('model.power.title') }}</h2>
+  <p><small>{{ t('model.power.hint') }}</small></p>
+  {% for row in rows %}
+  <div class="grid">
+    <div>
+      <label for="material_{{ loop.index0 }}" class="visually-hidden">{{ t('model.power.material') }}</label>
+      <input type="text" maxlength="50" autocomplete="off" placeholder="{{ t('model.power.material') }}" {{ field_attrs('material_' ~ loop.index0, errors) }} value="{{ row.material }}">
+      {% if errors.get('material_' ~ loop.index0) %}<small id="material_{{ loop.index0 }}-error">{{ t(errors['material_' ~ loop.index0]) }}</small>{% endif %}
+    </div>
+    <div>
+      <label for="kwh_{{ loop.index0 }}" class="visually-hidden">{{ t('model.power.kwh') }}</label>
+      <input type="text" inputmode="decimal" autocomplete="off" placeholder="{{ t('model.power.kwh') }}" {{ field_attrs('kwh_' ~ loop.index0, errors) }} value="{{ row.kwh }}">
+      {% if errors.get('kwh_' ~ loop.index0) %}<small id="kwh_{{ loop.index0 }}-error">{{ t(errors['kwh_' ~ loop.index0]) }}</small>{% endif %}
+    </div>
+  </div>
+  {% endfor %}
+  <div class="form-actions">
+    <button type="submit">{{ t('device.save') }}</button>
+    {% if popup %}<button type="button" class="secondary outline" data-popup-close>{{ t('article.cancel') }}</button>
+    {% else %}<a href="/settings/devices" role="button" class="secondary outline">{{ t('article.cancel') }}</a>{% endif %}
+  </div>
+</form>
+{% endif %}
+{% endblock %}
