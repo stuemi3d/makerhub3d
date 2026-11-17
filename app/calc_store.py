@@ -91,13 +91,33 @@ def _fill(item: Calculation, plan: Plan) -> None:
     ]
 
 
-def create(db: Session, actor_id: int, article: Article, plan: Plan, language: str) -> Calculation:
-    """Saves a new calculation; the first one of an article counts as the main one."""
+FILES_KEY = "calculation_files_to_delete"
+
+
+def _queue_file(db: Session, item: Calculation) -> None:
+    """Remembers the stored file of a deleted calculation; the app removes it from the disk
+    when the transaction is committed (a rollback forgets it)."""
+    if item.file_stored:
+        db.info.setdefault(FILES_KEY, []).append(item.file_stored)
+
+
+def create(
+    db: Session,
+    actor_id: int,
+    article: Article,
+    plan: Plan,
+    language: str,
+    file: tuple[str, str] | None = None,
+) -> Calculation:
+    """Saves a new calculation; the first one of an article counts as the main one. `file` is
+    the shown name and the generated name of its stored file, if it has one."""
     item = Calculation(
         article_id=article.id,
         created_on=date.today(),
         created_at=auth.utcnow(),
-        kind="hand",
+        kind="file" if file else "hand",
+        file_name=file[0] if file else None,
+        file_stored=file[1] if file else None,
         is_main=count(db, article.id) == 0,
         user_id=actor_id,
     )
@@ -127,6 +147,7 @@ def make_main(
 
 def remove(db: Session, actor_id: int, article: Article, item: Calculation, language: str) -> None:
     text = subject(article, item, language)
+    _queue_file(db, item)
     db.delete(item)
     audit.record_change(db, actor_id, "calculation.deleted", text)
 
@@ -135,6 +156,7 @@ def delete_for_article(db: Session, article_id: int) -> int:
     """Deletes all calculations of an article (when the article goes); returns how many."""
     items = list(db.scalars(select(Calculation).where(Calculation.article_id == article_id)))
     for item in items:
+        _queue_file(db, item)
         db.delete(item)
     db.flush()
     return len(items)
@@ -223,6 +245,7 @@ def draft_of(item: Calculation, language: str) -> Draft:
         scrap=input_text(item.scrap_percent, language),
         margin=input_text(item.margin_percent, language),
         all_spools=True,
+        file_name=item.file_name or "",
     )
 
 

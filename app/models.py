@@ -252,6 +252,9 @@ class Calculation(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime)
     # By hand or from a file (the file way comes with issue #181)
     kind: Mapped[str] = mapped_column(String(10), server_default="hand")
+    # The stored .gcode.3mf (issue #182): the name as shown, and the generated name on disk
+    file_name: Mapped[str | None] = mapped_column(String(80))
+    file_stored: Mapped[str | None] = mapped_column(String(64))
     # The calculation that counts as the target value of the article (at most one per article)
     is_main: Mapped[bool] = mapped_column(Boolean, server_default=false())
     # The printer; its name is kept as text because a device can be deleted later

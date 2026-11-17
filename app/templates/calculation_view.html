@@ -37,6 +37,9 @@
     <dt>{{ t('calc.result.wage') }}</dt><dd>{{ r.wage }}</dd>
   </dl>
 </div>
+{% if item.file_name %}
+<p><small>{{ t('calc.view.file') }}: <strong>{{ item.file_name }}</strong> · <a href="/calculation/{{ item.id }}/file" id="calc-file-download" download>{{ t('calc.view.file_download') }}</a></small></p>
+{% endif %}
 <h2>{{ t('calc.section.positions') }}</h2>
 <div class="data-scroll">
 <table class="data-table">

@@ -15,13 +15,25 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import event
+from sqlalchemy.orm import Session, sessionmaker
 
-from app import APP_NAME, audit, auth, backup, calculation_files, dashboard, print_list, two_factor
+from app import (
+    APP_NAME,
+    audit,
+    auth,
+    backup,
+    calc_store,
+    calculation_files,
+    dashboard,
+    print_list,
+    two_factor,
+)
 from app.account_two_factor import add_two_factor_routes
 from app.article_pages import add_article_routes
 from app.backup_pages import add_backup_routes
 from app.bambuddy_pages import add_bambuddy_routes, connection_is_set_up
+from app.calculation_file_store import FileStore
 from app.calculation_pages import add_calculation_routes
 from app.config import Settings
 from app.db import make_engine, run_migrations
@@ -146,6 +158,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # No file is opened here; the database is created and migrated when the app starts.
     engine = make_engine(settings.database_path)
     new_session = sessionmaker(engine)
+    file_store = FileStore(settings.data_dir)
+
+    @event.listens_for(new_session, "after_commit")
+    def remove_files_of_deleted_calculations(session: Session) -> None:
+        # Only after the commit: a rollback must never lose a file
+        for name in session.info.pop(calc_store.FILES_KEY, []):
+            file_store.delete(name)
+
+    @event.listens_for(new_session, "after_rollback")
+    def forget_files(session: Session) -> None:
+        session.info.pop(calc_store.FILES_KEY, None)
+
     secure_cookies = not settings.insecure_cookies
     session_cookie, csrf_cookie = auth.cookie_names(secure_cookies)
     # Cookie of a pending two-factor login (right password, code not yet entered).
@@ -173,6 +197,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if app.state.setup_code:
             message = translate(language, "setup.log_code").format(code=app.state.setup_code)
             print(message, file=sys.stderr, flush=True)
+        file_store.clean_pending()
         nightly = asyncio.create_task(backup.nightly_loop(settings))
         yield
         nightly.cancel()
@@ -580,7 +605,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     add_variant_bulk_routes(app, new_session, render, read_form)
     add_stock_routes(app, new_session, render, read_form, language)
     add_production_routes(app, new_session, bambuddy_cipher, render, read_form, language)
-    add_calculation_routes(app, new_session, bambuddy_cipher, render, language)
+    add_calculation_routes(app, new_session, bambuddy_cipher, render, language, file_store)
     add_device_routes(app, new_session, bambuddy_cipher, render, read_form, language)
     add_printer_model_routes(app, new_session, bambuddy_cipher, render, read_form, language)
 
