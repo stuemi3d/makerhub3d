@@ -675,3 +675,78 @@ def test_a_spool_with_a_price_of_zero_or_no_weight_left_is_not_used(client: AppC
     assert select_values(calc(ready).text, "spool_0_0") == ["", "1"]
     html = calc(ready, spool_0_0="1").text
     assert field_error(html, "spool_0_0") == DE["calc.error.spool_price"]
+
+
+# --- Issue #188: no errors for fields that are still empty while typing ------------------------
+
+EMPTY = {"printer": "", "pieces": "", "material_0": "", "grams_0": "", "spool_0_0": ""}
+
+
+def error_names(html: str) -> set[str]:
+    return set(re.findall(r'<small id="([a-z_0-9]+)-error"', html))
+
+
+def test_188_1_typing_only_the_print_time_shows_no_errors_for_empty_fields(
+    ready: Ready,
+) -> None:
+    for action in ("live", "add_row", "printer"):
+        html = calc(ready, action=action, **EMPTY).text
+        assert error_names(html) == set(), action
+        assert out(html, "res-suggested") is None
+        assert DE["calc.error.save_incomplete"] not in html
+
+
+def test_188_1_a_form_without_any_action_counts_as_typing(ready: Ready) -> None:
+    data = values(ready, **EMPTY)
+    del data["action"]
+    html = ready.client.post("/calculation/new", data=data).text
+    assert error_names(html) == set()
+
+
+@pytest.mark.parametrize(("name", "text"), [("pieces", "abc"), ("pieces", "0"), ("grams_0", "x")])
+def test_188_2_a_wrong_value_is_reported_at_once(ready: Ready, name: str, text: str) -> None:
+    html = calc(ready, action="live", **{**EMPTY, name: text}).text
+    assert name in error_names(html)
+    # The empty ones stay quiet
+    assert error_names(html) <= {name}
+
+
+def test_188_2_a_material_that_is_not_in_the_table_is_reported_at_once(ready: Ready) -> None:
+    html = calc(
+        ready, action="live", **{**EMPTY, "printer": str(ready.printer), "material_0": "PLA-CF"}
+    ).text
+    assert "material_0" in error_names(html)
+
+
+def test_188_3_calculate_marks_everything_that_is_missing(ready: Ready) -> None:
+    html = calc(ready, action="calc", print_minutes="", **EMPTY).text
+    assert {"printer", "print_minutes", "pieces", "material_0", "grams_0"} <= error_names(html)
+    assert out(html, "res-suggested") is None
+
+
+def test_188_4_saving_with_missing_values_still_reports_them(ready: Ready) -> None:
+    article_id = add_article()
+    response = calc(ready, action="save", article=str(article_id), **EMPTY)
+    assert response.status_code == 422
+    assert DE["calc.error.save_incomplete"] in response.text
+    assert {"printer", "pieces", "material_0", "grams_0"} <= error_names(response.text)
+
+
+def test_188_5_the_incomplete_note_comes_with_calculate_not_with_typing(ready: Ready) -> None:
+    quiet = calc(ready, action="live", spool_0_0="").text
+    assert DE["calc.spool.incomplete"] not in quiet
+    strict = calc(ready, action="calc", spool_0_0="").text
+    assert DE["calc.spool.incomplete"] in strict
+
+
+def test_188_6_the_live_result_stays(ready: Ready) -> None:
+    assert out(calc(ready, action="live").text, "res-suggested") == "9,90"
+
+
+def test_188_3_the_fields_stand_in_pairs_with_short_labels(ready: Ready) -> None:
+    html = ready.client.get("/calculation/new").text
+    assert "field-grid-2" in html and "field-grid-3" not in html
+    more = calc(ready, action="add_row").text
+    assert "field-grid-3" in more
+    for key in ("calc.field.print_minutes", "calc.field.pieces", "calc.field.minutes"):
+        assert len(DE[key]) <= 20 and len(EN[key]) <= 20, key

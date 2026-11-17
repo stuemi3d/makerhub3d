@@ -25,7 +25,7 @@
   {% if outcome.spool_problem %}<p role="alert"><mark>{{ t(outcome.spool_problem) }}</mark></p>{% endif %}
 
   <div class="form-block">
-    <div class="field-grid">
+    <div class="field-grid field-grid-2">
       <div class="field-wide">
         {% if editing %}
         <span class="field-label">{{ t('calc.field.article') }}</span>
@@ -64,7 +64,7 @@
   {% for view in outcome.rows %}
   {% set i = view.index %}
   <div class="form-block print-block">
-    <div class="field-grid">
+    <div class="field-grid {{ 'field-grid-3' if outcome.multi else 'field-grid-2' }}">
       <div>
         <label for="material_{{ i }}">{{ t('calc.field.material') }}</label>
         <select name="material_{{ i }}" id="material_{{ i }}"{% if errors.get('material_' ~ i) %} aria-invalid="true" aria-describedby="material_{{ i }}-error"{% endif %}>
@@ -101,7 +101,7 @@
   </div>
 
   <div class="form-block labor-block">
-    <div class="field-grid">
+    <div class="field-grid field-grid-2">
       {{ num('setup_minutes', 'calc.field.setup_minutes', draft.setup_minutes) }}
       {{ num('rework_minutes', 'calc.field.rework_minutes', draft.rework_minutes) }}
       {{ num('scrap', 'calc.field.scrap', draft.scrap) }}

@@ -32,7 +32,10 @@ MAX_TEXT = 40
 CENT = Decimal("0.01")
 ZERO = Decimal(0)
 _WHOLE = re.compile(r"[0-9]{1,9}")
-ACTIONS = ("calc", "add_row", "printer", "save")
+# "live" is what the form sends while someone types (no button): empty fields stay quiet then.
+# "calc" and "save" (the buttons) mark every missing field.
+ACTIONS = ("live", "calc", "add_row", "printer", "save")
+STRICT_ACTIONS = ("calc", "save")
 NO_VALUE = "\u2013"
 
 
@@ -60,7 +63,7 @@ class Draft:
     scrap: str | None = None
     margin: str | None = None
     all_spools: bool = False
-    action: str = "calc"
+    action: str = "live"
 
     def blank(self) -> bool:
         """Nothing was typed yet: no errors and no result."""
@@ -90,7 +93,7 @@ def read(form: FormData | None) -> Draft:
         scrap=_text(form, "scrap") if "scrap" in form else None,
         margin=_text(form, "margin") if "margin" in form else None,
         all_spools=_text(form, "all_spools") == "1",
-        action=action if action in ACTIONS else "calc",
+        action=action if action in ACTIONS else "live",
     )
     if draft.action == "add_row":
         rows_wanted = min(rows_wanted + 1, MAX_ROWS)
@@ -336,10 +339,23 @@ def evaluate(draft: Draft, ctx: Context) -> Outcome:
         else:
             table = found
     ready = printer_ok and bool(table)
-    show_errors = not draft.blank()
     errors = out.errors
+    strict = draft.action in STRICT_ACTIONS
+    # The buttons mark what is missing even in an empty form; typing does so only after a start
+    show_errors = strict or not draft.blank()
+    # Something is still missing (an empty field while typing): no error mark, but no result
+    missing = False
+
+    def fail(name: str, key: str, text: str) -> None:
+        """An error for the field. While typing, an empty field is only "not there yet"."""
+        nonlocal missing
+        if strict or text.strip():
+            errors[name] = key
+        else:
+            missing = True
+
     if show_errors and not printer_ok:
-        errors["printer"] = "calc.error.printer"
+        fail("printer", "calc.error.printer", draft.printer)
     scrap_text = (
         draft.scrap if draft.scrap is not None else _default(ctx.settings.scrap_rate, ctx.language)
     )
@@ -354,9 +370,9 @@ def evaluate(draft: Draft, ctx: Context) -> Outcome:
     numbers: dict[str, Decimal | None] = {}
     if show_errors:
         if print_minutes is None:
-            errors["print_minutes"] = "calc.error.number"
+            fail("print_minutes", "calc.error.number", draft.print_minutes)
         if pieces is None:
-            errors["pieces"] = "calc.error.pieces"
+            fail("pieces", "calc.error.pieces", draft.pieces)
         for name, text, required in (
             ("setup_minutes", draft.setup_minutes, False),
             ("rework_minutes", draft.rework_minutes, False),
@@ -365,7 +381,7 @@ def evaluate(draft: Draft, ctx: Context) -> Outcome:
         ):
             number = parse_decimal(text) if text else (None if required else ZERO)
             if number is None:
-                errors[name] = "calc.error.number"
+                fail(name, "calc.error.number", text)
             numbers[name] = number
 
     materials: list[MaterialLine] = []
@@ -394,20 +410,21 @@ def evaluate(draft: Draft, ctx: Context) -> Outcome:
                 if filter_active(ctx, draft)
                 else "calc.spool.none_for_material"
             )
-        if not show_errors or row.blank():
+        if not show_errors or (row.blank() and not (strict and index == 0)):
             view.slots = _slots(index, row, options, -1, False, errors)
             continue
         filled += 1
-        if table and material is None:
-            errors[f"material_{index}"] = "calc.error.material"
+        if (table or strict) and material is None:
+            fail(f"material_{index}", "calc.error.material", row.material)
         if grams is None:
-            errors[f"grams_{index}"] = "calc.error.number"
+            fail(f"grams_{index}", "calc.error.number", row.grams)
         minutes = parse_decimal(view.minutes_shown) if shared_time else print_minutes
         if minutes is None and shared_time:
-            errors[f"minutes_{index}"] = "calc.error.number"
+            fail(f"minutes_{index}", "calc.error.number", view.minutes_shown)
         lines, last, done = _allocate(errors, index, row, grams, options, ctx)
         view.slots = _slots(index, row, options, last, done, errors)
-        if not done and not _has_error(errors, index) and grams is not None and not view.hint:
+        incomplete = not done and not _has_error(errors, index) and grams is not None
+        if incomplete and not view.hint and strict:
             view.note = "calc.spool.incomplete"
         if not done:
             complete = False
@@ -435,8 +452,8 @@ def evaluate(draft: Draft, ctx: Context) -> Outcome:
             input_text(print_minutes, ctx.language) if print_minutes is not None else "",
         )
     if show_errors and filled == 0:
-        errors["material_0"] = "calc.error.material"
-    if errors or not complete or filled == 0 or ctx.spool_problem:
+        fail("material_0", "calc.error.material", "")
+    if errors or missing or not complete or filled == 0 or ctx.spool_problem:
         return out
     try:
         entry = CalculationInput(

@@ -274,3 +274,45 @@ def test_save_view_copy_make_main_and_delete_in_popups(
     expect(dialog).not_to_be_visible()
     expect(rows).to_have_count(1)
     assert fits_screen_width(admin_page)
+
+
+def test_filling_from_top_to_bottom_shows_no_early_errors_and_fields_stand_level(
+    admin_page: Page, live_server: LiveServer, fake_bambuddy: str, viewport_name: str
+) -> None:
+    """Issue #188: nothing red for fields that are still empty; the buttons mark what is missing."""
+    printer, _ = prepare(admin_page, live_server, fake_bambuddy, viewport_name, "c")
+    admin_page.goto("/calculation")
+    dialog = open_new(admin_page)
+    invalid = dialog.locator("[aria-invalid=true]")
+    expect(invalid).to_have_count(0)
+
+    type_and_wait(admin_page, admin_page.locator("#print_minutes"), "10")
+    expect(invalid).to_have_count(0)
+    choose_and_wait(admin_page, admin_page.locator("#printer"), label=printer)
+    expect(invalid).to_have_count(0)
+
+    # Print time and pieces stand on one level, on the desktop and on the phone
+    first = admin_page.locator("#print_minutes").bounding_box()
+    second = admin_page.locator("#pieces").bounding_box()
+    assert abs(first["y"] - second["y"]) <= 1
+    assert abs(first["height"] - second["height"]) <= 1
+    assert fits_screen_width(admin_page)
+
+    # The button marks what is missing
+    dialog.get_by_role("button", name=t("calc.calculate")).click()
+    expect(admin_page.locator("#pieces[aria-invalid=true]")).to_be_visible()
+    settle(admin_page)
+
+    # Typing on clears the mark and goes on without early errors
+    type_and_wait(admin_page, admin_page.locator("#pieces"), "2")
+    expect(admin_page.locator("#pieces[aria-invalid=true]")).to_have_count(0)
+    choose_and_wait(admin_page, admin_page.locator("#material_0"), label="PLA")
+    expect(invalid).to_have_count(0)
+    type_and_wait(admin_page, admin_page.locator("#grams_0"), "30")
+    expect(invalid).to_have_count(0)
+    choose_and_wait(admin_page, admin_page.locator("#spool_0_0"), value="1")
+    expect(admin_page.locator("#res-suggested")).to_be_visible()
+    first = admin_page.locator("#material_0").bounding_box()
+    second = admin_page.locator("#grams_0").bounding_box()
+    assert abs(first["y"] - second["y"]) <= 1
+    assert fits_screen_width(admin_page)
