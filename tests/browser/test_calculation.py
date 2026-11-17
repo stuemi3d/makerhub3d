@@ -147,6 +147,7 @@ def open_new(page: Page, article_number: str | None = None) -> Locator:
     # Issue #181: first the choice "with file" or "by hand"
     dialog.get_by_role("button", name=t("calc.start.hand")).click()
     expect(dialog.locator("#calc-form")).to_be_visible()
+    settle(page)
     return dialog
 
 
@@ -383,6 +384,7 @@ def test_with_file_choice_upload_plates_and_prefilled_form(
     boxes.nth(1).check()
     dialog.get_by_role("button", name=t("calc.file.take")).click()
     expect(dialog.locator("#calc-form")).to_be_visible()
+    settle(admin_page)
     expect(dialog.locator("#print_minutes")).to_have_value("41,12")
     expect(dialog.locator("#grams_0")).to_have_value("9,36")
     expect(dialog.locator("#grams_1")).to_have_value("4,3")
@@ -391,7 +393,8 @@ def test_with_file_choice_upload_plates_and_prefilled_form(
     assert fits_screen_width(admin_page)
 
     # It goes on like by hand
-    choose_and_wait(admin_page, admin_page.locator("#material_0"), label="PLA")
+    # The material is already chosen from the file
+    expect(admin_page.locator("#material_0")).to_have_value("PLA")
     type_and_wait(admin_page, admin_page.locator("#pieces"), "2")
     expect(dialog.locator("#calc-form")).to_be_visible()
     expect(dialog.get_by_text("wuerfel.gcode.3mf")).to_be_visible()
