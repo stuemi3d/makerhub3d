@@ -179,7 +179,9 @@ def add_calculation_routes(
             else:
                 item = stored_of(db, article_id, item_id)
                 calc_store.update(db, request.state.user.id, article, item, outcome.plan, language)
-        return RedirectResponse(f"/articles/{article_id}/calculations?saved=1", status_code=303)
+            # The address is built from the stored article, not from the request
+            target = f"/articles/{int(article.id)}/calculations?saved=1"
+        return RedirectResponse(target, status_code=303)
 
     @app.post("/calculation/new", response_class=HTMLResponse, dependencies=view_right)
     async def calculate(request: Request) -> Response:
@@ -281,7 +283,8 @@ def add_calculation_routes(
             article = article_of(db, article_id)
             item = stored_of(db, article_id, calculation_id)
             calc_store.make_main(db, request.state.user.id, article, item, language)
-        return RedirectResponse(f"/articles/{article_id}/calculations?main=1", status_code=303)
+            target = f"/articles/{int(article.id)}/calculations?main=1"
+        return RedirectResponse(target, status_code=303)
 
     @app.get(
         "/articles/{article_id}/calculations/{calculation_id}/delete",
@@ -320,4 +323,5 @@ def add_calculation_routes(
             article = article_of(db, article_id)
             item = stored_of(db, article_id, calculation_id)
             calc_store.remove(db, request.state.user.id, article, item, language)
-        return confirmed(request, f"/articles/{article_id}/calculations?deleted=1")
+            target = f"/articles/{int(article.id)}/calculations?deleted=1"
+        return confirmed(request, target)
