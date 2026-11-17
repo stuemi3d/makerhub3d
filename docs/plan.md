@@ -282,7 +282,7 @@ Der Maintainer hat die frühere Bedingung („erst nach Alltagsnutzung von M1“
 - [x] Geräte und Stundensätze inkl. Trocknungspauschale (#157)
 - [x] Geräte: Drucker aus Bambuddy übernehmen, Geräte ohne Produktion löschen (#163)
 - [x] Rechenkern der Kalkulation (#159)
-- [ ] 3MF- und G-Code-Auslesen
+- [x] 3MF- und G-Code-Auslesen (#160)
 - [ ] Seite Kalkulation
 
 **M4 – Verkauf und Auswertung**
