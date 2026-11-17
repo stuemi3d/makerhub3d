@@ -247,6 +247,35 @@ class IgnoredPrint(Base):
     ignored_on: Mapped[date] = mapped_column(Date)
 
 
+class PrinterModel(Base):
+    """A printer model (e.g. "P2S") with its power table (issue #174).
+
+    Created only from the models Bambuddy reports. Printers point to it, so all printers of one
+    model share one table. It can only be deleted while no printer uses it.
+    """
+
+    __tablename__ = "printer_models"
+    __table_args__ = (Index("ux_printer_models_name", "name", unique=True),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(100))
+    created_at: Mapped[datetime] = mapped_column(DateTime)
+
+
+class PrinterModelPower(Base):
+    """Electricity use of a printer model for one material, in kWh per print hour."""
+
+    __tablename__ = "printer_model_powers"
+    __table_args__ = (
+        Index("ux_printer_model_powers_material", "model_id", "material", unique=True),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    model_id: Mapped[int] = mapped_column(ForeignKey("printer_models.id"))
+    material: Mapped[str] = mapped_column(String(50))
+    kwh_per_hour: Mapped[Decimal] = mapped_column(DecimalText)
+
+
 class Device(Base):
     """A printer or a dryer with the values for its hourly rate (issue #157).
 
@@ -276,6 +305,10 @@ class Device(Base):
     maintenance_pct: Mapped[Decimal] = mapped_column(DecimalText)
     # Id of the Bambuddy printer this device was taken over from (empty: made by hand)
     bambuddy_printer_id: Mapped[int | None] = mapped_column(nullable=True)
+    # Printer model with the power table (issue #174); only printers have one, it is optional
+    printer_model_id: Mapped[int | None] = mapped_column(
+        ForeignKey("printer_models.id"), nullable=True
+    )
     active: Mapped[bool] = mapped_column(Boolean, server_default=true())
     created_at: Mapped[datetime] = mapped_column(DateTime)
 

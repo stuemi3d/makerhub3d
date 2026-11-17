@@ -36,6 +36,7 @@
   <thead>
     <tr>
       {{ head(t('device.field.name')) }}
+      {{ head(t('device.field.printer_model')) }}
       {{ head(t('device.col.rate'), none, true) }}
       {{ head(t('device.col.residual'), none, true) }}
       {{ head(t('device.field.price'), none, true) }}
@@ -51,6 +52,7 @@
     {% for d in printers %}
     <tr>
       <td class="cell-strong">{{ d.name }}</td>
+      <td>{{ d.model or '–' }}</td>
       <td class="num">{{ d.rate }}</td>
       <td class="num">{{ d.residual }}</td>
       <td class="num">{{ d.price }}</td>
@@ -108,6 +110,40 @@
 {% else %}
 <article class="empty-hint"><p>{{ t('device.empty.dryers') }}</p></article>
 {% endif %}
+<h2>{{ t('model.section') }}</h2>
+<p><small>{{ t('model.intro') }}</small></p>
+{% if printers | selectattr('model', 'equalto', '') | list %}
+<p><mark>{{ t('model.hint.unlinked') }}</mark></p>
+{% endif %}
+{% if models %}
+<article class="data-card">
+<div class="data-scroll">
+<table class="data-table wrap-head">
+  <thead>
+    <tr>
+      {{ head(t('model.col.name')) }}
+      {{ head(t('model.col.power')) }}
+      {{ head(t('model.col.printers'), none, true) }}
+      {{ actions_head() }}
+    </tr>
+  </thead>
+  <tbody>
+    {% for m in models %}
+    <tr>
+      <td class="cell-strong">{{ m.name }}</td>
+      <td>{% for p in m.powers %}{% if not loop.first %} · {% endif %}{{ p.material }} {{ p.kwh }}{% else %}<small>{{ t('model.power.empty') }}</small>{% endfor %}</td>
+      <td class="num">{{ m.printers }}</td>
+      <td class="row-actions">{{ icon_link('/settings/devices/models/' ~ m.id ~ '/edit', 'edit', true, m.name) }} {% if m.deletable %}{{ icon_link('/settings/devices/models/' ~ m.id ~ '/delete', 'delete', true, m.name) }}{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+</article>
+{% else %}
+<article class="empty-hint"><p>{{ t('model.empty') }}</p></article>
+{% endif %}
+<p><a {{ popup_attrs('/settings/devices/models/new') }} role="button" class="secondary">{{ t('model.new') }}</a></p>
 <article class="detail-card">
   <h2 class="card-title">{{ t('device.surcharge.title') }}</h2>
   <p><strong>{{ surcharge }} €/h</strong></p>

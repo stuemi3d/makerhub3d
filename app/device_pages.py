@@ -17,9 +17,9 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app import audit, auth, device_form, device_import, device_usage, devices
+from app import audit, auth, device_form, device_import, device_usage, devices, printer_model_pages
 from app.article_pages import confirmed, saved_in_popup, varied, wants_popup
-from app.models import Device
+from app.models import Device, PrinterModel
 from app.permissions import Permission, requires
 from app.settings_form import format_decimal
 from app.two_factor import Cipher
@@ -50,7 +50,9 @@ def add_device_routes(
     def day(value: date) -> str:
         return value.strftime("%d.%m.%Y") if language == "de" else value.isoformat()
 
-    def device_view(device: Device, today: date, deletable: bool) -> dict:
+    def device_view(
+        device: Device, today: date, deletable: bool, model_names: dict[int, str]
+    ) -> dict:
         view = {
             "id": device.id,
             "deletable": deletable,
@@ -67,6 +69,7 @@ def add_device_routes(
             ),
         }
         if device.kind == "printer":
+            view["model"] = model_names.get(device.printer_model_id or 0, "")
             view["hours_per_year"] = number(device.hours_per_year)
             view["rate"] = number(
                 devices.printer_rate(
@@ -85,6 +88,8 @@ def add_device_routes(
         with new_session() as db:
             rows = list(db.scalars(select(Device).order_by(Device.name, Device.id)))
             deletable = {row.id: not device_usage.is_in_use(db, row.id) for row in rows}
+            model_names = {m.id: m.name for m in db.scalars(select(PrinterModel))}
+            models = printer_model_pages.model_views(db, language)
         active = [row for row in rows if row.active]
         surcharge = devices.drying_surcharge(
             [
@@ -94,11 +99,12 @@ def add_device_routes(
             ],
             [row.hours_per_year for row in active if row.kind == "printer"],
         )
-        views = [device_view(row, today, deletable[row.id]) for row in rows]
+        views = [device_view(row, today, deletable[row.id], model_names) for row in rows]
         return {
             "printers": [view for view in views if view["kind"] == "printer"],
             "dryers": [view for view in views if view["kind"] == "dryer"],
             "surcharge": number(surcharge, RATE_PLACES),
+            "models": models,
         }
 
     @app.get(LIST_ADDRESS, response_class=HTMLResponse, dependencies=manage)
@@ -121,6 +127,10 @@ def add_device_routes(
         choice: device_import.Choice | None = None,
         hint: str | None = None,
     ) -> HTMLResponse:
+        with new_session() as db:
+            models = [
+                (m.id, m.name) for m in db.scalars(select(PrinterModel).order_by(PrinterModel.name))
+            ]
         response = render(
             request,
             "device_form.html",
@@ -134,6 +144,7 @@ def add_device_routes(
             linked=linked,
             choice=choice,
             hint=hint,
+            models=models,
         )
         # The same address gives a different answer for HTMX, so caches must tell them apart.
         response.headers["Vary"] = "HX-Request"
@@ -149,6 +160,8 @@ def add_device_routes(
         }
         if device.hours_per_year is not None:
             values["hours_per_year"] = format_decimal(device.hours_per_year, language)
+        if device.printer_model_id is not None:
+            values["printer_model_id"] = str(device.printer_model_id)
         return values
 
     @app.get(f"{LIST_ADDRESS}/new", response_class=HTMLResponse, dependencies=manage)
@@ -176,6 +189,26 @@ def add_device_routes(
         )
         return form_page(request, kind, None, {}, {}, hint=hint)
 
+    def model_of(
+        raw: dict[str, str], kind: str, bambuddy_model: str | None = None
+    ) -> tuple[int | None, dict[str, str]]:
+        """The chosen printer model. A printer taken over from Bambuddy without a choice gets the
+        created model with the same name, if there is one. Dryers have no model."""
+        if kind != "printer":
+            return None, {}
+        text = raw.get("printer_model_id", "").strip()
+        with new_session() as db:
+            if text:
+                if not text.isdigit() or len(text) > 9 or db.get(PrinterModel, int(text)) is None:
+                    return None, {"printer_model_id": "device.error.model"}
+                return int(text), {}
+            if bambuddy_model:
+                wanted = bambuddy_model.strip().casefold()
+                for model in db.scalars(select(PrinterModel)):
+                    if model.name.casefold() == wanted:
+                        return model.id, {}
+        return None, {}
+
     def link_of(device: Device) -> tuple[int, str] | None:
         if device.bambuddy_printer_id is None:
             return None
@@ -199,26 +232,32 @@ def add_device_routes(
             return saved_in_popup()
         return RedirectResponse(LIST_ADDRESS, status_code=303)
 
-    def log_values(values: dict[str, object]) -> dict[str, object]:
-        return {name: value for name, value in values.items() if value is not None}
+    def log_values(db: Session, values: dict[str, object]) -> dict[str, object]:
+        """The values for the change log; a printer model is logged by its name, not its id."""
+        names = {m.id: m.name for m in db.scalars(select(PrinterModel))}
+        return {
+            name: (names.get(value, "") if name == "printer_model_id" else value)
+            for name, value in values.items()
+            if value is not None or name == "printer_model_id"
+        }
 
     def create(actor_id: int, kind: str, values: dict[str, object]) -> None:
         with new_session() as db, db.begin():
             db.add(Device(kind=kind, active=True, created_at=auth.utcnow(), **values))
             details = [
                 {"field": name, "old": "", "new": str(value)}
-                for name, value in log_values(values).items()
-                if name != "bambuddy_printer_id"
+                for name, value in log_values(db, values).items()
+                if name != "bambuddy_printer_id" and value != ""
             ]
             audit.record_change(db, actor_id, "device.created", str(values["name"]), details)
 
     def change(actor_id: int, device_id: int, values: dict[str, object]) -> None:
         with new_session() as db, db.begin():
             device = loaded(db, device_id)
-            old = {name: getattr(device, name) for name in values}
+            old = log_values(db, {name: getattr(device, name) for name in values})
             changed = audit.field_changes(
                 {k: v for k, v in old.items() if v is not None},
-                log_values(values),
+                log_values(db, values),
             )
             for name, value in values.items():
                 setattr(device, name, value)
@@ -231,6 +270,7 @@ def add_device_routes(
         raw = await read_form(request, ("kind", "bambuddy_printer_id", *device_form.FIELD_NAMES))
         kind = checked_kind(raw.get("kind"))
         linked: tuple[int, str] | None = None
+        bambuddy_model: str | None = None
         bambuddy_id = raw.get("bambuddy_printer_id", "").strip()
         if bambuddy_id:
             # Only an id that Bambuddy delivers now and that is not taken yet is accepted.
@@ -241,8 +281,11 @@ def add_device_routes(
                 errors = {"bambuddy_printer_id": "device.error.bambuddy_id"}
                 return form_page(request, kind, None, raw, errors, status=422)
             linked = (printer.id, printer.name)
+            bambuddy_model = printer.model
             raw = {**raw, "name": printer.name}
         values, errors = device_form.validate(kind, raw)
+        values["printer_model_id"], model_errors = model_of(raw, kind, bambuddy_model)
+        errors.update(model_errors)
         if errors:
             return form_page(request, kind, None, raw, errors, status=422, linked=linked)
         if linked:
@@ -267,6 +310,8 @@ def add_device_routes(
             # The name of a printer taken over from Bambuddy is locked.
             raw = {**raw, "name": linked[1]}
         values, errors = device_form.validate(kind, raw)
+        values["printer_model_id"], model_errors = model_of(raw, kind)
+        errors.update(model_errors)
         if errors:
             return form_page(request, kind, device_id, raw, errors, status=422, linked=linked)
         await run_in_threadpool(change, request.state.user.id, device_id, values)

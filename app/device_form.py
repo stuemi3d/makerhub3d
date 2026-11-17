@@ -7,7 +7,15 @@ from decimal import Decimal
 
 KINDS = ("printer", "dryer")
 NAME_MAX_LENGTH = 100
-FIELD_NAMES = ("name", "bought_on", "price", "years", "hours_per_year", "maintenance_pct")
+FIELD_NAMES = (
+    "name",
+    "bought_on",
+    "price",
+    "years",
+    "hours_per_year",
+    "maintenance_pct",
+    "printer_model_id",
+)
 
 _NUMBER = re.compile(r"[0-9]+(?:[.,][0-9]+)?")
 _ISO_DATE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")

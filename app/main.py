@@ -29,6 +29,7 @@ from app.i18n import translate
 from app.log_pages import add_log_routes
 from app.models import AppSettings, Rounding, User, UserRole
 from app.permissions import Permission, PermissionDenied, has_permission, requires
+from app.printer_model_pages import add_printer_model_routes
 from app.production_pages import add_production_routes
 from app.settings_form import FIELD_NAMES, form_values, validate
 from app.stock_pages import add_stock_routes
@@ -565,6 +566,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     add_stock_routes(app, new_session, render, read_form, language)
     add_production_routes(app, new_session, bambuddy_cipher, render, read_form, language)
     add_device_routes(app, new_session, bambuddy_cipher, render, read_form, language)
+    add_printer_model_routes(app, new_session, bambuddy_cipher, render, read_form, language)
 
     # Deliberately without login: the container health check calls it. Returns no details.
     @app.get("/healthz", response_class=PlainTextResponse)
