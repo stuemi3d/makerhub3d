@@ -377,3 +377,55 @@ if (window.htmx) {
   document.addEventListener("pointerup", finishDrag);
   document.addEventListener("pointercancel", finishDrag);
 })();
+
+// Search field at a choice list (under it, so neighbouring fields keep their level) (issue #191): a select with data-search gets a search field. Typing
+// only hides options that do not fit (the placeholder and the chosen option always stay); the
+// choice itself, the form and the server checks are unchanged. The field has no name, so it is
+// never sent, and its events stop here, so the calculation form does not draw itself again
+// while someone types. A form that is drawn again brings fresh selects, which are set up again.
+(() => {
+  const setUp = (root) => {
+    for (const select of root.querySelectorAll("select[data-search]")) {
+      if (select.dataset.searchReady) continue;
+      select.dataset.searchReady = "1";
+      const options = Array.from(select.options);
+      const input = document.createElement("input");
+      input.type = "search";
+      input.autocomplete = "off";
+      input.placeholder = select.dataset.search;
+      input.setAttribute("aria-label", select.dataset.search);
+      input.dataset.for = select.id;
+      input.className = "select-search";
+      const filter = () => {
+        const text = input.value.trim().toLowerCase();
+        const chosen = select.value;
+        const fits = (option) => option.value !== "" && option.text.toLowerCase().includes(text);
+        const rows = options.filter(
+          (option) => option.value === "" || option.value === chosen || fits(option)
+        );
+        if (text && !options.some(fits)) {
+          const note = document.createElement("option");
+          note.disabled = true;
+          note.textContent = select.dataset.searchEmpty;
+          rows.push(note);
+        }
+        select.replaceChildren(...rows);
+        select.value = chosen;
+      };
+      for (const type of ["input", "change", "keyup"]) {
+        input.addEventListener(type, (event) => {
+          event.stopPropagation();
+          if (type === "input") filter();
+        });
+      }
+      input.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") event.preventDefault();
+      });
+      // Under the select and its error message, which belongs directly to the select
+      const error = select.nextElementSibling;
+      (error && error.matches("small.field-error") ? error : select).after(input);
+    }
+  };
+  setUp(document);
+  document.body.addEventListener("htmx:afterSettle", () => setUp(document));
+})();

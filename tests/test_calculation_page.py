@@ -750,3 +750,34 @@ def test_188_3_the_fields_stand_in_pairs_with_short_labels(ready: Ready) -> None
     assert "field-grid-3" in more
     for key in ("calc.field.print_minutes", "calc.field.pieces", "calc.field.minutes"):
         assert len(DE[key]) <= 20 and len(EN[key]) <= 20, key
+
+
+# --- Issue #191: search field at the material and spool choices -----------------------------------
+
+
+def test_191_material_and_spool_choices_are_marked_for_the_search(ready: Ready) -> None:
+    html = calc(ready).text
+    for name in ("material_0", "spool_0_0"):
+        tag = re.search(rf'<select\b[^>]*name="{name}"[^>]*>', html, re.S)
+        assert tag is not None
+        assert "data-search=" in tag.group(0)
+        assert "data-search-empty=" in tag.group(0)
+    assert f'data-search="{DE["calc.search.spool"]}"' in html
+    assert f'data-search-empty="{DE["calc.search.spool_none"]}"' in html
+    assert f'data-search="{DE["calc.search.material"]}"' in html
+    # The search field itself is made in the browser, so the server never receives its text
+    assert 'type="search"' not in html
+
+
+def test_191_every_spool_field_of_a_position_has_its_own_mark(ready: Ready) -> None:
+    html = calc(ready, spool_0_0="5", grams_0="500").text
+    assert select_values(html, "spool_0_1")
+    for name in ("spool_0_0", "spool_0_1"):
+        assert re.search(rf'<select\b[^>]*name="{name}"[^>]*data-search=', html, re.S)
+
+
+def test_191_the_server_still_refuses_a_spool_that_is_not_allowed(ready: Ready) -> None:
+    # Spool 4 is PETG, the material of the position is PLA
+    html = calc(ready, spool_0_0="4").text
+    assert out(html, "res-suggested") is None
+    assert field_error(html, "spool_0_0") == DE["calc.error.spool"]
