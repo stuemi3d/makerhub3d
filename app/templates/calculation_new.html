@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block title %}{{ t('calc.title') }} – {{ app_name }}{% endblock %}
+{% macro err(name) %}{% if errors.get(name) %}<small id="{{ name }}-error" class="field-error">{{ t(errors[name]) }}</small>{% endif %}{% endmacro %}
+{% macro num(name, label_key, value, mode='decimal') %}
+<div>
+  <label for="{{ name }}">{{ t(label_key) }}</label>
+  <input type="text" inputmode="{{ mode }}" autocomplete="off" name="{{ name }}" id="{{ name }}" value="{{ value }}"{% if errors.get(name) %} aria-invalid="true" aria-describedby="{{ name }}-error"{% endif %}>
+  {{ err(name) }}
+</div>
+{% endmacro %}
+{% block content %}
+<nav aria-label="breadcrumb">
+  <ul>
+    {% if article %}
+    <li><a href="/articles">{{ t('articles.title') }}</a></li>
+    <li><a href="/articles/{{ article.id }}">{{ article.number }}</a></li>
+    <li><a href="/articles/{{ article.id }}/calculations">{{ t('article.tile.calculations') }}</a></li>
+    {% endif %}
+    <li>{{ t('calc.title') }}</li>
+  </ul>
+</nav>
+<h1>{{ t('calc.title') }}</h1>
+{% if article %}<p>{{ article.number }} · {{ article.name }}</p>{% endif %}
+<p><small>{{ t('calc.intro') }}</small></p>
+<form id="calc-form" method="post" action="/calculation/new" novalidate hx-post="/calculation/new" hx-trigger="change, keyup changed delay:600ms" hx-target="#calc-form" hx-select="#calc-form" hx-swap="outerHTML" hx-sync="this:replace">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  {% if article %}<input type="hidden" name="article" value="{{ article.id }}">{% endif %}
+  <input type="hidden" name="rows" value="{{ draft.rows|length }}">
+
+  {% if outcome.spool_problem %}<p role="alert"><mark>{{ t(outcome.spool_problem) }}</mark></p>{% endif %}
+
+  <h2>{{ t('calc.section.print') }}</h2>
+  <div class="form-block">
+    <div class="field-grid">
+      <div class="field-wide">
+        <label for="printer">{{ t('calc.field.printer') }}</label>
+        <select name="printer" id="printer"{% if errors.get('printer') %} aria-invalid="true" aria-describedby="printer-error"{% endif %}>
+          <option value="">{{ t('calc.choose_printer') }}</option>
+          {% for device_id, device_name in printers %}
+          <option value="{{ device_id }}"{% if draft.printer == device_id|string %} selected{% endif %}>{{ device_name }}</option>
+          {% endfor %}
+        </select>
+        {{ err('printer') }}
+        {% if not printers %}<p role="status"><small>{{ t('calc.printer.none') }} <a href="/settings/devices">{{ t('calc.link.devices') }}</a></small></p>{% endif %}
+        {% if outcome.printer_hint == 'calc.printer.no_model' %}<p role="status"><mark>{{ t('calc.printer.no_model') }}</mark> <a href="/settings/devices">{{ t('calc.link.devices') }}</a></p>
+        {% elif outcome.printer_hint == 'calc.printer.no_table' %}<p role="status"><mark>{{ t('calc.printer.no_table') }}</mark> <a href="/settings/devices/models">{{ t('calc.link.models') }}</a></p>{% endif %}
+      </div>
+      {{ num('print_minutes', 'calc.field.print_minutes', draft.print_minutes) }}
+      {{ num('pieces', 'calc.field.pieces', draft.pieces, 'numeric') }}
+    </div>
+  </div>
+
+  <h2>{{ t('calc.section.positions') }}</h2>
+  {% for view in outcome.rows %}
+  {% set i = view.index %}
+  <div class="form-block print-block">
+    <div class="field-grid">
+      <div>
+        <label for="material_{{ i }}">{{ t('calc.field.material') }}</label>
+        <select name="material_{{ i }}" id="material_{{ i }}"{% if errors.get('material_' ~ i) %} aria-invalid="true" aria-describedby="material_{{ i }}-error"{% endif %}>
+          <option value="">{{ t('calc.choose_material') }}</option>
+          {% for name in view.materials %}
+          <option value="{{ name }}"{% if view.row.material|lower == name|lower %} selected{% endif %}>{{ name }}</option>
+          {% endfor %}
+        </select>
+        {{ err('material_' ~ i) }}
+      </div>
+      {{ num('grams_' ~ i, 'calc.field.grams', view.row.grams) }}
+      {{ num('minutes_' ~ i, 'calc.field.minutes', view.row.minutes) }}
+      {% for slot in view.slots %}
+      <div class="field-wide">
+        <label for="{{ slot.name }}">{{ t('calc.field.spool') }}</label>
+        <select name="{{ slot.name }}" id="{{ slot.name }}"{% if errors.get(slot.name) %} aria-invalid="true" aria-describedby="{{ slot.name }}-error"{% endif %}>
+          <option value="">{{ t('calc.choose_spool') }}</option>
+          {% for value, label in slot.options %}
+          <option value="{{ value }}"{% if slot.value == value %} selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        {{ err(slot.name) }}
+      </div>
+      {% endfor %}
+    </div>
+    {% if view.note %}<p role="status"><mark>{{ t(view.note) }}</mark></p>{% endif %}
+  </div>
+  {% endfor %}
+  <div class="form-actions">
+    {% if can_add_row %}{# A plain button, so that Enter in a field uses "Berechnen", the only submit button #}<button type="button" hx-post="/calculation/new" hx-include="closest form" hx-vals='{"action": "add_row"}' hx-target="#calc-form" hx-select="#calc-form" hx-swap="outerHTML" class="secondary outline">{{ t('calc.add_position') }}</button>{% endif %}
+    <label><input type="checkbox" name="all_spools" value="1"{% if draft.all_spools %} checked{% endif %}> {{ t('calc.all_spools') }}</label>
+  </div>
+
+  <h2>{{ t('calc.section.work') }}</h2>
+  <div class="form-block labor-block">
+    <div class="field-grid">
+      {{ num('setup_minutes', 'calc.field.setup_minutes', draft.setup_minutes) }}
+      {{ num('rework_minutes', 'calc.field.rework_minutes', draft.rework_minutes) }}
+      {{ num('scrap', 'calc.field.scrap', draft.scrap) }}
+      {{ num('margin', 'calc.field.margin', draft.margin) }}
+    </div>
+  </div>
+
+  <h2>{{ t('calc.section.result') }}</h2>
+  {% if outcome.result %}
+  {% set r = outcome.result %}
+  <div class="form-block result-block">
+    <dl class="result-list">
+      <dt>{{ t('calc.result.material') }}</dt><dd><output id="res-material">{{ r.material }}</output></dd>
+      <dt>{{ t('calc.result.power') }}</dt><dd><output id="res-power">{{ r.power }}</output></dd>
+      <dt>{{ t('calc.result.machine') }}</dt><dd><output id="res-machine">{{ r.machine }}</output></dd>
+      <dt>{{ t('calc.result.labour') }}</dt><dd><output id="res-labour">{{ r.labour }}</output></dd>
+      <dt>{{ t('calc.result.cost_without') }}</dt><dd><output id="res-cost-without">{{ r.cost_without }}</output></dd>
+      <dt>{{ t('calc.result.cost_with') }}</dt><dd><output id="res-cost-with">{{ r.cost_with }}</output></dd>
+      <dt>{{ t('calc.result.suggested') }}</dt><dd><strong><output id="res-suggested">{{ r.suggested }}</output></strong></dd>
+      <dt>{{ t('calc.result.profit') }}</dt><dd><output id="res-profit">{{ r.profit }}</output></dd>
+      <dt>{{ t('calc.result.wage') }}</dt><dd><output id="res-wage">{{ r.wage }}</output></dd>
+    </dl>
+    <p><small>{{ t('calc.result.hint') }}</small></p>
+  </div>
+  {% else %}
+  <p role="status"><small>{{ t('calc.result.none') }}</small></p>
+  {% endif %}
+
+  <div class="form-actions form-actions-pinned">
+    <button type="submit" name="action" value="calc">{{ t('calc.calculate') }}</button>
+    {% if article %}<a href="/articles/{{ article.id }}/calculations" role="button" class="secondary outline">{{ t('article.cancel') }}</a>{% endif %}
+  </div>
+</form>
+{% endblock %}

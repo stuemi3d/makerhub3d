@@ -11,5 +11,8 @@
 </nav>
 <h1>{{ title }}</h1>
 <p>{{ article.number }} · {{ article.name }}</p>
+{% if section == 'calculations' %}
+<p><a href="/calculation/new?article={{ article.id }}" role="button">{{ t('calc.new') }}</a></p>
+{% endif %}
 <p>{{ t('article.section.empty') }}</p>
 {% endblock %}

@@ -22,6 +22,7 @@ from app.account_two_factor import add_two_factor_routes
 from app.article_pages import add_article_routes
 from app.backup_pages import add_backup_routes
 from app.bambuddy_pages import add_bambuddy_routes, connection_is_set_up
+from app.calculation_pages import add_calculation_routes
 from app.config import Settings
 from app.db import make_engine, run_migrations
 from app.device_pages import add_device_routes
@@ -50,7 +51,7 @@ templates.env.globals["app_name"] = APP_NAME
 NAV_ITEMS = (
     {"key": "nav.dashboard", "href": "/", "permission": Permission.VIEW},
     {"key": "nav.articles", "href": "/articles", "permission": Permission.VIEW},
-    {"key": "nav.calculation", "href": None, "permission": Permission.VIEW},
+    {"key": "nav.calculation", "href": "/calculation/new", "permission": Permission.VIEW},
     {"key": "nav.production", "href": "/production", "permission": Permission.VIEW},
     {"key": "nav.stock", "href": "/stock", "permission": Permission.VIEW},
     {"key": "nav.analysis", "href": None, "permission": Permission.VIEW},
@@ -565,6 +566,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     add_variant_bulk_routes(app, new_session, render, read_form)
     add_stock_routes(app, new_session, render, read_form, language)
     add_production_routes(app, new_session, bambuddy_cipher, render, read_form, language)
+    add_calculation_routes(app, new_session, bambuddy_cipher, render, language)
     add_device_routes(app, new_session, bambuddy_cipher, render, read_form, language)
     add_printer_model_routes(app, new_session, bambuddy_cipher, render, read_form, language)
 
