@@ -62,6 +62,8 @@ class SlicePlate:
     seconds: int  # total time, including heating and filament changes
     filaments: list[SliceFilament]
     times_estimated: bool  # True: the time per material is split by grams
+    # Objects on the plate that are not skipped (only shown); None when the file lists none
+    objects: int | None = None
 
 
 @dataclass(frozen=True)
@@ -366,7 +368,9 @@ def _plate(
         )
         for item, gram, part in zip(items, grams, seconds, strict=True)
     ]
-    return SlicePlate(index, total, filaments, estimated)
+    listed = element.findall("object")
+    objects = sum(1 for item in listed if item.get("skipped") != "true") if listed else None
+    return SlicePlate(index, total, filaments, estimated, objects)
 
 
 def _printer_of_3mf(archive: zipfile.ZipFile, names: set[str]) -> tuple[str | None, str | None]:

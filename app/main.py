@@ -17,7 +17,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import sessionmaker
 
-from app import APP_NAME, audit, auth, backup, dashboard, print_list, two_factor
+from app import APP_NAME, audit, auth, backup, calculation_files, dashboard, print_list, two_factor
 from app.account_two_factor import add_two_factor_routes
 from app.article_pages import add_article_routes
 from app.backup_pages import add_backup_routes
@@ -87,6 +87,18 @@ CHANGE_PASSWORD_PATHS = frozenset({"/account", "/account/password", "/logout"})
 
 def redirect(url: str) -> RedirectResponse:
     return RedirectResponse(url, status_code=303)
+
+
+def body_too_large(request: Request) -> bool:
+    """A form with a file must say how large it is, and may not be larger than an upload plus
+    the other fields (issue #181). Checked before anything is read."""
+    if not request.headers.get("content-type", "").startswith("multipart/form-data"):
+        return False
+    try:
+        size = int(request.headers.get("content-length", ""))
+    except ValueError:
+        return True
+    return size > calculation_files.body_limit()
 
 
 async def form_token_ok(request: Request, expected: str | None) -> bool:
@@ -251,6 +263,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             return redirect("/account")
         request.state.user = user
         request.state.csrf_token = csrf_token
+        if request.method not in SAFE_METHODS and body_too_large(request):
+            return PlainTextResponse(translate(language, "error.too_large"), status_code=413)
         if request.method not in SAFE_METHODS and not await form_token_ok(request, csrf_token):
             return PlainTextResponse(translate(language, "error.forbidden"), status_code=403)
         response = await call_next(request)

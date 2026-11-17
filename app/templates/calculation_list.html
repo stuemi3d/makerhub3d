@@ -17,7 +17,7 @@
   <h1>{{ t('calc.list.title') }}</h1>
   <div class="page-actions">
     {% if article %}<a href="/calculation" role="button" class="secondary outline">{{ t('calc.list.all') }}</a>{% endif %}
-    {% if can('edit') %}<a {{ popup_attrs('/calculation/new' ~ ('?article=' ~ article.id if article else '')) }} role="button">{{ t('calc.new') }}</a>{% endif %}
+    {% if can('edit') %}<a {{ popup_attrs('/calculation/start' ~ ('?article=' ~ article.id if article else '')) }} role="button">{{ t('calc.new') }}</a>{% endif %}
   </div>
 </div>
 {% if article %}<p>{{ article.number }} · {{ article.name }}</p>{% endif %}

@@ -254,7 +254,7 @@ def test_5_an_empty_list_has_a_hint_and_the_new_button(ready: Ready) -> None:
     article_id = base()
     html = ready.client.get(f"/calculation?article={article_id}").text
     assert DE["calc.list.empty"] in html
-    assert f'hx-get="/calculation/new?article={article_id}"' in html
+    assert f'hx-get="/calculation/start?article={article_id}"' in html
 
 
 def test_5_the_columns_can_be_sorted(ready: Ready) -> None:
@@ -677,7 +677,7 @@ def test_186_the_list_shows_the_article_of_every_row_and_the_new_button(ready: R
     html = ready.client.get("/calculation").text
     assert DE["calc.col.article"] in html
     assert f'<a href="/articles/{article_id}">3D-0001' in html
-    assert 'hx-get="/calculation/new"' in html
+    assert 'hx-get="/calculation/start"' in html
     assert "data-popup-refresh" in html
     # Opened from the list without a filter the actions carry no filter
     assert "filter=" not in html

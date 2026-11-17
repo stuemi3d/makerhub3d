@@ -16,10 +16,12 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from starlette.datastructures import UploadFile
 
 from app import (
     calc_form,
     calc_store,
+    calculation_files,
     printer_models,
     production_form,
     spool_list,
@@ -27,7 +29,7 @@ from app import (
     variants,
 )
 from app.article_pages import confirmed, varied, wants_popup
-from app.models import AppSettings, Article, Calculation, Device
+from app.models import AppSettings, Article, Calculation, Device, PrinterModel
 from app.permissions import Permission, has_permission, requires
 from app.two_factor import Cipher
 
@@ -134,6 +136,7 @@ def add_calculation_routes(
     ) -> tuple[HTMLResponse, calc_form.Outcome]:
         article = None
         target = None
+        file_hint = False
         with new_session() as db:
             if article_id is not None:
                 found = article_of(db, article_id)
@@ -148,6 +151,16 @@ def add_calculation_routes(
                 tables[device_id] = (
                     device.printer_model_id is not None,
                     printer_models.power_table(db, device_id),
+                )
+            if draft.file_model and draft.printer.isdigit() and int(draft.printer) in tables:
+                device = db.get(Device, int(draft.printer))
+                model = (
+                    db.get(PrinterModel, device.printer_model_id)
+                    if device.printer_model_id is not None
+                    else None
+                )
+                file_hint = not calculation_files.printer_matches(
+                    draft.file_model, device.name, model.name if model else None
                 )
         transport: httpx2.BaseTransport | None = getattr(app.state, "bambuddy_transport", None)
         spools = spool_list.load(new_session, cipher, transport)
@@ -185,6 +198,7 @@ def add_calculation_routes(
             save_failed=save_failed,
             editing=editing,
             filter_text=filter_text if _ID.fullmatch(filter_text) else "",
+            file_hint=file_hint,
         )
         return varied(response), outcome
 
@@ -205,6 +219,166 @@ def add_calculation_routes(
     @app.get(f"{LIST}/new", response_class=HTMLResponse, dependencies=view_right)
     async def new_calculation(request: Request) -> HTMLResponse:
         return await run_in_threadpool(open_page, request)
+
+    # --- Start and the way "with file" (issue #181) -------------------------------------------
+
+    def article_from(text: str) -> int | None:
+        """The article of the address (checked, 404 when there is none), or None."""
+        text = text.strip()
+        if not text:
+            return None
+        with new_session() as db:
+            return article_of(db, number(text)).id
+
+    @app.get(f"{LIST}/start", response_class=HTMLResponse, dependencies=view_right)
+    def start_calculation(request: Request) -> HTMLResponse:
+        article_id = article_from(request.query_params.get("article", ""))
+        return varied(
+            render(
+                request,
+                "calculation_start.html",
+                "nav.calculation",
+                popup=wants_popup(request),
+                article_id=article_id,
+            )
+        )
+
+    def file_page(
+        request: Request,
+        article_id: int | None,
+        printer: str = "",
+        errors: dict[str, str] | None = None,
+    ) -> HTMLResponse:
+        with new_session() as db:
+            printers = production_form.load_printers(db).choices
+        return varied(
+            render(
+                request,
+                "calculation_file.html",
+                "nav.calculation",
+                status_code=422 if errors else 200,
+                popup=wants_popup(request),
+                article_id=article_id,
+                printers=printers,
+                printer=printer,
+                errors=errors or {},
+            )
+        )
+
+    @app.get(f"{LIST}/file", response_class=HTMLResponse, dependencies=view_right)
+    def file_calculation(request: Request) -> HTMLResponse:
+        return file_page(request, article_from(request.query_params.get("article", "")))
+
+    def plates_page(
+        request: Request,
+        article_id: int | None,
+        printer: str,
+        payload: str,
+        plates: list[calculation_files.Plate],
+        info: dict[str, str],
+        picked: list[int],
+        error: str | None = None,
+    ) -> HTMLResponse:
+        return varied(
+            render(
+                request,
+                "calculation_plates.html",
+                "nav.calculation",
+                status_code=422 if error else 200,
+                popup=wants_popup(request),
+                article_id=article_id,
+                printer=printer,
+                payload=payload,
+                plates=calculation_files.views_of(plates, language),
+                picked=picked,
+                error=error,
+                file_name=info["file_name"],
+                file_printer=info["file_printer"],
+                file_model=info["file_model"],
+            )
+        )
+
+    async def read_upload(request: Request) -> Response:
+        form = await request.form()
+        article_text = form.get("article")
+        article_id = await run_in_threadpool(
+            article_from, article_text if isinstance(article_text, str) else ""
+        )
+        printer_text = form.get("printer")
+        printer = printer_text.strip() if isinstance(printer_text, str) else ""
+        errors: dict[str, str] = {}
+        with new_session() as db:
+            known = {str(item) for item, _ in production_form.load_printers(db).choices}
+        if printer not in known:
+            errors["printer"] = "calc.error.printer"
+        upload = form.get("file")
+        found = None
+        name = ""
+        if not isinstance(upload, UploadFile) or not upload.filename:
+            errors["file"] = "calc.file.error.none"
+        else:
+            name = calculation_files.clean_name(upload.filename)
+            data = await upload.read(calculation_files.MAX_UPLOAD + 1)
+            found, key = await run_in_threadpool(calculation_files.read_upload, data, name)
+            if key:
+                errors["file"] = key
+        if errors or found is None:
+            return file_page(request, article_id, printer, errors)
+        payload = calculation_files.payload_of(found)
+        plates = calculation_files.plates_of(payload)
+        info = {
+            "file_name": name,
+            "file_printer": (found.printer_name or "")[: calculation_files.MAX_NAME],
+            "file_model": (found.printer_model or "")[: calculation_files.MAX_NAME],
+        }
+        picked = [plates[0].index] if len(plates) == 1 else []
+        return plates_page(request, article_id, printer, payload, plates, info, picked)
+
+    @app.post(f"{LIST}/file", response_class=HTMLResponse, dependencies=view_right)
+    async def upload_calculation_file(request: Request) -> Response:
+        return await read_upload(request)
+
+    @app.post(f"{LIST}/file/take", response_class=HTMLResponse, dependencies=view_right)
+    async def take_plates(request: Request) -> Response:
+        form = await request.form()
+
+        def text(name: str, limit: int) -> str:
+            value = form.get(name)
+            return value.strip()[:limit] if isinstance(value, str) else ""
+
+        article_id = await run_in_threadpool(article_from, text("article", 12))
+        printer = text("printer", 12)
+        payload = form.get("plates")
+        info = {
+            "file_name": text("file_name", calculation_files.MAX_NAME),
+            "file_printer": text("file_printer", calculation_files.MAX_NAME),
+            "file_model": text("file_model", calculation_files.MAX_NAME),
+        }
+        try:
+            plates = calculation_files.plates_of(payload if isinstance(payload, str) else "")
+        except ValueError:
+            return file_page(request, article_id, printer, {"file": "calc.file.error.invalid"})
+        numbers = [value for value in form.getlist("plate") if isinstance(value, str)]
+        picked = calculation_files.chosen(plates, numbers)
+        if picked is None:
+            shown = [int(item) for item in numbers if item.isdigit()]
+            return plates_page(
+                request, article_id, printer, payload, plates, info, shown, "calc.file.error.plate"
+            )
+        minutes, rows, numbers_text = calculation_files.merged(picked, language)
+        draft = calc_form.Draft(
+            printer=printer,
+            print_minutes=minutes,
+            rows=rows,
+            file_name=info["file_name"],
+            file_plates=numbers_text,
+            file_printer=info["file_printer"],
+            file_model=info["file_model"],
+        )
+        filter_text = str(article_id) if article_id is not None else ""
+        return await run_in_threadpool(
+            lambda: page(request, draft, article_id, f"{LIST}/new", filter_text)[0]
+        )
 
     def work(
         request: Request,

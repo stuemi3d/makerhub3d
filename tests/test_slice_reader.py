@@ -298,3 +298,22 @@ def test_review_unused_slots_need_no_markers() -> None:
     plate = read_slice_file(gcode).plates[0]
     assert plate.times_estimated is False
     assert [f.seconds for f in plate.filaments] == [992, 496, 0, 0]
+
+
+def test_19_objects_per_plate_are_counted_without_skipped_ones() -> None:
+    """Issue #181: only shown to the person, never used for a number."""
+    first, second = read_slice_file(sliced_3mf()).plates
+    assert (first.objects, second.objects) == (2, 1)
+    skipped = fixture("slice_info.config").replace(
+        b'<object identify_id="72" name="W\xc3\xbcrfel" skipped="false" />',
+        b'<object identify_id="72" name="W\xc3\xbcrfel" skipped="true" />',
+    )
+    data = make_zip({"Metadata/slice_info.config": skipped})
+    assert read_slice_file(data).plates[0].objects == 1
+
+
+def test_19_a_plate_without_object_lines_has_no_count() -> None:
+    data = make_zip(
+        {"Metadata/slice_info.config": fixture("slice_info.config").replace(b"<object", b"<other")}
+    )
+    assert read_slice_file(data).plates[0].objects is None

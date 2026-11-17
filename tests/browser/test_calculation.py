@@ -6,12 +6,15 @@ its model are made for the test (the browser tests share one database, so every 
 its own names and only changes are checked).
 """
 
+import io
 import json
 import re
 import sqlite3
 import threading
+import zipfile
 from collections.abc import Iterator
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from pathlib import Path
 
 import pytest
 from playwright.sync_api import Locator, Page, expect
@@ -141,7 +144,10 @@ def open_new(page: Page, article_number: str | None = None) -> Locator:
     page.get_by_role("button", name=t("calc.new")).first.click()
     dialog = page.locator("dialog#popup")
     expect(dialog).to_be_visible()
+    # Issue #181: first the choice "with file" or "by hand"
+    dialog.get_by_role("button", name=t("calc.start.hand")).click()
     expect(dialog.locator("#calc-form")).to_be_visible()
+    settle(page)
     return dialog
 
 
@@ -316,3 +322,81 @@ def test_filling_from_top_to_bottom_shows_no_early_errors_and_fields_stand_level
     second = admin_page.locator("#grams_0").bounding_box()
     assert abs(first["y"] - second["y"]) <= 1
     assert fits_screen_width(admin_page)
+
+
+SLICER = Path(__file__).resolve().parent.parent / "fixtures" / "slicer"
+
+
+def sliced_file(extra: dict[str, bytes] | None = None) -> bytes:
+    """A .gcode.3mf made of the invented test files (two plates)."""
+    entries = {
+        "Metadata/slice_info.config": (SLICER / "slice_info.config").read_bytes(),
+        "Metadata/project_settings.config": (
+            SLICER / "project_settings_excerpt.config"
+        ).read_bytes(),
+        "Metadata/plate_1.gcode": (SLICER / "plate_1_excerpt.gcode").read_bytes(),
+    }
+    entries.update(extra or {})
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
+        for name, content in entries.items():
+            archive.writestr(name, content)
+    return buffer.getvalue()
+
+
+def as_upload(content: bytes, name: str = "wuerfel.gcode.3mf") -> dict:
+    return {"name": name, "mimeType": "application/octet-stream", "buffer": content}
+
+
+def test_with_file_choice_upload_plates_and_prefilled_form(
+    admin_page: Page, live_server: LiveServer, fake_bambuddy: str, viewport_name: str
+) -> None:
+    """Issue #181: the way "with file" in the pop-up, on desktop and phone."""
+    printer, _ = prepare(admin_page, live_server, fake_bambuddy, viewport_name, "d")
+    admin_page.goto("/calculation")
+    admin_page.get_by_role("button", name=t("calc.new")).first.click()
+    dialog = admin_page.locator("dialog#popup")
+    expect(dialog.get_by_role("button", name=t("calc.start.file"))).to_be_visible()
+    expect(dialog.get_by_role("button", name=t("calc.start.hand"))).to_be_visible()
+    assert fits_screen_width(admin_page)
+    dialog.get_by_role("button", name=t("calc.start.file")).click()
+    expect(dialog.locator("#file")).to_be_visible()
+    assert fits_screen_width(admin_page)
+
+    # A wrong file: a clear hint, the pop-up stays
+    dialog.locator("#printer").select_option(label=printer)
+    dialog.locator("#file").set_input_files(as_upload(b"just text", "text.gcode.3mf"))
+    dialog.get_by_role("button", name=t("calc.file.read")).click()
+    expect(dialog.locator("#file-error")).to_have_text(t("calc.file.error.invalid"))
+    assert fits_screen_width(admin_page)
+
+    # A good file: the plates, none preselected; without a choice a hint
+    dialog.locator("#file").set_input_files(as_upload(sliced_file()))
+    dialog.get_by_role("button", name=t("calc.file.read")).click()
+    boxes = dialog.locator("input[name=plate]")
+    expect(boxes).to_have_count(2)
+    assert fits_screen_width(admin_page)
+    dialog.get_by_role("button", name=t("calc.file.take")).click()
+    expect(dialog.locator("#plate-error")).to_have_text(t("calc.file.error.plate"))
+
+    # Both plates are added up; the form is prefilled, the quantity stays empty
+    boxes.nth(0).check()
+    boxes.nth(1).check()
+    dialog.get_by_role("button", name=t("calc.file.take")).click()
+    expect(dialog.locator("#calc-form")).to_be_visible()
+    settle(admin_page)
+    expect(dialog.locator("#print_minutes")).to_have_value("41,12")
+    expect(dialog.locator("#grams_0")).to_have_value("9,36")
+    expect(dialog.locator("#grams_1")).to_have_value("4,3")
+    expect(dialog.locator("#pieces")).to_have_value("")
+    expect(dialog.locator("#file-printer-hint")).to_be_visible()
+    assert fits_screen_width(admin_page)
+
+    # It goes on like by hand
+    # The material is already chosen from the file
+    expect(admin_page.locator("#material_0")).to_have_value("PLA")
+    type_and_wait(admin_page, admin_page.locator("#pieces"), "2")
+    expect(dialog.locator("#calc-form")).to_be_visible()
+    expect(dialog.get_by_text("wuerfel.gcode.3mf")).to_be_visible()
+    dialog.get_by_role("button", name=t("article.cancel")).click()
+    expect(dialog).not_to_be_visible()

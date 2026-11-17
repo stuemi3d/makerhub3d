@@ -301,7 +301,7 @@ Der Maintainer hat die frühere Bedingung („erst nach Alltagsnutzung von M1“
 - [x] Druckermodelle: beliebig viele Zeilen, Handy-Anordnung, Übersicht je Material, Reihenfolge ändern (#177)
 - [x] Produktion: Maschinensatz des Druckers aus den Geräten, Einstellungswert entfällt (#162)
 - [ ] Kalkulation, Teil 1: von Hand rechnen und am Artikel speichern (#161)
-- [ ] Kalkulation, Teil 2: mit `.gcode.3mf`-Datei (#181)
+- [x] Kalkulation, Teil 2: mit `.gcode.3mf`-Datei (#181)
 - [ ] Kalkulation, Teil 3: Datei mit der Kalkulation speichern (#182)
 
 **M4 – Verkauf und Auswertung**
