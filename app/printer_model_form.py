@@ -9,7 +9,7 @@ from decimal import Decimal
 
 from app.printer_models import same_material
 
-MAX_ROWS = 40
+MAX_ROWS = 100
 MATERIAL_MAX_LENGTH = 50
 MAX_DECIMALS = 3
 MAX_KWH = Decimal("100")
@@ -19,7 +19,8 @@ _MAX_INPUT_LENGTH = 12
 
 
 def field_names() -> tuple[str, ...]:
-    return tuple(f"{part}_{index}" for index in range(MAX_ROWS) for part in ("material", "kwh"))
+    # One row more than allowed, so that too many rows are noticed and refused.
+    return tuple(f"{part}_{index}" for index in range(MAX_ROWS + 1) for part in ("material", "kwh"))
 
 
 def _parse_kwh(text: str) -> tuple[Decimal | None, str | None]:
@@ -38,7 +39,8 @@ def _parse_kwh(text: str) -> tuple[Decimal | None, str | None]:
 
 
 def validate_rows(raw: dict[str, str]) -> tuple[list[tuple[str, Decimal]], dict[str, str]]:
-    """The cleaned (material, kWh per hour) rows and a mapping field name -> error key."""
+    """The cleaned (material, kWh per hour) rows in the order of the form and a mapping
+    field name -> error key (more than MAX_ROWS rows: the key "rows")."""
     values: list[tuple[str, Decimal]] = []
     errors: dict[str, str] = {}
     seen: set[str] = set()
@@ -60,4 +62,6 @@ def validate_rows(raw: dict[str, str]) -> tuple[list[tuple[str, Decimal]], dict[
             seen.add(same_material(material))
         if f"material_{index}" not in errors and value is not None:
             values.append((material, value))
+    if raw.get(f"material_{MAX_ROWS}", "").strip() or raw.get(f"kwh_{MAX_ROWS}", "").strip():
+        errors["rows"] = "model.error.too_many"
     return values, errors

@@ -25,7 +25,17 @@ from app.two_factor import Cipher
 
 LIST_ADDRESS = "/settings/devices"
 MODELS_ADDRESS = f"{LIST_ADDRESS}/models"
-EXTRA_ROWS = 3
+# One empty row below the stored ones; "Material hinzufügen" adds more (issue #177)
+EXTRA_ROWS = 1
+
+
+def ordered(model_id: int):
+    """The rows of a model in the order the person chose."""
+    return (
+        select(PrinterModelPower)
+        .where(PrinterModelPower.model_id == model_id)
+        .order_by(PrinterModelPower.position, PrinterModelPower.id)
+    )
 
 
 def printers_of(db: Session, model_id: int) -> int:
@@ -41,11 +51,7 @@ def model_views(db: Session, language: str) -> list[dict]:
     """The models for the table on the devices page: name, power rows, number of printers."""
     views = []
     for model in db.scalars(select(PrinterModel).order_by(PrinterModel.name, PrinterModel.id)):
-        powers = db.scalars(
-            select(PrinterModelPower)
-            .where(PrinterModelPower.model_id == model.id)
-            .order_by(PrinterModelPower.material)
-        )
+        powers = db.scalars(ordered(model.id))
         count = printers_of(db, model.id)
         views.append(
             {
@@ -86,23 +92,19 @@ def add_printer_model_routes(
         last = max(
             (
                 index
-                for index in range(printer_model_form.MAX_ROWS)
+                for index in range(printer_model_form.MAX_ROWS + 1)
                 if raw.get(f"material_{index}", "").strip() or raw.get(f"kwh_{index}", "").strip()
             ),
             default=-1,
         )
-        count = min(printer_model_form.MAX_ROWS, last + 1 + EXTRA_ROWS)
+        count = min(printer_model_form.MAX_ROWS + 1, last + 1 + EXTRA_ROWS)
         return [
             {"material": raw.get(f"material_{i}", ""), "kwh": raw.get(f"kwh_{i}", "")}
             for i in range(count)
         ]
 
     def stored_values(db: Session, model_id: int) -> dict[str, str]:
-        powers = db.scalars(
-            select(PrinterModelPower)
-            .where(PrinterModelPower.model_id == model_id)
-            .order_by(PrinterModelPower.material)
-        )
+        powers = db.scalars(ordered(model_id))
         raw: dict[str, str] = {}
         for index, power in enumerate(powers):
             raw[f"material_{index}"] = power.material
@@ -140,23 +142,30 @@ def add_printer_model_routes(
 
     def write_rows(db: Session, model_id: int, values: list[tuple[str, Decimal]]) -> list[dict]:
         """Replaces the rows of the model; returns the changes for the log."""
-        old = {
-            p.material: p
-            for p in db.scalars(
-                select(PrinterModelPower).where(PrinterModelPower.model_id == model_id)
-            )
-        }
+        old_rows = list(db.scalars(ordered(model_id)))
+        old = {p.material: p for p in old_rows}
         details: list[dict[str, str]] = []
         kept: set[str] = set()
-        for material, kwh in values:
+        for position, (material, kwh) in enumerate(values):
             kept.add(material)
             row = old.get(material)
             if row is None:
-                db.add(PrinterModelPower(model_id=model_id, material=material, kwh_per_hour=kwh))
+                db.add(
+                    PrinterModelPower(
+                        model_id=model_id, material=material, kwh_per_hour=kwh, position=position
+                    )
+                )
                 details.append({"field": material, "old": "", "new": str(kwh)})
-            elif row.kwh_per_hour != kwh:
+                continue
+            row.position = position
+            if row.kwh_per_hour != kwh:
                 details.append({"field": material, "old": str(row.kwh_per_hour), "new": str(kwh)})
                 row.kwh_per_hour = kwh
+        # A change of the order alone counts too: compare the rows that stay.
+        before = [row.material for row in old_rows if row.material in kept]
+        after = [material for material, _ in values if material in old]
+        if before != after:
+            details.append({"field": "order", "old": ", ".join(before), "new": ", ".join(after)})
         for material, row in old.items():
             if material not in kept:
                 details.append({"field": material, "old": str(row.kwh_per_hour), "new": ""})

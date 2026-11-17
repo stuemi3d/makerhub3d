@@ -1,0 +1,23 @@
+{# A row of the power table of a printer model (issue 177): grip, arrows, material, kWh,
+   remove. The numbers in the field names are set again by app.js after every change. #}
+{% from "_data_table.html" import icon_svg %}
+{% macro power_row(index, material, kwh, errors, t) %}
+<div class="power-row" data-power-row>
+  <span class="power-order">
+    <span class="icon-btn power-handle" data-power-handle title="{{ t('model.power.handle') }}" aria-hidden="true">{{ icon_svg('grip') }}</span>
+    <span class="power-arrows">
+      <button type="button" class="icon-btn" data-power-up title="{{ t('model.power.up') }}">{{ icon_svg('up') }}<span class="visually-hidden">{{ t('model.power.up') }}</span></button>
+      <button type="button" class="icon-btn" data-power-down title="{{ t('model.power.down') }}">{{ icon_svg('down') }}<span class="visually-hidden">{{ t('model.power.down') }}</span></button>
+    </span>
+  </span>
+  <span class="power-field power-material">
+    <input type="text" maxlength="50" autocomplete="off" id="material_{{ index }}" name="material_{{ index }}" aria-label="{{ t('model.power.material') }}"{% if errors.get('material_' ~ index) %} aria-invalid="true" aria-describedby="material_{{ index }}-error"{% endif %} value="{{ material }}">
+    {% if errors.get('material_' ~ index) %}<small id="material_{{ index }}-error">{{ t(errors['material_' ~ index]) }}</small>{% endif %}
+  </span>
+  <span class="power-field power-kwh">
+    <input type="text" inputmode="decimal" autocomplete="off" id="kwh_{{ index }}" name="kwh_{{ index }}" aria-label="{{ t('model.power.kwh') }}"{% if errors.get('kwh_' ~ index) %} aria-invalid="true" aria-describedby="kwh_{{ index }}-error"{% endif %} value="{{ kwh }}">
+    {% if errors.get('kwh_' ~ index) %}<small id="kwh_{{ index }}-error">{{ t(errors['kwh_' ~ index]) }}</small>{% endif %}
+  </span>
+  <button type="button" class="icon-btn power-remove" data-power-remove title="{{ t('model.power.remove') }}">{{ icon_svg('delete') }}<span class="visually-hidden">{{ t('model.power.remove') }}</span></button>
+</div>
+{% endmacro %}

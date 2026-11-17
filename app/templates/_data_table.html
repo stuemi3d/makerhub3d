@@ -24,6 +24,9 @@
   {% if kind == 'view' %}<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/>
   {% elif kind == 'book' or kind == 'add_value' %}<circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/>
   {% elif kind == 'delete' %}<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/>
+  {% elif kind == 'up' %}<path d="M6 15l6-6 6 6"/>
+  {% elif kind == 'down' %}<path d="M6 9l6 6 6-6"/>
+  {% elif kind == 'grip' %}<circle cx="9" cy="6" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="18" r="1"/>
   {% elif kind == 'deactivate' %}<circle cx="12" cy="12" r="10"/><path d="M4.9 4.9l14.2 14.2"/>
   {% elif kind == 'activate' %}<circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-6"/>
   {% elif kind == 'password' %}<circle cx="8" cy="15" r="4"/><path d="M10.8 12.2L21 2M16 7l3 3"/>

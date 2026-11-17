@@ -675,7 +675,6 @@
   "model.new": "Create model",
   "model.hint.unlinked": "At least one printer has no model yet. Please create a model first and choose it for the printer.",
   "model.col.name": "Model",
-  "model.col.power": "Electricity use (kWh per hour)",
   "model.col.printers": "Printers",
   "model.power.empty": "No values yet",
   "model.form.new": "Create printer model",
@@ -690,7 +689,7 @@
   "model.error.material_too_long": "At most 50 characters.",
   "model.error.material_twice": "This material is already in the table.",
   "model.power.title": "Electricity use per material",
-  "model.power.hint": "Material (e.g. PLA) and use in kWh per print hour, e.g. 0.10. Remove a row by emptying both fields. Empty rows are ignored.",
+  "model.power.hint": "Material (e.g. PLA) and use in kWh per print hour, e.g. 0.10. “Add material” adds as many rows as you need. Order the rows with the arrows or by dragging a row by its grip; the order is also used in the choice on the calculation page. Empty rows are ignored.",
   "model.power.material": "Material",
   "model.power.kwh": "kWh per hour",
   "model.delete.title": "Delete printer model",
@@ -701,5 +700,13 @@
   "device.error.model": "This model does not exist.",
   "log.action.printer_model.created": "Printer model created",
   "log.action.printer_model.updated": "Printer model changed",
-  "log.action.printer_model.deleted": "Printer model deleted"
+  "log.action.printer_model.deleted": "Printer model deleted",
+  "model.col.material": "Material",
+  "model.col.kwh": "kWh per hour",
+  "model.power.add": "Add material",
+  "model.power.up": "Move up",
+  "model.power.down": "Move down",
+  "model.power.remove": "Remove row",
+  "model.power.handle": "Drag to move",
+  "model.error.too_many": "At most 100 rows."
 }

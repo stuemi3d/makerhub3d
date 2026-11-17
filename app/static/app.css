@@ -827,3 +827,87 @@ main .detail-card:not(.auth-box) > form [type="submit"] {
   width: 100%;
   text-align: left;
 }
+
+/* Power table of a printer model (issue 177): one compact line per pair of values, grip and
+   arrows at the left, remove at the right. It stays one line on a phone in portrait, too. */
+.power-head,
+.power-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.power-head {
+  padding-bottom: 0.25rem;
+  color: var(--mh-text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.power-row {
+  margin-bottom: 0.4rem;
+}
+
+.power-order {
+  display: flex;
+  flex: none;
+  align-items: center;
+  width: 3.3rem;
+}
+
+.power-remove {
+  flex: none;
+  width: 2rem;
+  margin: 0;
+}
+
+.power-field {
+  min-width: 0;
+}
+
+.power-material {
+  flex: 2 1 0;
+}
+
+.power-kwh {
+  flex: 0 0 5.5rem;
+}
+
+.power-field input {
+  width: 100%;
+  margin: 0;
+}
+
+.power-handle {
+  width: 1.5rem;
+  margin: 0;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.power-arrows {
+  display: flex;
+  flex-direction: column;
+}
+
+.power-arrows .icon-btn {
+  width: 1.8rem;
+  height: 1.4rem;
+  margin: 0;
+}
+
+.power-arrows .icon-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.power-row.is-dragging {
+  background: var(--mh-neutral-bg);
+  border-radius: var(--mh-radius);
+}
+
+.power-add {
+  width: auto;
+  margin: 0 0 1rem;
+}
