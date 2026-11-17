@@ -130,7 +130,7 @@
       document.documentElement.classList.add("modal-is-open");
     }
     const field =
-      body.querySelector("[aria-invalid='true']") || body.querySelector("[autofocus]");
+      body.querySelector("[aria-invalid='true']:not(.combo-native)") || body.querySelector("[autofocus]");
     if (field) field.focus();
   });
 
@@ -378,52 +378,157 @@ if (window.htmx) {
   document.addEventListener("pointercancel", finishDrag);
 })();
 
-// Search field at a choice list (under it, so neighbouring fields keep their level) (issue #191): a select with data-search gets a search field. Typing
-// only hides options that do not fit (the placeholder and the chosen option always stay); the
-// choice itself, the form and the server checks are unchanged. The field has no name, so it is
-// never sent, and its events stop here, so the calculation form does not draw itself again
-// while someone types. A form that is drawn again brings fresh selects, which are set up again.
+// Combobox (issue #191): a select with data-search becomes a text field with a list. Typing in
+// the field filters the list live; choosing an entry sets the real select (which stays in the
+// form, hidden, and is what is sent) and tells the form with a normal "change" event. The
+// typing itself must not draw the form again, so its events stop at the field. Without
+// JavaScript the plain select stays. A form that is drawn again brings fresh selects, which
+// are set up again.
 (() => {
   const setUp = (root) => {
     for (const select of root.querySelectorAll("select[data-search]")) {
       if (select.dataset.searchReady) continue;
       select.dataset.searchReady = "1";
       const options = Array.from(select.options);
+      const placeholder = options.find((option) => option.value === "");
+      const textOf = (option) => (option && option.value !== "" ? option.text : "");
+
+      const wrap = document.createElement("div");
+      wrap.className = "combo";
       const input = document.createElement("input");
-      input.type = "search";
-      input.autocomplete = "off";
-      input.placeholder = select.dataset.search;
-      input.setAttribute("aria-label", select.dataset.search);
+      input.type = "text";
+      input.id = `${select.id}-combo`;
       input.dataset.for = select.id;
-      input.className = "select-search";
-      const filter = () => {
-        const text = input.value.trim().toLowerCase();
-        const chosen = select.value;
-        const fits = (option) => option.value !== "" && option.text.toLowerCase().includes(text);
-        const rows = options.filter(
-          (option) => option.value === "" || option.value === chosen || fits(option)
-        );
-        if (text && !options.some(fits)) {
-          const note = document.createElement("option");
-          note.disabled = true;
-          note.textContent = select.dataset.searchEmpty;
-          rows.push(note);
-        }
-        select.replaceChildren(...rows);
-        select.value = chosen;
-      };
-      for (const type of ["input", "change", "keyup"]) {
-        input.addEventListener(type, (event) => {
-          event.stopPropagation();
-          if (type === "input") filter();
-        });
+      input.autocomplete = "off";
+      input.setAttribute("role", "combobox");
+      input.setAttribute("aria-autocomplete", "list");
+      input.setAttribute("aria-expanded", "false");
+      input.setAttribute("aria-controls", `${select.id}-list`);
+      input.placeholder = placeholder ? placeholder.text : select.dataset.search;
+      for (const name of ["aria-invalid", "aria-describedby"]) {
+        if (select.hasAttribute(name)) input.setAttribute(name, select.getAttribute(name));
       }
-      input.addEventListener("keydown", (event) => {
-        if (event.key === "Enter") event.preventDefault();
+      const list = document.createElement("ul");
+      list.id = `${select.id}-list`;
+      list.className = "combo-list";
+      list.setAttribute("role", "listbox");
+      list.hidden = true;
+      wrap.append(input, list);
+      select.before(wrap);
+      // The select stays in the form but out of sight and out of the tab order.
+      select.classList.add("combo-native");
+      select.tabIndex = -1;
+      select.setAttribute("aria-hidden", "true");
+      const label = document.querySelector(`label[for="${CSS.escape(select.id)}"]`);
+      if (label) label.htmlFor = input.id;
+
+      let shown = [];
+      let active = -1;
+      const showChosen = () => {
+        input.value = textOf(select.selectedOptions[0]);
+      };
+      const mark = (index) => {
+        active = index;
+        Array.from(list.children).forEach((item, position) => {
+          item.classList.toggle("active", position === index);
+          item.setAttribute("aria-selected", String(position === index));
+        });
+        const item = list.children[index];
+        if (item) {
+          item.scrollIntoView({ block: "nearest" });
+          input.setAttribute("aria-activedescendant", item.id);
+        } else {
+          input.removeAttribute("aria-activedescendant");
+        }
+      };
+      const render = (text) => {
+        const needle = text.trim().toLowerCase();
+        shown = options.filter(
+          (option) => option.value === "" || option.text.toLowerCase().includes(needle)
+        );
+        list.replaceChildren();
+        shown.forEach((option, position) => {
+          const item = document.createElement("li");
+          item.id = `${select.id}-opt-${position}`;
+          item.setAttribute("role", "option");
+          item.textContent = option.text;
+          if (option.value === "") item.classList.add("combo-empty-choice");
+          if (option.value === select.value) item.classList.add("chosen");
+          item.dataset.value = option.value;
+          list.append(item);
+        });
+        if (needle && !shown.some((option) => option.value !== "")) {
+          const note = document.createElement("li");
+          note.className = "combo-none";
+          note.setAttribute("role", "option");
+          note.setAttribute("aria-disabled", "true");
+          note.textContent = select.dataset.searchEmpty;
+          list.append(note);
+        }
+        mark(-1);
+      };
+      const open = (text) => {
+        render(text);
+        list.hidden = false;
+        input.setAttribute("aria-expanded", "true");
+      };
+      const close = () => {
+        list.hidden = true;
+        input.setAttribute("aria-expanded", "false");
+        mark(-1);
+      };
+      const choose = (value) => {
+        const changed = select.value !== value;
+        select.value = value;
+        showChosen();
+        close();
+        if (changed) select.dispatchEvent(new Event("change", { bubbles: true }));
+      };
+
+      showChosen();
+      input.addEventListener("focus", () => {
+        input.select();
+        open("");
       });
-      // Under the select and its error message, which belongs directly to the select
-      const error = select.nextElementSibling;
-      (error && error.matches("small.field-error") ? error : select).after(input);
+      input.addEventListener("input", () => open(input.value));
+      // After Escape the field keeps the focus, so a click opens the list again
+      input.addEventListener("click", () => {
+        if (list.hidden) open("");
+      });
+      input.addEventListener("blur", () => {
+        close();
+        showChosen();
+      });
+      input.addEventListener("keydown", (event) => {
+        const last = shown.length - 1;
+        if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+          event.preventDefault();
+          if (list.hidden) open("");
+          const step = event.key === "ArrowDown" ? 1 : -1;
+          mark(Math.min(last, Math.max(0, active + step)));
+        } else if (event.key === "Enter") {
+          event.preventDefault();
+          // Without an arrow key the first real match is taken, so typing and Enter is enough
+          const first = shown.findIndex((option) => option.value !== "");
+          const index = active >= 0 ? active : input.value.trim() ? first : -1;
+          if (!list.hidden && index >= 0) choose(shown[index].value);
+        } else if (event.key === "Escape" && !list.hidden) {
+          // Closes the list only, not the pop-up around the form
+          event.preventDefault();
+          event.stopPropagation();
+          close();
+          showChosen();
+        }
+      });
+      // The list entries take the click without the field losing its focus first
+      list.addEventListener("mousedown", (event) => event.preventDefault());
+      list.addEventListener("click", (event) => {
+        const item = event.target.closest("li[data-value]");
+        if (item) choose(item.dataset.value);
+      });
+      for (const type of ["input", "change", "keyup"]) {
+        input.addEventListener(type, (event) => event.stopPropagation());
+      }
     }
   };
   setUp(document);
