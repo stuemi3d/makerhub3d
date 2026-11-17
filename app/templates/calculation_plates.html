@@ -1,0 +1,44 @@
+{% extends "_popup_layout.html" if popup else "base.html" %}
+{% block title %}{{ t('calc.file.plates.title') }} – {{ app_name }}{% endblock %}
+{% block content %}
+{% if not popup %}
+<nav aria-label="breadcrumb">
+  <ul>
+    <li><a href="/calculation">{{ t('calc.list.title') }}</a></li>
+    <li>{{ t('calc.file.plates.title') }}</li>
+  </ul>
+</nav>
+{% endif %}
+<h1{% if popup %} id="popup-title"{% endif %}>{{ t('calc.file.plates.title') }}</h1>
+<p><strong>{{ file_name }}</strong></p>
+<p>{{ t('calc.file.plates.intro') }}</p>
+<form method="post" action="/calculation/file/take" novalidate{% if popup %} hx-post="/calculation/file/take" hx-target="#popup-body" hx-swap="innerHTML"{% endif %}>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <input type="hidden" name="printer" value="{{ printer }}">
+  {% if article_id %}<input type="hidden" name="article" value="{{ article_id }}">{% endif %}
+  <input type="hidden" name="plates" value="{{ payload }}">
+  <input type="hidden" name="file_name" value="{{ file_name }}">
+  <input type="hidden" name="file_printer" value="{{ file_printer }}">
+  <input type="hidden" name="file_model" value="{{ file_model }}">
+  {% if error %}<p role="alert"><mark id="plate-error">{{ t(error) }}</mark></p>{% endif %}
+  {% for plate in plates %}
+  <div class="form-block print-block">
+    <label>
+      <input type="checkbox" name="plate" value="{{ plate.index }}"{% if plate.index in picked %} checked{% endif %}>
+      <strong>{{ t('calc.file.plate') }} {{ plate.index }}</strong> · {{ t('calc.file.time') }}: {{ plate.minutes }} {{ t('calc.file.min') }}{% if plate.objects is not none %} · {{ t('calc.file.objects')|replace('{count}', plate.objects|string) }}{% endif %}
+    </label>
+    <ul>
+      {% for f in plate.filaments %}
+      <li>{{ f.material }}{% if f.color %} ({{ t('calc.file.color') }} {{ f.color }}){% endif %}: {{ f.grams }} g{% if plate.multi %} · {{ t('calc.file.share') }}: {{ f.minutes }} {{ t('calc.file.min') }}{% endif %}</li>
+      {% endfor %}
+    </ul>
+    {% if plate.estimated %}<small>{{ t('calc.file.estimated') }}</small>{% endif %}
+  </div>
+  {% endfor %}
+  <div class="form-actions form-actions-pinned">
+    <button type="submit">{{ t('calc.file.take') }}</button>
+    {% if popup %}<button type="button" class="secondary outline" data-popup-close>{{ t('article.cancel') }}</button>
+    {% else %}<a href="/calculation" role="button" class="secondary outline">{{ t('article.cancel') }}</a>{% endif %}
+  </div>
+</form>
+{% endblock %}

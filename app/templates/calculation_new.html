@@ -22,6 +22,14 @@
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <input type="hidden" name="rows" value="{{ draft.rows|length }}">
   {% if filter_text %}<input type="hidden" name="filter" value="{{ filter_text }}">{% endif %}
+  {% if draft.file_name %}
+  <input type="hidden" name="file_name" value="{{ draft.file_name }}">
+  <input type="hidden" name="file_plates" value="{{ draft.file_plates }}">
+  <input type="hidden" name="file_printer" value="{{ draft.file_printer }}">
+  <input type="hidden" name="file_model" value="{{ draft.file_model }}">
+  <p role="status"><small>{{ t('calc.file.from') }}: <strong>{{ draft.file_name }}</strong>{% if draft.file_plates %} · {{ t('calc.file.from_plates') }} {{ draft.file_plates }}{% endif %}</small></p>
+  {% if file_hint %}<p role="status"><mark id="file-printer-hint">{{ t('calc.file.printer_differs')|replace('{file}', draft.file_printer) }}</mark></p>{% endif %}
+  {% endif %}
   {% if outcome.spool_problem %}<p role="alert"><mark>{{ t(outcome.spool_problem) }}</mark></p>{% endif %}
 
   <div class="form-block">
@@ -70,10 +78,16 @@
         <select name="material_{{ i }}" id="material_{{ i }}"{% if errors.get('material_' ~ i) %} aria-invalid="true" aria-describedby="material_{{ i }}-error"{% endif %}>
           <option value="">{{ t('calc.choose_material') }}</option>
           {% for name in view.materials %}
-          <option value="{{ name }}"{% if view.row.material|lower == name|lower %} selected{% endif %}>{{ name }}</option>
+          <option value="{{ name }}"{% if view.material == name %} selected{% endif %}>{{ name }}</option>
           {% endfor %}
         </select>
         {{ err('material_' ~ i) }}
+        {% if view.row.file_material %}
+        <input type="hidden" name="filemat_{{ i }}" value="{{ view.row.file_material }}">
+        <input type="hidden" name="color_{{ i }}" value="{{ view.row.color }}">
+        {% if view.row.color %}<small>{{ t('calc.file.color') }}: {{ view.row.color }}</small>{% endif %}
+        {% if view.material is none %}<small><mark>{{ t('calc.file.material_unknown')|replace('{material}', view.row.file_material) }}</mark></small>{% endif %}
+        {% endif %}
       </div>
       {{ num('grams_' ~ i, 'calc.field.grams', view.row.grams) }}
       {% if outcome.multi %}{{ num('minutes_' ~ i, 'calc.field.minutes', view.minutes_shown) }}{% endif %}

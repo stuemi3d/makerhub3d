@@ -165,7 +165,7 @@ def test_4_the_article_list_offers_a_new_calculation_the_template_does_not(
 ) -> None:
     article_id = add_article()
     html = ready.client.get(f"/calculation?article={article_id}").text
-    assert f'hx-get="/calculation/new?article={article_id}"' in html
+    assert f'hx-get="/calculation/start?article={article_id}"' in html
     assert DE["calc.new"] in html
 
     assert make_template(ready.client).status_code == 303

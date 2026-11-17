@@ -1,0 +1,24 @@
+{% extends "_popup_layout.html" if popup else "base.html" %}
+{% from "_form_macros.html" import popup_attrs %}
+{% block title %}{{ t('calc.start.title') }} – {{ app_name }}{% endblock %}
+{% block content %}
+{% if not popup %}
+<nav aria-label="breadcrumb">
+  <ul>
+    <li><a href="/calculation">{{ t('calc.list.title') }}</a></li>
+    <li>{{ t('calc.start.title') }}</li>
+  </ul>
+</nav>
+{% endif %}
+<h1{% if popup %} id="popup-title"{% endif %}>{{ t('calc.start.title') }}</h1>
+<p>{{ t('calc.start.intro') }}</p>
+{% set query = ('?article=' ~ article_id) if article_id else '' %}
+<div class="form-block">
+  <p><a {{ popup_attrs('/calculation/file' ~ query) }} role="button">{{ t('calc.start.file') }}</a><br><small>{{ t('calc.start.file_hint') }}</small></p>
+  <p><a {{ popup_attrs('/calculation/new' ~ query) }} role="button" class="secondary">{{ t('calc.start.hand') }}</a><br><small>{{ t('calc.start.hand_hint') }}</small></p>
+</div>
+<div class="form-actions">
+  {% if popup %}<button type="button" class="secondary outline" data-popup-close>{{ t('article.cancel') }}</button>
+  {% else %}<a href="/calculation" role="button" class="secondary outline">{{ t('article.cancel') }}</a>{% endif %}
+</div>
+{% endblock %}

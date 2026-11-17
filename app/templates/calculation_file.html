@@ -1,0 +1,43 @@
+{% extends "_popup_layout.html" if popup else "base.html" %}
+{% block title %}{{ t('calc.file.title') }} – {{ app_name }}{% endblock %}
+{% block content %}
+{% if not popup %}
+<nav aria-label="breadcrumb">
+  <ul>
+    <li><a href="/calculation">{{ t('calc.list.title') }}</a></li>
+    <li>{{ t('calc.file.title') }}</li>
+  </ul>
+</nav>
+{% endif %}
+<h1{% if popup %} id="popup-title"{% endif %}>{{ t('calc.file.title') }}</h1>
+<p>{{ t('calc.file.intro') }}</p>
+<form method="post" action="/calculation/file" enctype="multipart/form-data" novalidate{% if popup %} hx-post="/calculation/file" hx-encoding="multipart/form-data" hx-target="#popup-body" hx-swap="innerHTML"{% endif %}>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  {% if article_id %}<input type="hidden" name="article" value="{{ article_id }}">{% endif %}
+  <div class="form-block">
+    <div class="field-grid field-grid-2">
+      <div class="field-wide">
+        <label for="printer">{{ t('calc.field.printer') }}</label>
+        <select name="printer" id="printer"{% if errors.get('printer') %} aria-invalid="true" aria-describedby="printer-error"{% endif %}>
+          <option value="">{{ t('calc.choose_printer') }}</option>
+          {% for device_id, device_name in printers %}
+          <option value="{{ device_id }}"{% if printer == device_id|string %} selected{% endif %}>{{ device_name }}</option>
+          {% endfor %}
+        </select>
+        {% if errors.get('printer') %}<small id="printer-error" class="field-error">{{ t(errors['printer']) }}</small>{% endif %}
+        {% if not printers %}<small>{{ t('calc.printer.none') }} <a href="/settings/devices">{{ t('calc.link.devices') }}</a></small>{% endif %}
+      </div>
+      <div class="field-wide">
+        <label for="file">{{ t('calc.file.field.file') }}</label>
+        <input type="file" name="file" id="file" accept=".3mf"{% if errors.get('file') %} aria-invalid="true" aria-describedby="file-error"{% endif %}>
+        {% if errors.get('file') %}<small id="file-error" class="field-error">{{ t(errors['file']) }}</small>{% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="form-actions form-actions-pinned">
+    <button type="submit">{{ t('calc.file.read') }}</button>
+    {% if popup %}<button type="button" class="secondary outline" data-popup-close>{{ t('article.cancel') }}</button>
+    {% else %}<a href="/calculation" role="button" class="secondary outline">{{ t('article.cancel') }}</a>{% endif %}
+  </div>
+</form>
+{% endblock %}

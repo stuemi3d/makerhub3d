@@ -29,6 +29,7 @@ from app.settings_form import format_decimal
 MAX_ROWS = 20
 MAX_SPOOLS = 10
 MAX_TEXT = 40
+MAX_NAME = 80
 CENT = Decimal("0.01")
 ZERO = Decimal(0)
 _WHOLE = re.compile(r"[0-9]{1,9}")
@@ -45,6 +46,9 @@ class Row:
     grams: str = ""
     minutes: str = ""
     spools: list[str] = field(default_factory=list)
+    # From a file (issue #181): the colour and the material as the file names it
+    color: str = ""
+    file_material: str = ""
 
     def blank(self) -> bool:
         # The time share does not count: it is prefilled when there are several materials
@@ -64,6 +68,11 @@ class Draft:
     margin: str | None = None
     all_spools: bool = False
     action: str = "live"
+    # From a file (issue #181), only shown: its name, the plates taken and its printer
+    file_name: str = ""
+    file_plates: str = ""
+    file_printer: str = ""
+    file_model: str = ""
 
     def blank(self) -> bool:
         """Nothing was typed yet: no errors and no result."""
@@ -71,9 +80,9 @@ class Draft:
         return not any(texts) and all(row.blank() for row in self.rows)
 
 
-def _text(form: FormData, name: str) -> str:
+def _text(form: FormData, name: str, limit: int = MAX_TEXT) -> str:
     value = form.get(name)
-    return value.strip()[:MAX_TEXT] if isinstance(value, str) else ""
+    return value.strip()[:limit] if isinstance(value, str) else ""
 
 
 def read(form: FormData | None) -> Draft:
@@ -94,6 +103,10 @@ def read(form: FormData | None) -> Draft:
         margin=_text(form, "margin") if "margin" in form else None,
         all_spools=_text(form, "all_spools") == "1",
         action=action if action in ACTIONS else "live",
+        file_name=_text(form, "file_name", MAX_NAME),
+        file_plates=_text(form, "file_plates"),
+        file_printer=_text(form, "file_printer", MAX_NAME),
+        file_model=_text(form, "file_model", MAX_NAME),
     )
     if draft.action == "add_row":
         rows_wanted = min(rows_wanted + 1, MAX_ROWS)
@@ -110,6 +123,8 @@ def read(form: FormData | None) -> Draft:
                 grams=_text(form, f"grams_{index}"),
                 minutes=_text(form, f"minutes_{index}"),
                 spools=spools,
+                color=_text(form, f"color_{index}"),
+                file_material=_text(form, f"filemat_{index}"),
             )
         )
     return draft
