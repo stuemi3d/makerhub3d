@@ -27,6 +27,7 @@ from tests.test_calculation_page import (
     input_value,
     make_ready,
     out,
+    select_values,
     serve_spools,
     spool,
     values,
@@ -79,7 +80,8 @@ def base(number: str = "3D-0001") -> int:
 
 
 def address(article_id: int, calculation_id: int, tail: str = "") -> str:
-    return f"/articles/{article_id}/calculations/{calculation_id}{tail}"
+    """A saved calculation lives under its own number; its article follows from it (#186)."""
+    return f"/calculation/{calculation_id}{tail}"
 
 
 def saved_one(ready: Ready, article_id: int, **over: str) -> int:
@@ -149,7 +151,7 @@ def test_3_everything_is_stored_as_values(ready: Ready) -> None:
     article_id = base()
     response = save(ready, article_id)
     assert response.status_code == 303
-    assert response.headers["location"] == f"/articles/{article_id}/calculations?saved=1"
+    assert response.headers["location"] == "/calculation?saved=1"
 
     (item,) = stored()
     assert item.article_id == article_id
@@ -232,27 +234,27 @@ def test_5_the_tile_counts_and_the_table_shows_the_calculations(ready: Ready) ->
     tile = re.search(r'<a\b[^>]*href="/articles/\d+/calculations"[^>]*>.*?</a>', detail, re.S)
     assert tile and ">2<" in re.sub(r"\s+", "", tile.group(0))
 
-    html = ready.client.get(f"/articles/{article_id}/calculations?saved=1").text
+    html = ready.client.get(f"/calculation?article={article_id}&saved=1").text
     assert DE["calc.notice.saved"] in html
     assert html.count('<tr class="calc-row') == 2
     assert "Testdrucker" in html
     assert DE["calc.chip.main"] in html
-    for tail, kind in (("", "view"), ("/edit", "edit"), ("/delete", "delete")):
-        assert f'href="{address(article_id, first, tail)}"' in html or (
-            f'hx-get="{address(article_id, first, tail)}"' in html
-        ), kind
-    assert f'href="/calculation/new?article={article_id}&amp;copy={first}"' in html
+    # In a filtered list the actions keep the filter
+    for tail, kind in (("", "view"), ("/edit?filter=1", "edit"), ("/delete?filter=1", "delete")):
+        link = address(article_id, first, tail.replace("filter=1", f"filter={article_id}"))
+        assert f'hx-get="{link}"' in html, kind
+    assert f'hx-get="/calculation/new?copy={first}&amp;filter={article_id}"' in html
     # The main one needs no "make main" button, the other one has it
-    assert f'action="{address(article_id, first, "/main")}"' not in html
-    assert f'action="{address(article_id, second, "/main")}"' in html
+    assert f'action="{address(article_id, first, "/main")}' not in html
+    assert f'action="{address(article_id, second, "/main")}?filter={article_id}"' in html
     assert "data-confirm" not in html and "confirm(" not in html
 
 
 def test_5_an_empty_list_has_a_hint_and_the_new_button(ready: Ready) -> None:
     article_id = base()
-    html = ready.client.get(f"/articles/{article_id}/calculations").text
+    html = ready.client.get(f"/calculation?article={article_id}").text
     assert DE["calc.list.empty"] in html
-    assert f'href="/calculation/new?article={article_id}"' in html
+    assert f'hx-get="/calculation/new?article={article_id}"' in html
 
 
 def test_5_the_columns_can_be_sorted(ready: Ready) -> None:
@@ -262,7 +264,7 @@ def test_5_the_columns_can_be_sorted(ready: Ready) -> None:
     for key in ("date", "printer", "cost", "price"):
         for direction in ("asc", "desc"):
             response = ready.client.get(
-                f"/articles/{article_id}/calculations?sort={key}&dir={direction}"
+                f"/calculation?article={article_id}&sort={key}&dir={direction}"
             )
             assert response.status_code == 200
             assert response.text.count('<tr class="calc-row') == 2
@@ -314,9 +316,12 @@ def test_8_every_article_and_variant_has_its_own_calculations(ready: Ready) -> N
     saved_one(ready, one)
     other = saved_one(ready, two)
     assert [c.is_main for c in stored()] == [True, True]
-    html = ready.client.get(f"/articles/{one}/calculations").text
+    html = ready.client.get(f"/calculation?article={one}").text
     assert html.count('<tr class="calc-row') == 1
-    assert address(one, other) not in html
+    assert address(one, other) not in html and "3D-0002" not in html
+    both = ready.client.get("/calculation").text
+    assert both.count('<tr class="calc-row') == 2
+    assert "3D-0001" in both and "3D-0002" in both
 
 
 # --- Cases 9-10: copy and edit ----------------------------------------------------------------
@@ -325,11 +330,12 @@ def test_8_every_article_and_variant_has_its_own_calculations(ready: Ready) -> N
 def test_9_copy_opens_the_form_with_the_values_filled_in(ready: Ready) -> None:
     article_id = base()
     first = saved_one(ready, article_id, setup_minutes="6", spool_0_0="5", spool_0_1="2")
-    html = ready.client.get(f"/calculation/new?article={article_id}&copy={first}").text
+    html = ready.client.get(f"/calculation/new?copy={first}").text
     assert input_value(html, "print_minutes") == "60"
+    assert 'name="minutes_0"' not in html  # one material: the print time counts
     assert input_value(html, "pieces") == "2"
     assert input_value(html, "grams_0") == "100"
-    assert input_value(html, "minutes_0") == "60"
+    assert 'name="minutes_0"' not in html  # one material: the print time counts
     assert input_value(html, "setup_minutes") == "6"
     assert re.search(r'<option value="PLA" selected', html)
     assert re.search(r'<option value="5" selected', html)
@@ -357,17 +363,15 @@ def test_9_a_spool_that_is_gone_makes_the_copy_incomplete(ready: Ready) -> None:
     article_id = base()
     first = saved_one(ready, article_id)
     serve_spools(ready.client, [spool(4, "PETG", 25)])
-    html = ready.client.get(f"/calculation/new?article={article_id}&copy={first}").text
-    assert DE["calc.spool.none_for_material"] in html
+    html = ready.client.get(f"/calculation/new?copy={first}").text
+    assert DE["calc.spool.none_for_material"].replace("{material}", "PLA") in html
     assert out(html, "res-suggested") is None
 
 
-def test_9_a_copy_of_another_article_gives_404(ready: Ready) -> None:
-    one, two = base("3D-0001"), base("3D-0002")
-    first = saved_one(ready, one)
-    assert ready.client.get(f"/calculation/new?article={two}&copy={first}").status_code == 404
-    assert ready.client.get(f"/calculation/new?article={one}&copy=999").status_code == 404
-    assert ready.client.get(f"/calculation/new?article={one}&copy=x").status_code == 404
+def test_9_a_copy_of_an_unknown_calculation_gives_404(ready: Ready) -> None:
+    base()
+    for copy in ("999", "x", "0", "99999999999"):
+        assert ready.client.get(f"/calculation/new?copy={copy}").status_code == 404, copy
 
 
 def test_10_edit_shows_the_form_and_saves_over_the_calculation(ready: Ready) -> None:
@@ -457,7 +461,7 @@ def test_11_deleting_without_a_popup_goes_back_to_the_list(ready: Ready) -> None
     first = saved_one(ready, article_id)
     response = ready.client.post(address(article_id, first, "/delete"), follow_redirects=False)
     assert response.status_code == 303
-    assert response.headers["location"].startswith(f"/articles/{article_id}/calculations")
+    assert response.headers["location"].startswith("/calculation?")
     assert stored() == []
 
 
@@ -550,12 +554,12 @@ def test_14_reader_sees_but_cannot_change(ready: Ready, reader: AppClient) -> No
     first = saved_one(ready, article_id)
     saved_one(ready, article_id, grams_0="50")
 
-    html = reader.get(f"/articles/{article_id}/calculations").text
+    html = reader.get(f"/calculation?article={article_id}").text
     assert html.count('<tr class="calc-row') == 2
     assert reader.get(address(article_id, first)).status_code == 200
     for fragment in ("/edit", "/delete", "/main", "copy=", "/calculation/new"):
         assert f"{address(article_id, first)}{fragment}" not in html, fragment
-    assert "&copy=" not in html and "/calculation/new?article" not in html
+    assert "copy=" not in html and "/calculation/new" not in html
     assert 'value="save"' not in reader.get(f"/calculation/new?article={article_id}").text
 
     assert save(ready, article_id, reader).status_code == 403
@@ -570,6 +574,7 @@ def test_14_nothing_works_without_a_login(ready: Ready) -> None:
     first = saved_one(ready, article_id)
     with AppClient(create_app()) as anonymous:
         for path in (
+            "/calculation",
             f"/articles/{article_id}/calculations",
             address(article_id, first),
             address(article_id, first, "/edit"),
@@ -582,15 +587,16 @@ def test_14_nothing_works_without_a_login(ready: Ready) -> None:
     assert len(stored()) == 1
 
 
-def test_15_a_calculation_is_only_reachable_through_its_own_article(ready: Ready) -> None:
-    one, two = base("3D-0001"), base("3D-0002")
-    first = saved_one(ready, one)
-    for tail in ("", "/edit", "/delete"):
-        assert ready.client.get(address(two, first, tail)).status_code == 404, tail
-    for tail in ("/edit", "/delete", "/main"):
-        assert ready.client.post(address(two, first, tail)).status_code == 404, tail
-    assert ready.client.get(address(one, 999)).status_code == 404
-    assert ready.client.get(address(one, 0)).status_code == 404
+def test_15_unknown_calculations_give_404_everywhere(ready: Ready) -> None:
+    article_id = base()
+    first = saved_one(ready, article_id)
+    for number in (999, 0, 99999999999):
+        for tail in ("", "/edit", "/delete"):
+            assert ready.client.get(address(article_id, number, tail)).status_code == 404, tail
+        for tail in ("/edit", "/delete", "/main"):
+            assert ready.client.post(address(article_id, number, tail)).status_code == 404, tail
+    # The nested addresses of the first version are gone
+    assert ready.client.get(f"/articles/{article_id}/calculations/{first}").status_code == 404
     assert len(stored()) == 1
 
 
@@ -650,3 +656,155 @@ def test_16_migration_adds_the_tables_and_goes_back(tmp_path: Path) -> None:
         assert not tables & {"calculations", "calculation_materials", "calculation_spools"}
         assert connection.execute("SELECT name FROM articles").fetchall() == [("Alt",)]
     run_migrations(engine)
+
+
+# --- Issue #186: the list of all calculations, forms in the pop-up -----------------------------
+
+
+def test_186_the_old_article_address_leads_to_the_filtered_list(ready: Ready) -> None:
+    article_id = base()
+    response = ready.client.get(f"/articles/{article_id}/calculations", follow_redirects=False)
+    assert response.status_code == 303
+    assert response.headers["location"] == f"/calculation?article={article_id}"
+    with AppClient(create_app()) as anonymous:
+        gone = anonymous.get(f"/articles/{article_id}/calculations", follow_redirects=False)
+        assert "/login" in gone.headers.get("location", "")
+
+
+def test_186_the_list_shows_the_article_of_every_row_and_the_new_button(ready: Ready) -> None:
+    article_id = base()
+    saved_one(ready, article_id)
+    html = ready.client.get("/calculation").text
+    assert DE["calc.col.article"] in html
+    assert f'<a href="/articles/{article_id}">3D-0001' in html
+    assert 'hx-get="/calculation/new"' in html
+    assert "data-popup-refresh" in html
+    # Opened from the list without a filter the actions carry no filter
+    assert "filter=" not in html
+
+
+def test_186_the_filtered_list_names_the_article_and_hides_other_articles(ready: Ready) -> None:
+    one, two = base("3D-0001"), base("3D-0002")
+    saved_one(ready, one)
+    saved_one(ready, two)
+    html = ready.client.get(f"/calculation?article={one}").text
+    assert "3D-0001" in html and "3D-0002" not in html
+    assert ready.client.get("/calculation?article=999").status_code == 404
+    assert ready.client.get("/calculation?article=x").status_code == 404
+
+
+def test_186_the_new_form_is_a_popup_for_htmx_and_a_page_otherwise(ready: Ready) -> None:
+    base()
+    popup = ready.client.get("/calculation/new", headers=POPUP).text
+    assert 'id="calc-form"' in popup and "<html" not in popup
+    page = ready.client.get("/calculation/new").text
+    assert "<html" in page and 'id="calc-form"' in page
+
+
+def test_186_the_article_is_chosen_in_the_form(ready: Ready) -> None:
+    one, two = base("3D-0001"), base("3D-0002")
+    off = base("3D-0003")
+    with db() as session, session.begin():
+        session.get(Article, off).active = False
+    html = ready.client.get(f"/calculation/new?article={two}", headers=POPUP).text
+    assert select_values(html, "article") == ["", str(one), str(two)]
+    assert re.search(rf'<option value="{two}" selected', html)
+    assert "3D-0002 · Kabelhalter" in html
+
+
+def test_186_saving_needs_the_article_of_the_form(ready: Ready) -> None:
+    article_id = base()
+    with_article = ready.client.get(f"/calculation/new?article={article_id}", headers=POPUP).text
+    assert 'value="save"' in with_article
+    assert 'value="save"' not in ready.client.get("/calculation/new", headers=POPUP).text
+    assert save(ready, article_id).status_code == 303
+    assert stored()[0].article_id == article_id
+    assert stored()[0].created_on == date.today()
+
+
+def test_186_saving_in_a_popup_goes_to_the_list_with_the_notice(ready: Ready) -> None:
+    article_id = base()
+    response = ready.client.post(
+        "/calculation/new",
+        data={**values(ready), "article": str(article_id), "action": "save"},
+        headers=POPUP,
+        follow_redirects=False,
+    )
+    assert response.status_code == 204
+    assert response.headers["HX-Redirect"] == "/calculation?saved=1"
+    assert len(stored()) == 1
+
+
+def test_186_a_filter_stays_after_saving_marking_and_editing(ready: Ready) -> None:
+    article_id = base()
+    first = saved_one(ready, article_id)
+    other = base("3D-0002")
+    data = {
+        **values(ready),
+        "article": str(article_id),
+        "action": "save",
+        "filter": str(article_id),
+    }
+    response = ready.client.post("/calculation/new", data=data, follow_redirects=False)
+    assert response.headers["location"] == f"/calculation?article={article_id}&saved=1"
+    # A filter of another article does not count
+    data = {**data, "article": str(other)}
+    response = ready.client.post("/calculation/new", data=data, follow_redirects=False)
+    assert response.headers["location"] == "/calculation?saved=1"
+    # The "main" button of a filtered list comes back to it
+    second = stored()[1].id
+    response = ready.client.post(
+        address(article_id, second, f"/main?filter={article_id}"), follow_redirects=False
+    )
+    assert response.headers["location"] == f"/calculation?article={article_id}&main=1"
+    edit = ready.client.post(
+        address(article_id, first, f"/edit?filter={article_id}"),
+        data={**values(ready), "action": "save"},
+        follow_redirects=False,
+    )
+    assert edit.headers["location"] == f"/calculation?article={article_id}&saved=1"
+
+
+def test_186_a_made_up_filter_is_not_trusted(ready: Ready) -> None:
+    article_id = base()
+    for bad in ("//example.com", "x", "999", "-1"):
+        data = {**values(ready), "article": str(article_id), "action": "save", "filter": bad}
+        response = ready.client.post("/calculation/new", data=data, follow_redirects=False)
+        assert response.headers["location"] == "/calculation?saved=1", bad
+
+
+def test_186_view_edit_and_delete_open_in_the_popup(ready: Ready) -> None:
+    article_id = base()
+    first = saved_one(ready, article_id)
+    for tail in ("", "/edit", "/delete"):
+        popup = ready.client.get(address(article_id, first, tail), headers=POPUP).text
+        assert "<html" not in popup, tail
+        page = ready.client.get(address(article_id, first, tail)).text
+        assert "<html" in page, tail
+    view = ready.client.get(address(article_id, first), headers=POPUP).text
+    assert "7,37" in view and "3D-0001" in view
+
+
+def test_186_the_article_cannot_be_changed_when_editing(ready: Ready) -> None:
+    one, two = base("3D-0001"), base("3D-0002")
+    first = saved_one(ready, one)
+    page = ready.client.get(address(one, first, "/edit"), headers=POPUP).text
+    assert not re.search(r'<select\b[^>]*name="article"', page)
+    assert re.search(rf'<input type="hidden" name="article" value="{one}"', page)
+    ready.client.post(
+        address(one, first, "/edit"),
+        data={**values(ready, grams_0="80"), "article": str(two), "action": "save"},
+    )
+    assert stored()[0].article_id == one
+
+
+def test_186_the_save_error_stays_in_the_popup(ready: Ready) -> None:
+    article_id = base()
+    response = ready.client.post(
+        "/calculation/new",
+        data={**values(ready, spool_0_0=""), "article": str(article_id), "action": "save"},
+        headers=POPUP,
+    )
+    assert response.status_code == 422
+    assert "<html" not in response.text
+    assert DE["calc.error.save_incomplete"] in response.text

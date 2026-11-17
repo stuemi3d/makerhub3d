@@ -1,4 +1,4 @@
-"""Page "New calculation" in a real browser, on desktop and phone (issue #161, test case 16).
+"""The calculation list and its pop-ups in a real browser, on desktop and phone (issues #161, #186).
 
 Bambuddy is played by a tiny server on 127.0.0.1 that answers with invented spools; the test
 app (a separate process) reads from it, the browser only talks to the test app. The printer and
@@ -115,57 +115,6 @@ def choose_and_wait(page: Page, select: Locator, **choice: str) -> None:
     settle(page)
 
 
-def test_calculate_by_hand_with_two_spools(
-    admin_page: Page, live_server: LiveServer, fake_bambuddy: str, viewport_name: str
-) -> None:
-    connect(admin_page, fake_bambuddy)
-    printer, model = f"Kalk-Gerät {viewport_name}", f"Kalk-Modell {viewport_name}"
-    create_printer(admin_page, printer, "1000")
-    link_model(live_server, printer, model)
-
-    admin_page.goto("/calculation/new")
-    assert fits_screen_width(admin_page)
-    expect(admin_page.locator("#res-suggested")).to_have_count(0)
-
-    choose_and_wait(admin_page, admin_page.locator("#printer"), label=printer)
-    type_and_wait(admin_page, admin_page.locator("#print_minutes"), "60")
-    type_and_wait(admin_page, admin_page.locator("#pieces"), "2")
-    choose_and_wait(admin_page, admin_page.locator("#material_0"), label="PLA")
-    type_and_wait(admin_page, admin_page.locator("#grams_0"), "100")
-    type_and_wait(admin_page, admin_page.locator("#minutes_0"), "60")
-
-    # Nothing is chosen yet: no result, and a note that the position is incomplete
-    expect(admin_page.locator("#res-suggested")).to_have_count(0)
-    expect(admin_page.get_by_text(t("calc.spool.incomplete"))).to_be_visible()
-
-    # The small spool (40 g left) does not hold 100 g: a second spool field appears
-    choose_and_wait(admin_page, admin_page.locator("#spool_0_0"), value="2")
-    expect(admin_page.locator("#spool_0_1")).to_be_visible()
-    expect(admin_page.locator("#res-suggested")).to_have_count(0)
-
-    choose_and_wait(admin_page, admin_page.locator("#spool_0_1"), value="1")
-    expect(admin_page.locator("#res-suggested")).to_have_text(re.compile(r"^\d+,\d{2}$"))
-    # 40 g x 30 EUR/kg + 60 g x 20 EUR/kg
-    expect(admin_page.locator("#res-material")).to_have_text("2,40")
-    assert fits_screen_width(admin_page)
-
-    # A change shows at once in the result
-    before = admin_page.locator("#res-suggested").inner_text()
-    type_and_wait(admin_page, admin_page.locator("#setup_minutes"), "30")
-    assert admin_page.locator("#res-suggested").inner_text() != before
-    assert fits_screen_width(admin_page)
-
-    # "Material hinzufügen" adds a position without losing what was typed
-    with admin_page.expect_response(
-        lambda r: r.url.endswith("/calculation/new") and r.request.method == "POST"
-    ):
-        admin_page.get_by_role("button", name=t("calc.add_position")).click()
-    settle(admin_page)
-    expect(admin_page.locator("#material_1")).to_be_visible()
-    expect(admin_page.locator("#grams_0")).to_have_value("100")
-    assert fits_screen_width(admin_page)
-
-
 def create_article(page: Page, number: str, name: str) -> str:
     """An article made by hand in its form; returns the address of its page."""
     page.goto("/articles/new")
@@ -176,49 +125,128 @@ def create_article(page: Page, number: str, name: str) -> str:
     return page.url
 
 
-def fill_valid_form(page: Page, printer: str) -> None:
+def prepare(
+    page: Page, live_server: LiveServer, fake_bambuddy: str, viewport: str, tag: str
+) -> tuple[str, str]:
+    connect(page, fake_bambuddy)
+    printer, model = f"Kalk-Gerät {tag} {viewport}", f"Kalk-Modell {tag} {viewport}"
+    create_printer(page, printer, "1000")
+    link_model(live_server, printer, model)
+    article = create_article(page, f"KALK-{tag}-{viewport}", "Kalkulierter Halter")
+    return printer, article
+
+
+def open_new(page: Page, article_number: str | None = None) -> Locator:
+    """The pop-up of "Neue Kalkulation" from the list."""
+    page.get_by_role("button", name=t("calc.new")).first.click()
+    dialog = page.locator("dialog#popup")
+    expect(dialog).to_be_visible()
+    expect(dialog.locator("#calc-form")).to_be_visible()
+    return dialog
+
+
+def fill_valid_form(page: Page, printer: str, grams: str = "30") -> None:
     choose_and_wait(page, page.locator("#printer"), label=printer)
     type_and_wait(page, page.locator("#print_minutes"), "60")
     type_and_wait(page, page.locator("#pieces"), "2")
     choose_and_wait(page, page.locator("#material_0"), label="PLA")
-    type_and_wait(page, page.locator("#grams_0"), "30")
-    type_and_wait(page, page.locator("#minutes_0"), "60")
+    type_and_wait(page, page.locator("#grams_0"), grams)
     choose_and_wait(page, page.locator("#spool_0_0"), value="1")
     expect(page.locator("#res-suggested")).to_be_visible()
 
 
-def test_save_copy_make_main_and_delete(
+def test_the_new_calculation_pop_up_with_hints_two_spools_and_time_shares(
     admin_page: Page, live_server: LiveServer, fake_bambuddy: str, viewport_name: str
 ) -> None:
-    connect(admin_page, fake_bambuddy)
-    printer, model = f"Kalk-Speicher {viewport_name}", f"Kalk-Modell2 {viewport_name}"
-    create_printer(admin_page, printer, "1000")
-    link_model(live_server, printer, model)
-    article = create_article(admin_page, f"KALK-{viewport_name}", "Kalkulierter Halter")
-
-    # A quick calculation cannot be saved: the button is missing
-    admin_page.goto("/calculation/new")
-    expect(admin_page.locator("button[value=save]")).to_have_count(0)
-
-    # From the article: calculate and save
-    admin_page.goto(article + "/calculations")
-    admin_page.get_by_role("button", name=t("calc.new")).first.click()
-    fill_valid_form(admin_page, printer)
-    expect(admin_page.locator("button[value=save]")).to_be_visible()
+    printer, _ = prepare(admin_page, live_server, fake_bambuddy, viewport_name, "a")
+    admin_page.goto("/calculation")
     assert fits_screen_width(admin_page)
-    admin_page.locator("button[value=save]").click()
+    dialog = open_new(admin_page)
+    assert fits_screen_width(admin_page)
+
+    # A quick calculation: no article, so no save button, but a hint
+    expect(dialog.locator("button[value=save]")).to_have_count(0)
+    expect(dialog.get_by_text(t("calc.spool.choose_material"))).to_be_visible()
+    # One material needs no time share
+    expect(dialog.locator("#minutes_0")).to_have_count(0)
+
+    choose_and_wait(admin_page, admin_page.locator("#printer"), label=printer)
+    type_and_wait(admin_page, admin_page.locator("#print_minutes"), "60")
+    type_and_wait(admin_page, admin_page.locator("#pieces"), "2")
+    choose_and_wait(admin_page, admin_page.locator("#material_0"), label="PLA")
+    expect(dialog.get_by_text(t("calc.spool.choose_material"))).to_have_count(0)
+    type_and_wait(admin_page, admin_page.locator("#grams_0"), "100")
+
+    # The small spool (40 g left) does not hold 100 g: a second spool field appears
+    choose_and_wait(admin_page, admin_page.locator("#spool_0_0"), value="2")
+    expect(admin_page.locator("#spool_0_1")).to_be_visible()
+    expect(admin_page.locator("#res-suggested")).to_have_count(0)
+    choose_and_wait(admin_page, admin_page.locator("#spool_0_1"), value="1")
+    expect(admin_page.locator("#res-suggested")).to_have_text(re.compile(r"^\d+,\d{2}$"))
+    # 40 g x 30 EUR/kg + 60 g x 20 EUR/kg
+    expect(admin_page.locator("#res-material")).to_have_text("2,40")
+    assert fits_screen_width(admin_page)
+
+    # A second material brings the time share fields; the first one has the print time
+    with admin_page.expect_response(
+        lambda r: r.url.endswith("/calculation/new") and r.request.method == "POST"
+    ):
+        dialog.get_by_role("button", name=t("calc.add_position")).click()
+    settle(admin_page)
+    expect(admin_page.locator("#material_1")).to_be_visible()
+    expect(admin_page.locator("#minutes_0")).to_have_value("60")
+    expect(admin_page.locator("#grams_0")).to_have_value("100")
+    assert fits_screen_width(admin_page)
+
+    dialog.get_by_role("button", name=t("article.cancel")).click()
+    expect(dialog).not_to_be_visible()
+
+
+def test_save_view_copy_make_main_and_delete_in_popups(
+    admin_page: Page, live_server: LiveServer, fake_bambuddy: str, viewport_name: str
+) -> None:
+    printer, article = prepare(admin_page, live_server, fake_bambuddy, viewport_name, "b")
+    number = f"KALK-b-{viewport_name}"
+
+    # The tile of the article leads to the list filtered on it
+    admin_page.goto(article)
+    admin_page.locator("a.tile", has_text=t("article.tile.calculations")).click()
+    expect(admin_page).to_have_url(re.compile(r"/calculation\?article=\d+"))
+    expect(admin_page.locator("tr.calc-row")).to_have_count(0)
+
+    # New calculation: the article is preselected; save
+    dialog = open_new(admin_page)
+    expect(dialog.locator("#article")).to_contain_text(number)
+    assert (
+        dialog.locator("#article")
+        .evaluate("(select) => select.selectedOptions[0].text")
+        .startswith(number)
+    )
+    fill_valid_form(admin_page, printer)
+    expect(dialog.locator("button[value=save]")).to_be_visible()
+    assert fits_screen_width(admin_page)
+    dialog.locator("button[value=save]").click()
     expect(admin_page.get_by_text(t("calc.notice.saved"))).to_be_visible()
     rows = admin_page.locator("tr.calc-row")
     expect(rows).to_have_count(1)
     expect(rows.first.locator(".chip")).to_have_text(t("calc.chip.main"))
+    expect(rows.first).to_contain_text(number)
     assert fits_screen_width(admin_page)
 
-    # Copy: the values are filled in; saving makes a second one that is not the main one
-    rows.first.get_by_role("link", name=t("table.action.copy"), exact=False).click()
-    expect(admin_page.locator("#grams_0")).to_have_value("30")
-    expect(admin_page.locator("#res-suggested")).to_be_visible()
+    # View in a pop-up
+    rows.first.locator("a.icon-btn", has_text=t("table.action.view")).click()
+    expect(dialog).to_be_visible()
+    expect(dialog.get_by_text(t("calc.result.suggested"))).to_be_visible()
+    assert fits_screen_width(admin_page)
+    dialog.get_by_role("button", name=t("calc.view.close")).click()
+    expect(dialog).not_to_be_visible()
+
+    # Copy in a pop-up: values filled in; saving makes a second one that is not the main one
+    rows.first.locator("a.icon-btn", has_text=t("table.action.copy")).click()
+    expect(dialog.locator("#grams_0")).to_have_value("30")
+    expect(dialog.locator("#res-suggested")).to_be_visible()
     type_and_wait(admin_page, admin_page.locator("#grams_0"), "40")
-    admin_page.locator("button[value=save]").click()
+    dialog.locator("button[value=save]").click()
     expect(rows).to_have_count(2)
     expect(admin_page.locator("tr.calc-row .chip")).to_have_count(1)
     assert fits_screen_width(admin_page)
@@ -231,11 +259,15 @@ def test_save_copy_make_main_and_delete(
     expect(admin_page.get_by_text(t("calc.notice.main"))).to_be_visible()
     expect(admin_page.locator("tr.calc-row .chip")).to_have_count(1)
 
+    # Edit in a pop-up: the article cannot be changed; saving keeps the list
+    rows.first.locator("a.icon-btn", has_text=t("table.action.edit")).click()
+    expect(dialog.locator("#calc-form")).to_be_visible()
+    expect(dialog.locator("select#article")).to_have_count(0)
+    dialog.get_by_role("button", name=t("article.cancel")).click()
+    expect(dialog).not_to_be_visible()
+
     # Delete in a pop-up, no browser dialog
-    admin_page.locator("tr.calc-row").first.get_by_role(
-        "link", name=t("table.action.delete"), exact=False
-    ).click()
-    dialog = admin_page.locator("dialog#popup")
+    rows.first.locator("a.icon-btn", has_text=t("table.action.delete")).click()
     expect(dialog).to_be_visible()
     assert fits_screen_width(admin_page)
     dialog.get_by_role("button", name=t("calc.delete.button")).click()

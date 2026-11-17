@@ -33,6 +33,7 @@ FIELD_NAMES = (
     "markup",
     "rounding",
     "spool_category",
+    "spool_business_only",
     "deviation_threshold",
 )
 
@@ -47,6 +48,7 @@ def form_values(settings: AppSettings, language: str) -> dict[str, str]:
     values = {f.name: format_decimal(getattr(settings, f.name), language) for f in DECIMAL_FIELDS}
     values["rounding"] = str(settings.rounding)
     values["spool_category"] = settings.spool_category
+    values["spool_business_only"] = "1" if settings.spool_business_only else ""
     return values
 
 
@@ -96,5 +98,8 @@ def validate(raw: dict[str, str]) -> tuple[dict[str, object], dict[str, str]]:
         errors["spool_category"] = "settings.error.too_long"
     else:
         values["spool_category"] = category
+
+    # A checkbox: only "1" counts, a missing field means off
+    values["spool_business_only"] = raw.get("spool_business_only", "") == "1"
 
     return values, errors

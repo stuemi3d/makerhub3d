@@ -51,6 +51,8 @@ class AppSettings(Base):
     rounding: Mapped[Rounding] = mapped_column(String(20))
     # Bambuddy spool category that marks business spools
     spool_category: Mapped[str] = mapped_column(String(50))
+    # Calculation: offer only the spools of that category (issue #186); off = all spools
+    spool_business_only: Mapped[bool] = mapped_column(Boolean, server_default=false())
     # Percent; warn when actual costs differ more than this from the calculation
     deviation_threshold: Mapped[Decimal] = mapped_column(DecimalText)
 
