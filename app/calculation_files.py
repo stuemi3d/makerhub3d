@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
 from app import slice_reader
-from app.calc_form import NO_VALUE, Row
+from app.calc_form import NO_VALUE, Row, valid_color
 from app.production_form import input_text
 from app.slice_reader import SliceFile, SliceFileError
 
@@ -98,7 +98,7 @@ def payload_of(found: SliceFile) -> str:
             "o": plate.objects,
             "e": plate.times_estimated,
             "f": [
-                [(f.material or "")[:MAX_TEXT], (f.color or "")[:MAX_TEXT], str(f.grams), f.seconds]
+                [(f.material or "")[:MAX_TEXT], valid_color(f.color or ""), str(f.grams), f.seconds]
                 for f in plate.filaments[:MAX_FILAMENTS]
             ],
         }
@@ -158,7 +158,12 @@ def plates_of(payload: str) -> list[Plate]:
             if not grams.is_finite() or not 0 <= grams < MAX_GRAMS:
                 raise ValueError("grams")
             filaments.append(
-                (_text(entry[0]), _text(entry[1]), grams, _whole(entry[3], MAX_SECONDS))
+                (
+                    _text(entry[0]),
+                    valid_color(_text(entry[1])),
+                    grams,
+                    _whole(entry[3], MAX_SECONDS),
+                )
             )
         plates.append(
             Plate(

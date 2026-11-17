@@ -1,4 +1,5 @@
 {% extends "_popup_layout.html" if popup else "base.html" %}
+{% from "_form_macros.html" import swatch with context %}
 {% block title %}{{ t('calc.file.plates.title') }} – {{ app_name }}{% endblock %}
 {% block content %}
 {% if not popup %}
@@ -29,7 +30,7 @@
     </label>
     <ul>
       {% for f in plate.filaments %}
-      <li>{{ f.material }}{% if f.color %} ({{ t('calc.file.color') }} {{ f.color }}){% endif %}: {{ f.grams }} g{% if plate.multi %} · {{ t('calc.file.share') }}: {{ f.minutes }} {{ t('calc.file.min') }}{% endif %}</li>
+      <li>{{ swatch(f.color) }} {{ f.material }}: {{ f.grams }} g{% if plate.multi %} · {{ t('calc.file.share') }}: {{ f.minutes }} {{ t('calc.file.min') }}{% endif %}</li>
       {% endfor %}
     </ul>
     {% if plate.estimated %}<small>{{ t('calc.file.estimated') }}</small>{% endif %}

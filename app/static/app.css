@@ -951,3 +951,13 @@ main .detail-card:not(.auth-box) > form [type="submit"] {
 .field-grid.field-grid-3 {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
+
+/* Colour of a filament from a file (issue 181) */
+.swatch {
+  vertical-align: -0.2em;
+  margin-inline-end: 0.3rem;
+}
+
+.swatch-line {
+  display: block;
+}

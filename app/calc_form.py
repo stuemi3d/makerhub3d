@@ -85,6 +85,14 @@ def _text(form: FormData, name: str, limit: int = MAX_TEXT) -> str:
     return value.strip()[:limit] if isinstance(value, str) else ""
 
 
+_COLOR = re.compile(r"#[0-9A-Fa-f]{6}(?:[0-9A-Fa-f]{2})?")
+
+
+def valid_color(text: str) -> str:
+    """A colour code like #FFFF00 as it is, anything else gives "" (it is drawn from this)."""
+    return text if _COLOR.fullmatch(text) else ""
+
+
 def read(form: FormData | None) -> Draft:
     """The draft from a POST form; None (first visit) gives an empty one."""
     if form is None:
@@ -123,7 +131,7 @@ def read(form: FormData | None) -> Draft:
                 grams=_text(form, f"grams_{index}"),
                 minutes=_text(form, f"minutes_{index}"),
                 spools=spools,
-                color=_text(form, f"color_{index}"),
+                color=valid_color(_text(form, f"color_{index}")),
                 file_material=_text(form, f"filemat_{index}"),
             )
         )

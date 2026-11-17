@@ -255,7 +255,7 @@ def test_14_the_summary_shows_plates_times_grams_and_objects(ready: Ready) -> No
     assert NAME in text
     # Plate 1: 24 min 48 s, black 5.40 g and yellow 4.30 g, two objects
     assert "24" in text and "5,4" in text and "4,3" in text
-    assert "#000000" in text and "#FFFF00" in text
+    assert "#000000" not in text and "#FFFF00" not in text  # drawn, not written
     assert "3,96" in text
     assert DE["calc.file.objects"].replace("{count}", "2") in text
     assert DE["calc.file.objects"].replace("{count}", "1") in text
@@ -562,3 +562,36 @@ def test_texts_exist_in_both_languages() -> None:
     assert keys
     for key in keys:
         assert key in EN, key
+
+
+def test_32_colours_are_drawn_as_squares_not_written(ready: Ready) -> None:
+    """Issue #181: the colour of a filament is shown as a filled square."""
+    page = upload(ready).text
+    assert 'fill="#000000"' in page and 'fill="#FFFF00"' in page
+    assert "style=" not in page
+    html = take(ready, page, ["1"]).text
+    assert 'fill="#000000"' in html and 'fill="#FFFF00"' in html
+    assert "Farbe: #" not in text_of(html)
+
+
+def test_32_only_a_real_colour_code_is_ever_drawn(ready: Ready) -> None:
+    evil = fixture("slice_info.config").replace(
+        b'color="#000000"', b'color="red&quot; onload=&quot;x"'
+    )
+    page = upload(ready, make_zip({"Metadata/slice_info.config": evil})).text
+    assert "onload" not in page and 'fill="red' not in page
+    html = take(ready, page, ["1"]).text
+    assert "onload" not in html
+    # A colour that comes back in the form is checked again
+    again = ready.client.post(
+        "/calculation/new",
+        data={
+            "printer": str(ready.printer),
+            "rows": "1",
+            "filemat_0": "PLA",
+            "color_0": '#FFF" onload="x',
+            "file_name": NAME,
+            "action": "live",
+        },
+    ).text
+    assert "onload" not in again and "<svg" not in again
