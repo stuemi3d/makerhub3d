@@ -961,3 +961,65 @@ main .detail-card:not(.auth-box) > form [type="submit"] {
 .swatch-line {
   display: block;
 }
+
+/* Combobox: a text field with a list; the real select stays in the form, out of sight */
+.combo {
+  position: relative;
+}
+
+.combo input {
+  margin-bottom: 0.25rem;
+}
+
+.combo-native {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.combo-list {
+  position: absolute;
+  z-index: 20;
+  top: 100%;
+  right: 0;
+  left: 0;
+  max-height: 14rem;
+  margin: 0;
+  padding: 0.25rem 0;
+  overflow-y: auto;
+  list-style: none;
+  background: var(--mh-surface-raised);
+  border: 1px solid var(--mh-border);
+  border-radius: var(--mh-radius);
+}
+
+.combo-list li {
+  margin: 0;
+  padding: 0.4rem 0.75rem;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.combo-list li.active,
+.combo-list li:hover {
+  background: var(--mh-neutral-bg);
+}
+
+.combo-list li.chosen {
+  font-weight: 600;
+}
+
+.combo-list li.combo-empty-choice,
+.combo-list li.combo-none {
+  color: var(--mh-text-muted);
+}
+
+.combo-list li.combo-none {
+  cursor: default;
+}

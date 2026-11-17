@@ -765,8 +765,8 @@ def test_191_material_and_spool_choices_are_marked_for_the_search(ready: Ready) 
     assert f'data-search="{DE["calc.search.spool"]}"' in html
     assert f'data-search-empty="{DE["calc.search.spool_none"]}"' in html
     assert f'data-search="{DE["calc.search.material"]}"' in html
-    # The search field itself is made in the browser, so the server never receives its text
-    assert 'type="search"' not in html
+    # The combobox is made in the browser from the select, so the server never sees its text
+    assert 'role="combobox"' not in html
 
 
 def test_191_every_spool_field_of_a_position_has_its_own_mark(ready: Ready) -> None:

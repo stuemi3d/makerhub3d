@@ -318,87 +318,98 @@ def test_filling_from_top_to_bottom_shows_no_early_errors_and_fields_stand_level
     expect(invalid).to_have_count(0)
     choose_and_wait(admin_page, admin_page.locator("#spool_0_0"), value="1")
     expect(admin_page.locator("#res-suggested")).to_be_visible()
-    first = admin_page.locator("#material_0").bounding_box()
+    first = admin_page.locator("#material_0-combo").bounding_box()
     second = admin_page.locator("#grams_0").bounding_box()
     assert abs(first["y"] - second["y"]) <= 1
     assert fits_screen_width(admin_page)
 
 
-def test_the_material_and_spool_choices_can_be_searched(
+def test_the_material_and_spool_choices_are_comboboxes_filtered_while_typing(
     admin_page: Page, live_server: LiveServer, fake_bambuddy: str, viewport_name: str
 ) -> None:
-    """Issue #191: a search field at the choices; it only hides, the choice stays."""
+    """Issue #191: typing into the field itself filters its list; the choice goes to the form."""
     printer, _ = prepare(admin_page, live_server, fake_bambuddy, viewport_name, "s")
     admin_page.goto("/calculation")
     dialog = open_new(admin_page)
     choose_and_wait(admin_page, admin_page.locator("#printer"), label=printer)
-    choose_and_wait(admin_page, admin_page.locator("#material_0"), label="PLA")
+    material = dialog.locator("input[role=combobox][data-for=material_0]")
+    expect(material).to_be_visible()
+    assert fits_screen_width(admin_page)
+
+    # The material is chosen by typing, too
+    material.click()
+    material.fill("pl")
+    expect(dialog.locator("#material_0-list li[data-value=PLA]")).to_be_visible()
+    material.fill("xyz")
+    expect(dialog.locator("#material_0-list li.combo-none")).to_have_text(
+        t("calc.search.material_none")
+    )
+    material.fill("pl")
+    with admin_page.expect_response(
+        lambda r: r.url.endswith("/calculation/new") and r.request.method == "POST"
+    ):
+        dialog.locator("#material_0-list li[data-value=PLA]").click()
+    settle(admin_page)
+    expect(admin_page.locator("#material_0-combo")).to_have_value("PLA")
+    expect(admin_page.locator("#material_0")).to_have_value("PLA")
     type_and_wait(admin_page, admin_page.locator("#grams_0"), "100")
 
-    spool_search = dialog.locator("input[type=search][data-for=spool_0_0]")
-    spool = admin_page.locator("#spool_0_0")
-    expect(spool_search).to_be_visible()
-    expect(dialog.locator("input[type=search][data-for=material_0]")).to_be_visible()
-    assert fits_screen_width(admin_page)
-    # The search field is not part of the form
-    assert (
-        admin_page.evaluate(
-            "() => Array.from(document.querySelector('#calc-form').elements)"
-            ".filter((e) => e.type === 'search' && e.name).length"
-        )
-        == 0
-    )
-
-    def shown() -> list[str]:
-        return spool.locator("option:not([disabled])").evaluate_all("(o) => o.map((x) => x.value)")
-
-    # Typing must not draw the form again
+    spool = dialog.locator("input[role=combobox][data-for=spool_0_0]")
+    expect(spool).to_be_visible()
+    # The label belongs to the field you type in
+    expect(dialog.get_by_label(t("calc.field.spool")).first).to_have_attribute("role", "combobox")
+    # Nothing is sent from the field while typing
     requests: list[str] = []
     admin_page.on("request", lambda r: requests.append(r.url) if r.method == "POST" else None)
-    spool_search.fill("WEI\u00df")
+    spool.click()
+
+    def shown() -> list[str]:
+        return dialog.locator("#spool_0_0-list li[data-value]").evaluate_all(
+            "(o) => o.map((x) => x.dataset.value)"
+        )
+
+    assert shown() == ["", "1", "2"]
+    spool.fill("WEI\u00df")
     admin_page.wait_for_timeout(900)
     assert requests == []
     assert shown() == ["", "1"]
-    spool_search.fill("zzz")
-    assert shown() == [""]
-    expect(spool.locator("option[disabled]")).to_have_text(t("calc.search.spool_none"))
-
-    spool_search.fill("fast")
+    spool.fill("fast")
     assert shown() == ["", "2"]
-    spool_search.fill("#1 ")
+    spool.fill("#1 ")
     assert shown() == ["", "1"]
-    spool_search.fill("beispielmarke")
+    spool.fill("beispielmarke")
     assert shown() == ["", "1", "2"]
-    spool_search.fill("")
-    assert shown() == ["", "1", "2"]
-
-    # Choose from the filtered list; a chosen spool stays in the list when the text does not fit
-    spool_search.fill("fast")
-    choose_and_wait(admin_page, spool, value="2")
-    expect(spool).to_have_value("2")
-    expect(admin_page.locator("#spool_0_1")).to_be_visible()
-    # After the form was drawn again every list is complete and the choice stays
-    expect(dialog.locator("input[type=search][data-for=spool_0_0]")).to_have_value("")
-    expect(admin_page.locator("#spool_0_0")).to_have_value("2")
-    second_search = dialog.locator("input[type=search][data-for=spool_0_1]")
-    expect(second_search).to_be_visible()
-    second_search.fill("zzz")
-    assert admin_page.locator("#spool_0_1 option:not([disabled])").count() == 1
-    # A spool that was chosen stays in its list, although the text does not fit
-    dialog.locator("input[type=search][data-for=spool_0_0]").fill("zzz")
-    expect(admin_page.locator("#spool_0_0")).to_have_value("2")
-    assert admin_page.locator("#spool_0_0 option:not([disabled])").count() == 2
-    assert fits_screen_width(admin_page)
-
-    # The material can be searched, too
-    material_search = dialog.locator("input[type=search][data-for=material_0]")
-    material_search.fill("pl")
-    assert admin_page.locator("#material_0 option[value=PLA]").count() == 1
-    material_search.fill("xyz")
-    expect(admin_page.locator("#material_0")).to_have_value("PLA")
-    expect(admin_page.locator("#material_0 option[disabled]")).to_have_text(
-        t("calc.search.material_none")
+    spool.fill("zzz")
+    assert shown() == [""]
+    expect(dialog.locator("#spool_0_0-list li.combo-none")).to_have_text(
+        t("calc.search.spool_none")
     )
+
+    # Keyboard: typing and Enter takes the first match; Escape only closes the list
+    spool.fill("fast")
+    spool.press("Escape")
+    expect(dialog.locator("#spool_0_0-list")).to_be_hidden()
+    expect(dialog).to_be_visible()
+    spool.click()
+    expect(dialog.locator("#spool_0_0-list")).to_be_visible()
+    spool.fill("fast")
+    with admin_page.expect_response(
+        lambda r: r.url.endswith("/calculation/new") and r.request.method == "POST"
+    ):
+        spool.press("Enter")
+    settle(admin_page)
+    expect(admin_page.locator("#spool_0_0")).to_have_value("2")
+    expect(admin_page.locator("#spool_0_0-combo")).to_have_value(re.compile(r"Fast leer"))
+    # The small spool does not hold 100 g: the second field appears with its own combobox
+    second = dialog.locator("input[role=combobox][data-for=spool_0_1]")
+    expect(second).to_be_visible()
+    second.click()
+    second.fill("zzz")
+    # Leaving the field without a choice puts the chosen text back
+    admin_page.locator("#grams_0").click()
+    expect(second).to_have_value("")
+    expect(admin_page.locator("#spool_0_0-combo")).to_have_value(re.compile(r"Fast leer"))
+    assert fits_screen_width(admin_page)
 
 
 SLICER = Path(__file__).resolve().parent.parent / "fixtures" / "slicer"
