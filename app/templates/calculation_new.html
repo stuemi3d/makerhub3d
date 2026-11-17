@@ -76,7 +76,7 @@
     <div class="field-grid {{ 'field-grid-3' if outcome.multi else 'field-grid-2' }}">
       <div>
         <label for="material_{{ i }}">{{ t('calc.field.material') }}</label>
-        <select name="material_{{ i }}" id="material_{{ i }}"{% if errors.get('material_' ~ i) %} aria-invalid="true" aria-describedby="material_{{ i }}-error"{% endif %}>
+        <select name="material_{{ i }}" id="material_{{ i }}" data-search="{{ t('calc.search.material') }}" data-search-empty="{{ t('calc.search.material_none') }}"{% if errors.get('material_' ~ i) %} aria-invalid="true" aria-describedby="material_{{ i }}-error"{% endif %}>
           <option value="">{{ t('calc.choose_material') }}</option>
           {% for name in view.materials %}
           <option value="{{ name }}"{% if view.material == name %} selected{% endif %}>{{ name }}</option>
@@ -95,7 +95,7 @@
       {% for slot in view.slots %}
       <div class="field-wide">
         <label for="{{ slot.name }}">{{ t('calc.field.spool') }}</label>
-        <select name="{{ slot.name }}" id="{{ slot.name }}"{% if errors.get(slot.name) %} aria-invalid="true" aria-describedby="{{ slot.name }}-error"{% endif %}>
+        <select name="{{ slot.name }}" id="{{ slot.name }}" data-search="{{ t('calc.search.spool') }}" data-search-empty="{{ t('calc.search.spool_none') }}"{% if errors.get(slot.name) %} aria-invalid="true" aria-describedby="{{ slot.name }}-error"{% endif %}>
           <option value="">{{ t('calc.choose_spool') }}</option>
           {% for value, label in slot.options %}
           <option value="{{ value }}"{% if slot.value == value %} selected{% endif %}>{{ label }}</option>
