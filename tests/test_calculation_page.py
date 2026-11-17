@@ -14,7 +14,7 @@ import httpx2
 import pytest
 
 from app.main import create_app
-from app.models import Device, PrinterModel, PrinterModelPower
+from app.models import AppSettings, Device, PrinterModel, PrinterModelPower
 from tests.auth import EMPLOYEE_NAME, READER_NAME, AppClient, add_user, client_as
 from tests.machine import add_dryer, add_printer
 from tests.test_bambuddy_settings import TEST_SECRET_KEY, answer_with
@@ -101,6 +101,12 @@ def make_ready(client: AppClient, table: dict[str, str] | None = None) -> Ready:
     return Ready(client, printer)
 
 
+def set_business_only(value: bool = True) -> None:
+    """The setting "only business spools" (issue #186); off is the default."""
+    with db() as session, session.begin():
+        session.get(AppSettings, 1).spool_business_only = value
+
+
 @pytest.fixture
 def ready(client: AppClient) -> Ready:
     return make_ready(client)
@@ -154,12 +160,12 @@ def field_error(html: str, name: str) -> str | None:
 # --- Cases 4-5: where the page is, who may use it --------------------------------------------
 
 
-def test_4_the_article_and_its_variant_offer_a_new_calculation_the_template_does_not(
+def test_4_the_article_list_offers_a_new_calculation_the_template_does_not(
     ready: Ready,
 ) -> None:
     article_id = add_article()
-    html = ready.client.get(f"/articles/{article_id}/calculations").text
-    assert f'href="/calculation/new?article={article_id}"' in html
+    html = ready.client.get(f"/calculation?article={article_id}").text
+    assert f'hx-get="/calculation/new?article={article_id}"' in html
     assert DE["calc.new"] in html
 
     assert make_template(ready.client).status_code == 303
@@ -294,15 +300,25 @@ def test_9_scrap_and_margin_can_be_changed(ready: Ready) -> None:
 # --- Cases 10-12: spools ---------------------------------------------------------------------
 
 
-def test_10_only_business_spools_of_the_material_are_offered_by_default(ready: Ready) -> None:
-    options = select_values(calc(ready).text, "spool_0_0")
-    assert options == ["", "1", "2", "5"]
+def test_10_by_default_all_spools_of_the_material_are_offered_without_a_switch(
+    ready: Ready,
+) -> None:
+    html = calc(ready).text
+    assert select_values(html, "spool_0_0") == ["", "1", "2", "3", "5"]
+    assert 'name="all_spools"' not in html
 
 
-def test_10_the_switch_all_spools_shows_the_private_ones_too(ready: Ready) -> None:
-    options = select_values(calc(ready, all_spools="1").text, "spool_0_0")
-    assert options == ["", "1", "2", "3", "5"]
-    assert "4" not in options  # PETG is not PLA
+def test_10_with_the_setting_only_business_spools_are_offered_and_a_switch_shows_all(
+    ready: Ready,
+) -> None:
+    set_business_only()
+    html = calc(ready).text
+    assert select_values(html, "spool_0_0") == ["", "1", "2", "5"]
+    assert 'name="all_spools"' in html
+
+    shown = calc(ready, all_spools="1").text
+    assert select_values(shown, "spool_0_0") == ["", "1", "2", "3", "5"]
+    assert "4" not in select_values(shown, "spool_0_0")  # PETG is not PLA
 
 
 def test_10_there_is_no_average_and_no_free_price_field(ready: Ready) -> None:
@@ -316,9 +332,38 @@ def test_10_the_spool_of_another_material_is_refused_even_when_sent(ready: Ready
     assert field_error(html, "spool_0_0") == DE["calc.error.spool"]
 
 
-def test_10_a_private_spool_needs_the_switch(ready: Ready) -> None:
+def test_10_a_private_spool_is_fine_by_default_and_needs_the_switch_with_the_setting(
+    ready: Ready,
+) -> None:
+    assert out(calc(ready, spool_0_0="3").text, "res-material") == "1,00"
+    set_business_only()
     assert out(calc(ready, spool_0_0="3").text, "res-suggested") is None
     assert out(calc(ready, spool_0_0="3", all_spools="1").text, "res-material") == "1,00"
+
+
+def test_10_hint_to_choose_the_material_first(ready: Ready) -> None:
+    html = ready.client.get("/calculation/new").text
+    assert DE["calc.spool.choose_material"] in html
+    assert DE["calc.spool.choose_material"] not in calc(ready).text
+
+
+def test_10_hint_when_there_is_no_spool_for_the_material(client: AppClient) -> None:
+    ready = make_ready(client)
+    serve_spools(client, [spool(4, "PETG", 25)])
+    html = calc(ready, spool_0_0="").text
+    hint = DE["calc.spool.none_for_material"].replace("{material}", "PLA")
+    assert hint in html
+    assert DE["calc.spool.none_filtered"] not in html
+
+
+def test_10_hint_with_the_setting_points_to_the_switch(client: AppClient) -> None:
+    ready = make_ready(client)
+    set_business_only()
+    serve_spools(client, [spool(3, "PLA", 10, category=None)])
+    html = calc(ready, spool_0_0="").text
+    assert DE["calc.spool.none_filtered"].replace("{material}", "PLA") in html
+    assert DE["calc.spool.none_filtered"].replace("{material}", "PLA") != ""
+    assert select_values(calc(ready, all_spools="1").text, "spool_0_0") == ["", "3"]
 
 
 def test_11_a_spool_that_is_too_small_opens_another_row_and_grams_are_spread(
@@ -358,7 +403,7 @@ def test_12_no_spool_with_the_material_means_incomplete_never_zero(client: AppCl
     ready = make_ready(client)
     serve_spools(client, [spool(4, "PETG", 25)])
     html = calc(ready, spool_0_0="").text
-    assert DE["calc.spool.none_for_material"] in html
+    assert DE["calc.spool.none_for_material"].replace("{material}", "PLA") in html
     assert out(html, "res-suggested") is None
 
 
@@ -474,7 +519,6 @@ def test_13_the_page_has_no_save_button_yet(ready: Ready) -> None:
         ("pieces", "99999999999"),
         ("grams_0", "x"),
         ("grams_0", "-1"),
-        ("minutes_0", "-3"),
         ("setup_minutes", "x"),
         ("rework_minutes", "-1"),
         ("scrap", "abc"),
@@ -502,9 +546,50 @@ def test_14_a_comma_is_a_decimal_separator(ready: Ready) -> None:
     assert out(html, "res-material") == "2,00"
 
 
-def test_14_a_given_position_needs_grams_and_time(ready: Ready) -> None:
+def test_14_a_given_position_needs_grams(ready: Ready) -> None:
     assert field_error(calc(ready, grams_0="").text, "grams_0")
-    assert field_error(calc(ready, minutes_0="").text, "minutes_0")
+
+
+def test_14_with_several_materials_every_time_share_must_be_a_number(ready: Ready) -> None:
+    more = {"rows": "2", "material_1": "PETG", "grams_1": "50", "spool_1_0": "4"}
+    for name, text in (("minutes_1", ""), ("minutes_1", "x"), ("minutes_0", "-3")):
+        html = calc(ready, **more, **{"minutes_1": "30", name: text}).text
+        assert field_error(html, name), (name, text)
+        assert out(html, "res-suggested") is None
+
+
+# --- Time share only with several materials (issue #186, cases 15-16) --------------------------
+
+
+def test_15_one_material_has_no_time_share_field_and_uses_the_print_time(ready: Ready) -> None:
+    page = ready.client.get("/calculation/new").text
+    assert 'name="minutes_0"' not in page
+    # Even a value sent by hand does not count: 1 h x 0.10 kWh/h x 0.30 EUR/kWh
+    assert out(calc(ready, minutes_0="5").text, "res-power") == "0,03"
+
+
+def test_15_the_second_material_shows_the_field_for_both_and_prefills_the_first(
+    ready: Ready,
+) -> None:
+    html = calc(ready, action="add_row", minutes_0="").text
+    assert 'name="minutes_0"' in html and 'name="minutes_1"' in html
+    assert input_value(html, "minutes_0") == "60"
+    assert input_value(html, "minutes_1") in ("", None)
+
+
+def test_15_the_sum_of_the_time_shares_is_shown_but_not_enforced(ready: Ready) -> None:
+    more = {"rows": "2", "material_1": "PETG", "grams_1": "50", "spool_1_0": "4"}
+    html = calc(ready, **more, minutes_0="60", minutes_1="30", print_minutes="60").text
+    assert out(html, "calc-minutes-sum") is not None
+    assert "90" in out(html, "calc-minutes-sum") and "60" in out(html, "calc-minutes-sum")
+    assert out(html, "res-suggested") is not None
+
+
+def test_15_when_the_second_material_stays_empty_the_print_time_counts_again(
+    ready: Ready,
+) -> None:
+    html = calc(ready, rows="2", minutes_0="10", material_1="", grams_1="", minutes_1="").text
+    assert out(html, "res-power") == "0,03"
 
 
 def test_14_the_number_of_rows_is_limited(ready: Ready) -> None:
@@ -562,9 +647,9 @@ def test_the_template_does_not_switch_off_escaping() -> None:
     assert "autoescape" not in source
 
 
-def test_the_navigation_links_the_quick_calculation(ready: Ready) -> None:
+def test_the_navigation_links_the_calculation_list(ready: Ready) -> None:
     html = ready.client.get("/").text
-    assert re.search(r'<a\b[^>]*href="/calculation/new"[^>]*>\s*' + DE["nav.calculation"], html)
+    assert re.search(r'<a\b[^>]*href="/calculation"[^>]*>\s*' + DE["nav.calculation"], html)
 
 
 # --- Found by the review -----------------------------------------------------------------------

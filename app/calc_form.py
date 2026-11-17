@@ -23,7 +23,7 @@ from app.calculation import (
     calculate,
 )
 from app.models import AppSettings
-from app.production_form import parse_decimal
+from app.production_form import input_text, parse_decimal
 from app.settings_form import format_decimal
 
 MAX_ROWS = 20
@@ -44,7 +44,8 @@ class Row:
     spools: list[str] = field(default_factory=list)
 
     def blank(self) -> bool:
-        return not (self.material or self.grams or self.minutes or any(self.spools))
+        # The time share does not count: it is prefilled when there are several materials
+        return not (self.material or self.grams or any(self.spools))
 
 
 @dataclass
@@ -150,8 +151,14 @@ class RowView:
     row: Row
     materials: list[str]
     slots: list[Slot]
-    # The translation key of a note below the position (incomplete, no spool), or None
+    # The translation key of a note below the position (incomplete), or None
     note: str | None = None
+    # The translation key of a hint under the spool choice (no material, no spool), or None
+    hint: str | None = None
+    # The material as the table spells it, or None
+    material: str | None = None
+    # The time share as the field shows it
+    minutes_shown: str = ""
 
 
 @dataclass(frozen=True)
@@ -203,6 +210,11 @@ class Outcome:
     result: dict[str, str] | None = None
     # The same result as numbers, with what is needed to save it
     plan: Plan | None = None
+    # Several materials: the time share fields are shown, with the sum and the print time
+    multi: bool = False
+    minutes_sum: tuple[str, str] | None = None
+    # The switch "all spools" is only offered while the filter setting is on
+    show_switch: bool = False
 
 
 @dataclass(frozen=True)
@@ -228,13 +240,23 @@ def _positive(text: str) -> Decimal | None:
     return number if number is not None and number > 0 else None
 
 
-def _is_option(spool: Spool, material: str, category: str, all_spools: bool) -> bool:
+def filter_active(ctx: "Context", draft: Draft) -> bool:
+    """Only business spools are offered: the setting is on and the switch "all spools" is not."""
+    return (
+        ctx.settings.spool_business_only
+        and not draft.all_spools
+        and bool(ctx.settings.spool_category.strip())
+    )
+
+
+def _is_option(spool: Spool, material: str, category: str | None) -> bool:
+    """`category` is the word of the filter, or None when every spool may be offered."""
     if printer_models.same_material(spool.material) != printer_models.same_material(material):
         return False
     left = remaining(spool)
     if left is None or left <= 0:
         return False
-    if all_spools or not category.strip():
+    if category is None:
         return True
     return printer_models.same_material(spool.category or "") == printer_models.same_material(
         category
@@ -243,8 +265,9 @@ def _is_option(spool: Spool, material: str, category: str, all_spools: bool) -> 
 
 def _options(ctx: Context, material: str, draft: Draft) -> list[tuple[str, str]]:
     found = []
+    category = ctx.settings.spool_category if filter_active(ctx, draft) else None
     for spool in ctx.spools:
-        if _is_option(spool, material, ctx.settings.spool_category, draft.all_spools):
+        if _is_option(spool, material, category):
             left = remaining(spool) or ZERO
             found.append((str(spool.id), spool_label(spool, left, ctx.language)))
     return found
@@ -349,12 +372,28 @@ def evaluate(draft: Draft, ctx: Context) -> Outcome:
     power: list[PowerLine] = []
     planned: list[PlannedMaterial] = []
     filled = 0
+    out.show_switch = bool(ctx.settings.spool_business_only)
+    out.multi = len(draft.rows) >= 2
+    # One material: its time share is the print time. Only several materials share the time.
+    shared_time = sum(1 for item in draft.rows if not item.blank()) >= 2
     for index, row in enumerate(draft.rows):
         view = RowView(index, row, list(table), [])
         out.rows.append(view)
         grams = _positive(row.grams)
         material = _canonical(table, row.material)
         options = _options(ctx, material, draft) if material else []
+        view.material = material
+        view.minutes_shown = row.minutes or (
+            draft.print_minutes if out.multi and index == 0 else ""
+        )
+        if material is None:
+            view.hint = "calc.spool.choose_material"
+        elif not options and not ctx.spool_problem:
+            view.hint = (
+                "calc.spool.none_filtered"
+                if filter_active(ctx, draft)
+                else "calc.spool.none_for_material"
+            )
         if not show_errors or row.blank():
             view.slots = _slots(index, row, options, -1, False, errors)
             continue
@@ -363,14 +402,12 @@ def evaluate(draft: Draft, ctx: Context) -> Outcome:
             errors[f"material_{index}"] = "calc.error.material"
         if grams is None:
             errors[f"grams_{index}"] = "calc.error.number"
-        minutes = parse_decimal(row.minutes)
-        if minutes is None:
+        minutes = parse_decimal(view.minutes_shown) if shared_time else print_minutes
+        if minutes is None and shared_time:
             errors[f"minutes_{index}"] = "calc.error.number"
         lines, last, done = _allocate(errors, index, row, grams, options, ctx)
         view.slots = _slots(index, row, options, last, done, errors)
-        if material is not None and not options and not ctx.spool_problem:
-            view.note = "calc.spool.none_for_material"
-        elif not done and not _has_error(errors, index) and grams is not None:
+        if not done and not _has_error(errors, index) and grams is not None and not view.hint:
             view.note = "calc.spool.incomplete"
         if not done:
             complete = False
@@ -390,6 +427,13 @@ def evaluate(draft: Draft, ctx: Context) -> Outcome:
                         ],
                     )
                 )
+    if out.multi and shared_time:
+        shares = [parse_decimal(item.minutes_shown) for item in out.rows if not item.row.blank()]
+        total = sum((share for share in shares if share is not None), ZERO)
+        out.minutes_sum = (
+            input_text(total, ctx.language),
+            input_text(print_minutes, ctx.language) if print_minutes is not None else "",
+        )
     if show_errors and filled == 0:
         errors["material_0"] = "calc.error.material"
     if errors or not complete or filled == 0 or ctx.spool_problem:

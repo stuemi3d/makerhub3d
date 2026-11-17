@@ -521,9 +521,6 @@ def add_article_routes(
         request: Request,
         article_id: int,
         section: str,
-        saved: str | None = None,
-        main: str | None = None,
-        deleted: str | None = None,
         sort: str | None = None,
         direction: str | None = Query(None, alias="dir"),
     ) -> HTMLResponse:
@@ -547,25 +544,9 @@ def add_article_routes(
                 current_stock=current_stock,
             )
         if section == "calculations":
-            article = load(article_id)
-            with new_session() as db:
-                shown = calc_store.rows(db, language, article_id)
-            shown, links = calc_store.arranged(
-                shown, f"/articles/{article_id}/calculations", sort, direction
-            )
-            return render(
-                request,
-                "article_calculations.html",
-                "nav.articles",
-                article=article,
-                rows=shown,
-                sort_links=links,
-                notice="saved"
-                if saved == "1"
-                else "main"
-                if main == "1"
-                else ("deleted" if deleted == "1" else None),
-            )
+            load(article_id)
+            # The calculations of an article are the list with a filter (issue #186)
+            return RedirectResponse(f"/calculation?article={int(article_id)}", status_code=303)
         if section == "productions":
             article = load(article_id)
             with new_session() as db:

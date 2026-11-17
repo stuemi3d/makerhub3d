@@ -40,6 +40,11 @@ id="{{ name }}" name="{{ name }}"{% if errors.get(name) %} aria-invalid="true" a
     <label for="spool_category">{{ t('settings.field.spool_category') }}</label>
     <input type="text" maxlength="50" autocomplete="off" {{ field_attrs('spool_category') }} value="{{ values.get('spool_category', '') }}">
     {{ feedback('spool_category') }}
+    <label for="spool_business_only">
+      <input type="checkbox" role="switch" id="spool_business_only" name="spool_business_only" value="1" aria-describedby="spool_business_only-hint"{% if values.get('spool_business_only') == '1' %} checked{% endif %}>
+      {{ t('settings.field.spool_business_only') }}
+    </label>
+    <small id="spool_business_only-hint">{{ t('settings.hint.spool_business_only') }}</small>
     <label for="deviation_threshold">{{ t('settings.field.deviation_threshold') }}</label>
     <input type="text" inputmode="decimal" autocomplete="off" {{ field_attrs('deviation_threshold') }} value="{{ values.get('deviation_threshold', '') }}">
     {{ feedback('deviation_threshold') }}

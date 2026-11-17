@@ -1,59 +1,31 @@
-{% extends "base.html" %}
+{% extends "_popup_layout.html" if popup else "base.html" %}
 {% from "_data_table.html" import chip with context %}
 {% block title %}{{ t('calc.view.title') }} – {{ article.number }} – {{ app_name }}{% endblock %}
 {% block content %}
+{% if not popup %}
 <nav aria-label="breadcrumb">
   <ul>
-    <li><a href="/articles">{{ t('articles.title') }}</a></li>
-    <li><a href="/articles/{{ article.id }}">{{ article.number }}</a></li>
-    <li><a href="/articles/{{ article.id }}/calculations">{{ t('article.tile.calculations') }}</a></li>
+    <li><a href="/calculation">{{ t('calc.list.title') }}</a></li>
     <li>{{ item.date }}</li>
   </ul>
 </nav>
-<h1>{{ t('calc.view.title') }} {% if item.is_main %}{{ chip(t('calc.chip.main'), 'active') }}{% endif %}</h1>
-<p>{{ article.number }} · {{ article.name }} · {{ item.date }}</p>
-<h2>{{ t('calc.section.print') }}</h2>
-<dl class="result-list">
-  <dt>{{ t('calc.field.printer') }}</dt><dd>{{ item.printer }}</dd>
-  <dt>{{ t('calc.field.print_minutes') }}</dt><dd>{{ item.print_minutes }}</dd>
-  <dt>{{ t('calc.field.pieces') }}</dt><dd>{{ item.pieces }}</dd>
-  <dt>{{ t('calc.field.setup_minutes') }}</dt><dd>{{ item.setup }}</dd>
-  <dt>{{ t('calc.field.rework_minutes') }}</dt><dd>{{ item.rework }}</dd>
-  <dt>{{ t('calc.field.scrap') }}</dt><dd>{{ item.scrap }}</dd>
-  <dt>{{ t('calc.field.margin') }}</dt><dd>{{ item.margin }}</dd>
-</dl>
-<h2>{{ t('calc.section.positions') }}</h2>
-<article class="data-card">
-<div class="data-scroll">
-<table class="data-table">
-  <thead>
-    <tr>
-      <th scope="col">{{ t('calc.field.material') }}</th>
-      <th scope="col" class="num">{{ t('calc.field.grams') }}</th>
-      <th scope="col" class="num">{{ t('calc.field.minutes') }}</th>
-      <th scope="col" class="num">{{ t('calc.view.kwh') }}</th>
-      <th scope="col">{{ t('calc.field.spool') }}</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for m in item.materials %}
-    <tr>
-      <td class="cell-strong">{{ m.material }}</td>
-      <td class="num">{{ m.grams }}</td>
-      <td class="num">{{ m.minutes }}</td>
-      <td class="num">{{ m.kwh }}</td>
-      <td>{% for s in m.spools %}{{ s.label }}: {{ s.grams }} g × {{ s.price }} {{ t('calc.view.per_kg') }}{% if not loop.last %}<br>{% endif %}{% endfor %}</td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
-</div>
-</article>
-<h2>{{ t('calc.section.result') }}</h2>
-{% set r = item.result %}
-<div class="form-block result-block">
+{% endif %}
+<h1{% if popup %} id="popup-title"{% endif %}>{{ t('calc.view.title') }} {% if item.is_main %}{{ chip(t('calc.chip.main'), 'active') }}{% endif %}</h1>
+<p><strong>{{ article.number }} · {{ article.name }}</strong><br><small>{{ item.date }} · {{ item.printer }}</small></p>
+<div class="calc-view">
   <dl class="result-list">
-    <dt>{{ t('calc.view.rates') }}</dt><dd>{{ t('calc.view.rate_power') }} {{ item.power_price }} · {{ t('calc.view.rate_machine') }} {{ item.machine_rate }} · {{ t('calc.view.rate_labour') }} {{ item.labour_rate }}</dd>
+    <dt>{{ t('calc.field.print_minutes') }}</dt><dd>{{ item.print_minutes }}</dd>
+    <dt>{{ t('calc.field.pieces') }}</dt><dd>{{ item.pieces }}</dd>
+    <dt>{{ t('calc.field.setup_minutes') }}</dt><dd>{{ item.setup }}</dd>
+    <dt>{{ t('calc.field.rework_minutes') }}</dt><dd>{{ item.rework }}</dd>
+    <dt>{{ t('calc.field.scrap') }}</dt><dd>{{ item.scrap }}</dd>
+    <dt>{{ t('calc.field.margin') }}</dt><dd>{{ item.margin }}</dd>
+    <dt>{{ t('calc.view.rate_power') }}</dt><dd>{{ item.power_price }}</dd>
+    <dt>{{ t('calc.view.rate_machine') }}</dt><dd>{{ item.machine_rate }}</dd>
+    <dt>{{ t('calc.view.rate_labour') }}</dt><dd>{{ item.labour_rate }}</dd>
+  </dl>
+  {% set r = item.result %}
+  <dl class="result-list">
     <dt>{{ t('calc.result.material') }}</dt><dd>{{ r.material }}</dd>
     <dt>{{ t('calc.result.power') }}</dt><dd>{{ r.power }}</dd>
     <dt>{{ t('calc.result.machine') }}</dt><dd>{{ r.machine }}</dd>
@@ -64,7 +36,33 @@
     <dt>{{ t('calc.result.profit') }}</dt><dd>{{ r.profit }}</dd>
     <dt>{{ t('calc.result.wage') }}</dt><dd>{{ r.wage }}</dd>
   </dl>
-  <p><small>{{ t('calc.view.hint') }}</small></p>
 </div>
-<p><a href="/articles/{{ article.id }}/calculations" role="button" class="secondary outline">{{ t('calc.view.back') }}</a></p>
+<h2>{{ t('calc.section.positions') }}</h2>
+<div class="data-scroll">
+<table class="data-table">
+  <thead>
+    <tr>
+      <th scope="col">{{ t('calc.field.material') }}</th>
+      <th scope="col" class="num">{{ t('calc.field.grams') }}</th>
+      {% if item.multi %}<th scope="col" class="num">{{ t('calc.field.minutes') }}</th>{% endif %}
+      <th scope="col">{{ t('calc.field.spool') }}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for m in item.materials %}
+    <tr>
+      <td class="cell-strong">{{ m.material }}</td>
+      <td class="num">{{ m.grams }}</td>
+      {% if item.multi %}<td class="num">{{ m.minutes }}</td>{% endif %}
+      <td>{% for s in m.spools %}{{ s.label }}: {{ s.grams }} g × {{ s.price }} {{ t('calc.view.per_kg') }}{% if not loop.last %}<br>{% endif %}{% endfor %}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+<p><small>{{ t('calc.view.hint') }}</small></p>
+<div class="form-actions">
+  {% if popup %}<button type="button" class="secondary outline" data-popup-close>{{ t('calc.view.close') }}</button>
+  {% else %}<a href="/calculation" role="button" class="secondary outline">{{ t('calc.view.back') }}</a>{% endif %}
+</div>
 {% endblock %}

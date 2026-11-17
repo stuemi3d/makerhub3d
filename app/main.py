@@ -51,7 +51,7 @@ templates.env.globals["app_name"] = APP_NAME
 NAV_ITEMS = (
     {"key": "nav.dashboard", "href": "/", "permission": Permission.VIEW},
     {"key": "nav.articles", "href": "/articles", "permission": Permission.VIEW},
-    {"key": "nav.calculation", "href": "/calculation/new", "permission": Permission.VIEW},
+    {"key": "nav.calculation", "href": "/calculation", "permission": Permission.VIEW},
     {"key": "nav.production", "href": "/production", "permission": Permission.VIEW},
     {"key": "nav.stock", "href": "/stock", "permission": Permission.VIEW},
     {"key": "nav.analysis", "href": None, "permission": Permission.VIEW},

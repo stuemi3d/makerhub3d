@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% from "_data_table.html" import head, actions_head, chip, icon_link, icon_post with context %}
+{% from "_form_macros.html" import popup_attrs %}
+{% block title %}{{ t('calc.list.title') }}{% if article %} – {{ article.number }}{% endif %} – {{ app_name }}{% endblock %}
+{% block content %}
+{% set filter = ('?filter=' ~ article.id) if article else '' %}
+{% if article %}
+<nav aria-label="breadcrumb">
+  <ul>
+    <li><a href="/articles">{{ t('articles.title') }}</a></li>
+    <li><a href="/articles/{{ article.id }}">{{ article.number }}</a></li>
+    <li>{{ t('article.tile.calculations') }}</li>
+  </ul>
+</nav>
+{% endif %}
+<div class="page-head">
+  <h1>{{ t('calc.list.title') }}</h1>
+  <div class="page-actions">
+    {% if article %}<a href="/calculation" role="button" class="secondary outline">{{ t('calc.list.all') }}</a>{% endif %}
+    {% if can('edit') %}<a {{ popup_attrs('/calculation/new' ~ ('?article=' ~ article.id if article else '')) }} role="button">{{ t('calc.new') }}</a>{% endif %}
+  </div>
+</div>
+{% if article %}<p>{{ article.number }} · {{ article.name }}</p>{% endif %}
+{# Refreshed after a pop-up was saved (app.js) #}
+<div id="calc-list" data-popup-refresh>
+{% if notice %}<p role="status"><ins>{{ t('calc.notice.' ~ notice) }}</ins></p>{% endif %}
+{% if rows %}
+<article class="data-card">
+<div class="data-scroll">
+<table class="data-table">
+  <thead>
+    <tr>
+      {{ head(t('calc.col.article'), sort_links.article) }}
+      {{ head(t('calc.col.date'), sort_links.date) }}
+      {{ head(t('calc.col.printer'), sort_links.printer) }}
+      {{ head(t('calc.col.cost'), sort_links.cost, numeric=true) }}
+      {{ head(t('calc.col.price'), sort_links.price, numeric=true) }}
+      {{ head(t('calc.col.state')) }}
+      {{ actions_head() }}
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in rows %}
+    <tr class="calc-row" data-id="{{ r.id }}">
+      <td class="cell-strong"><a href="/articles/{{ r.article_id }}">{{ r.article }}</a></td>
+      <td><a {{ popup_attrs('/calculation/' ~ r.id) }}>{{ r.date }}</a></td>
+      <td>{{ r.printer }}</td>
+      <td class="num">{{ r.cost }}</td>
+      <td class="num">{{ r.price }}</td>
+      <td>{% if r.is_main %}{{ chip(t('calc.chip.main'), 'active') }}{% endif %}</td>
+      <td class="row-actions">
+        {{ icon_link('/calculation/' ~ r.id, 'view', true, r.date) }}
+        {% if can('edit') %}
+        {{ icon_link('/calculation/' ~ r.id ~ '/edit' ~ filter, 'edit', true, r.date) }}
+        {{ icon_link('/calculation/new?copy=' ~ r.id ~ ('&filter=' ~ article.id if article else ''), 'copy', true, r.date) }}
+        {% if not r.is_main %}{{ icon_post('/calculation/' ~ r.id ~ '/main' ~ filter, 'main', r.date) }}{% endif %}
+        {{ icon_link('/calculation/' ~ r.id ~ '/delete' ~ filter, 'delete', true, r.date) }}
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+</article>
+{% else %}
+<p>{{ t('calc.list.empty') }}</p>
+{% endif %}
+</div>
+{% endblock %}

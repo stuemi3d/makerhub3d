@@ -17,7 +17,7 @@ from app.calc_form import Draft, Plan, Row, cents
 from app.models import Article, Calculation, CalculationMaterial, CalculationSpool
 from app.production_form import input_text
 
-SORT_KEYS = ("date", "printer", "cost", "price")
+SORT_KEYS = ("article", "date", "printer", "cost", "price")
 DEFAULT_SORT = ("date", "desc")
 
 
@@ -143,6 +143,8 @@ def delete_for_article(db: Session, article_id: int) -> int:
 @dataclass(frozen=True)
 class ListRow:
     id: int
+    article_id: int
+    article: str
     date: str
     sort_date: tuple[date, int]
     printer: str
@@ -153,11 +155,16 @@ class ListRow:
     is_main: bool
 
 
-def rows(db: Session, language: str, article_id: int) -> list[ListRow]:
-    items = db.scalars(select(Calculation).where(Calculation.article_id == article_id))
+def rows(db: Session, language: str, article_id: int | None = None) -> list[ListRow]:
+    """All calculations, or only those of one article."""
+    query = select(Calculation, Article).join(Article, Article.id == Calculation.article_id)
+    if article_id is not None:
+        query = query.where(Calculation.article_id == article_id)
     return [
         ListRow(
             id=item.id,
+            article_id=article.id,
+            article=f"{article.number} · {article.name}",
             date=stock.format_date(item.created_on, language),
             sort_date=(item.created_on, item.id),
             printer=item.printer_name,
@@ -167,12 +174,16 @@ def rows(db: Session, language: str, article_id: int) -> list[ListRow]:
             sort_price=item.suggested_price,
             is_main=item.is_main,
         )
-        for item in items
+        for item, article in db.execute(query)
     ]
 
 
 def arranged(
-    shown: list[ListRow], path: str, sort: str | None, direction: str | None
+    shown: list[ListRow],
+    path: str,
+    sort: str | None,
+    direction: str | None,
+    keep: dict[str, str] | None = None,
 ) -> tuple[list[ListRow], dict[str, dict[str, str]]]:
     """The rows in the order asked for in the address (default: newest first) and the header
     links of the table."""
@@ -180,13 +191,14 @@ def arranged(
     key, order = chosen or DEFAULT_SORT
     shown = sorted(shown, key=lambda row: row.sort_date, reverse=True)
     column = {
+        "article": lambda row: row.article.casefold(),
         "date": lambda row: row.sort_date,
         "printer": lambda row: row.printer.casefold(),
         "cost": lambda row: row.sort_cost,
         "price": lambda row: row.sort_price,
     }[key]
     shown = sorted(shown, key=column, reverse=order == "desc")
-    return shown, table_sort.sort_links(path, SORT_KEYS, chosen, DEFAULT_SORT)
+    return shown, table_sort.sort_links(path, SORT_KEYS, chosen, DEFAULT_SORT, keep)
 
 
 def draft_of(item: Calculation, language: str) -> Draft:
