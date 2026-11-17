@@ -274,6 +274,8 @@ class PrinterModelPower(Base):
     model_id: Mapped[int] = mapped_column(ForeignKey("printer_models.id"))
     material: Mapped[str] = mapped_column(String(50))
     kwh_per_hour: Mapped[Decimal] = mapped_column(DecimalText)
+    # Place in the table, as the person ordered the rows (issue #177)
+    position: Mapped[int] = mapped_column(Integer, server_default="0")
 
 
 class Device(Base):

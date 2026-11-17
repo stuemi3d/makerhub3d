@@ -675,7 +675,6 @@
   "model.new": "Modell anlegen",
   "model.hint.unlinked": "Mindestens ein Drucker hat noch kein Modell. Bitte zuerst ein Modell anlegen und es beim Drucker auswählen.",
   "model.col.name": "Modell",
-  "model.col.power": "Stromverbrauch (kWh pro Stunde)",
   "model.col.printers": "Drucker",
   "model.power.empty": "Noch keine Werte",
   "model.form.new": "Druckermodell anlegen",
@@ -690,7 +689,7 @@
   "model.error.material_too_long": "Höchstens 50 Zeichen.",
   "model.error.material_twice": "Dieses Material steht schon in der Tabelle.",
   "model.power.title": "Stromverbrauch je Material",
-  "model.power.hint": "Material (z. B. PLA) und Verbrauch in kWh pro Druckstunde, z. B. 0,10. Eine Zeile entfernst du, indem du beide Felder leerst. Leere Zeilen werden ignoriert.",
+  "model.power.hint": "Material (z. B. PLA) und Verbrauch in kWh pro Druckstunde, z. B. 0,10. Mit „Material hinzufügen“ kommen beliebig viele Zeilen dazu. Die Reihenfolge ordnest du mit den Pfeilen oder indem du eine Zeile am Griff ziehst; sie gilt auch in der Auswahl der Kalkulation. Leere Zeilen werden ignoriert.",
   "model.power.material": "Material",
   "model.power.kwh": "kWh pro Stunde",
   "model.delete.title": "Druckermodell löschen",
@@ -701,5 +700,13 @@
   "device.error.model": "Dieses Modell gibt es nicht.",
   "log.action.printer_model.created": "Druckermodell angelegt",
   "log.action.printer_model.updated": "Druckermodell geändert",
-  "log.action.printer_model.deleted": "Druckermodell gelöscht"
+  "log.action.printer_model.deleted": "Druckermodell gelöscht",
+  "model.col.material": "Material",
+  "model.col.kwh": "kWh pro Stunde",
+  "model.power.add": "Material hinzufügen",
+  "model.power.up": "Nach oben",
+  "model.power.down": "Nach unten",
+  "model.power.remove": "Zeile entfernen",
+  "model.power.handle": "Zum Verschieben ziehen",
+  "model.error.too_many": "Höchstens 100 Zeilen."
 }

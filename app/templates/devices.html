@@ -15,6 +15,11 @@
 {% if d.deletable %}{{ icon_link('/settings/devices/' ~ d.id ~ '/delete', 'delete', true, d.name) }}{% endif %}
 {% endmacro %}
 {% macro status(d) %}{{ chip(t('device.status.active' if d.active else 'device.status.inactive'), 'active' if d.active else 'inactive') }}{% endmacro %}
+{# The cells a model has once for all its material rows: printer count and actions. #}
+{% macro model_cells(m, span) %}
+<td class="num" rowspan="{{ span }}">{{ m.printers }}</td>
+<td class="row-actions" rowspan="{{ span }}">{{ icon_link('/settings/devices/models/' ~ m.id ~ '/edit', 'edit', true, m.name) }} {% if m.deletable %}{{ icon_link('/settings/devices/models/' ~ m.id ~ '/delete', 'delete', true, m.name) }}{% endif %}</td>
+{% endmacro %}
 {% block content %}
 {% set settings_tab = 'devices' %}
 {% include "_settings_tabs.html" %}
@@ -122,19 +127,30 @@
   <thead>
     <tr>
       {{ head(t('model.col.name')) }}
-      {{ head(t('model.col.power')) }}
+      {{ head(t('model.col.material')) }}
+      {{ head(t('model.col.kwh'), none, true) }}
       {{ head(t('model.col.printers'), none, true) }}
       {{ actions_head() }}
     </tr>
   </thead>
   <tbody>
+    {# Each material has its own row; name, printer count and actions stand once per model. #}
     {% for m in models %}
-    <tr>
-      <td class="cell-strong">{{ m.name }}</td>
-      <td>{% for p in m.powers %}{% if not loop.first %} · {% endif %}{{ p.material }} {{ p.kwh }}{% else %}<small>{{ t('model.power.empty') }}</small>{% endfor %}</td>
-      <td class="num">{{ m.printers }}</td>
-      <td class="row-actions">{{ icon_link('/settings/devices/models/' ~ m.id ~ '/edit', 'edit', true, m.name) }} {% if m.deletable %}{{ icon_link('/settings/devices/models/' ~ m.id ~ '/delete', 'delete', true, m.name) }}{% endif %}</td>
+    {% set span = m.powers | length or 1 %}
+    {% for p in m.powers %}
+    <tr data-model-row="{{ m.name }}">
+      {% if loop.first %}<td class="cell-strong" rowspan="{{ span }}">{{ m.name }}</td>{% endif %}
+      <td data-col="material">{{ p.material }}</td>
+      <td class="num" data-col="kwh">{{ p.kwh }}</td>
+      {% if loop.first %}{{ model_cells(m, span) }}{% endif %}
     </tr>
+    {% else %}
+    <tr data-model-row="{{ m.name }}">
+      <td class="cell-strong">{{ m.name }}</td>
+      <td colspan="2"><small>{{ t('model.power.empty') }}</small></td>
+      {{ model_cells(m, 1) }}
+    </tr>
+    {% endfor %}
     {% endfor %}
   </tbody>
 </table>

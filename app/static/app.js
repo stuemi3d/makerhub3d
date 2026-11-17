@@ -274,3 +274,106 @@ if (window.htmx) {
   store.removeItem(PENDING);
   store.setItem(KEY, here);
 })();
+
+// Power table of a printer model (issue #177): add, remove and move rows. Moving works with the
+// arrow buttons (phone, keyboard) and by dragging a row at its grip. The rows are numbered in
+// the order they stand on the page (material_0, kwh_0, material_1 ...), so the server saves
+// exactly that order. The server checks everything again; this only handles the form. The
+// pop-up content arrives later with HTMX, so the clicks are handled on the document.
+(() => {
+  const rowsOf = (table) =>
+    Array.from(table.querySelectorAll("[data-power-rows] > [data-power-row]"));
+
+  const renumber = (table) => {
+    const rows = rowsOf(table);
+    rows.forEach((row, index) => {
+      for (const input of row.querySelectorAll("input")) {
+        const base = input.name.replace(/_[^_]*$/, "");
+        input.name = `${base}_${index}`;
+        input.id = `${base}_${index}`;
+        if (input.hasAttribute("aria-describedby")) {
+          input.setAttribute("aria-describedby", `${base}_${index}-error`);
+        }
+        const message = input.parentElement.querySelector("small");
+        if (message) message.id = `${base}_${index}-error`;
+      }
+      row.querySelector("[data-power-up]").disabled = index === 0;
+      row.querySelector("[data-power-down]").disabled = index === rows.length - 1;
+    });
+    // The server allows 100 rows; the button stops there instead of the save failing later.
+    const add = table.querySelector("[data-power-add]");
+    if (add) add.disabled = rows.length >= 100;
+  };
+
+  const move = (row, direction) => {
+    const neighbour =
+      direction < 0 ? row.previousElementSibling : row.nextElementSibling;
+    if (!neighbour) return;
+    if (direction < 0) neighbour.before(row);
+    else neighbour.after(row);
+    const table = row.closest("[data-power-table]");
+    renumber(table);
+    // The button that was used keeps the focus; at the end of the list the other arrow does.
+    const used = row.querySelector(direction < 0 ? "[data-power-up]" : "[data-power-down]");
+    const other = row.querySelector(direction < 0 ? "[data-power-down]" : "[data-power-up]");
+    (used.disabled ? other : used).focus();
+  };
+
+  document.addEventListener("click", (event) => {
+    const button = event.target.closest(
+      "[data-power-add], [data-power-up], [data-power-down], [data-power-remove]"
+    );
+    const table = button && button.closest("[data-power-table]");
+    if (!table) return;
+    const row = button.closest("[data-power-row]");
+    if (button.hasAttribute("data-power-add")) {
+      const pattern = table.querySelector("template");
+      const fresh = pattern.content.firstElementChild.cloneNode(true);
+      table.querySelector("[data-power-rows]").append(fresh);
+      renumber(table);
+      fresh.querySelector("input").focus();
+    } else if (button.hasAttribute("data-power-remove")) {
+      row.remove();
+      renumber(table);
+    } else {
+      move(row, button.hasAttribute("data-power-up") ? -1 : 1);
+    }
+  });
+
+  let dragged = null;
+
+  document.addEventListener("pointerdown", (event) => {
+    const handle = event.target.closest("[data-power-handle]");
+    if (!handle || (event.pointerType === "mouse" && event.button !== 0)) return;
+    const row = handle.closest("[data-power-row]");
+    dragged = { row, table: row.closest("[data-power-table]") };
+    row.classList.add("is-dragging");
+    event.preventDefault();
+  });
+
+  document.addEventListener("pointermove", (event) => {
+    if (!dragged) return;
+    for (const other of rowsOf(dragged.table)) {
+      if (other === dragged.row) continue;
+      const box = other.getBoundingClientRect();
+      if (event.clientY < box.top || event.clientY > box.bottom) continue;
+      const middle = box.top + box.height / 2;
+      const below = Boolean(
+        dragged.row.compareDocumentPosition(other) & Node.DOCUMENT_POSITION_FOLLOWING
+      );
+      // Passing the middle of a row swaps the places; the row under the pointer moves aside.
+      if (below && event.clientY > middle) other.after(dragged.row);
+      else if (!below && event.clientY < middle) other.before(dragged.row);
+      break;
+    }
+  });
+
+  const finishDrag = () => {
+    if (!dragged) return;
+    dragged.row.classList.remove("is-dragging");
+    renumber(dragged.table);
+    dragged = null;
+  };
+  document.addEventListener("pointerup", finishDrag);
+  document.addEventListener("pointercancel", finishDrag);
+})();

@@ -1,5 +1,5 @@
 {% extends "_popup_layout.html" if popup else "base.html" %}
-{% from "_form_macros.html" import field_attrs, feedback %}
+{% from "_power_rows.html" import power_row with context %}
 {% set title_key = 'model.form.edit' if model_id else 'model.form.new' %}
 {% block title %}{{ t(title_key) }} – {{ app_name }}{% endblock %}
 {% block content %}
@@ -31,21 +31,22 @@
   {% endif %}
   <h2>{{ t('model.power.title') }}</h2>
   <p><small>{{ t('model.power.hint') }}</small></p>
-  {% for row in rows %}
-  <div class="grid">
-    <div>
-      <label for="material_{{ loop.index0 }}" class="visually-hidden">{{ t('model.power.material') }}</label>
-      <input type="text" maxlength="50" autocomplete="off" placeholder="{{ t('model.power.material') }}" {{ field_attrs('material_' ~ loop.index0, errors) }} value="{{ row.material }}">
-      {% if errors.get('material_' ~ loop.index0) %}<small id="material_{{ loop.index0 }}-error">{{ t(errors['material_' ~ loop.index0]) }}</small>{% endif %}
+  {% if errors.get('rows') %}<p role="alert"><mark>{{ t(errors['rows']) }}</mark></p>{% endif %}
+  <div class="power-table" data-power-table>
+    <div class="power-head" aria-hidden="true">
+      <span class="power-order"></span>
+      <span class="power-field power-material">{{ t('model.power.material') }}</span>
+      <span class="power-field power-kwh">{{ t('model.power.kwh') }}</span>
+      <span class="power-remove"></span>
     </div>
-    <div>
-      <label for="kwh_{{ loop.index0 }}" class="visually-hidden">{{ t('model.power.kwh') }}</label>
-      <input type="text" inputmode="decimal" autocomplete="off" placeholder="{{ t('model.power.kwh') }}" {{ field_attrs('kwh_' ~ loop.index0, errors) }} value="{{ row.kwh }}">
-      {% if errors.get('kwh_' ~ loop.index0) %}<small id="kwh_{{ loop.index0 }}-error">{{ t(errors['kwh_' ~ loop.index0]) }}</small>{% endif %}
+    <div data-power-rows>
+      {% for row in rows %}{{ power_row(loop.index0, row.material, row.kwh, errors, t) }}{% endfor %}
     </div>
+    {# The pattern of a new row; app.js copies it when the add button is clicked. #}
+    <template id="power-row-template">{{ power_row('NEW', '', '', {}, t) }}</template>
+    <button type="button" class="secondary outline power-add" data-power-add>{{ t('model.power.add') }}</button>
   </div>
-  {% endfor %}
-  <div class="form-actions">
+  <div class="form-actions form-actions-pinned">
     <button type="submit">{{ t('device.save') }}</button>
     {% if popup %}<button type="button" class="secondary outline" data-popup-close>{{ t('article.cancel') }}</button>
     {% else %}<a href="/settings/devices" role="button" class="secondary outline">{{ t('article.cancel') }}</a>{% endif %}

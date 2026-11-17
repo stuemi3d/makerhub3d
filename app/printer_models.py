@@ -28,7 +28,7 @@ def same_material(name: str) -> str:
 class PowerLookup:
     status: Literal["found", "no_match", "no_table"]
     kwh_per_hour: Decimal | None = None
-    # The materials of the table, sorted, to choose from when there was no exact match
+    # The materials of the table in its saved order, to choose from when there was no exact match
     options: tuple[str, ...] = ()
 
 
@@ -39,7 +39,7 @@ def lookup(table: Mapping[str, Decimal] | None, material: str) -> PowerLookup:
     for name, value in table.items():
         if same_material(name) == wanted:
             return PowerLookup("found", value)
-    return PowerLookup("no_match", options=tuple(sorted(table)))
+    return PowerLookup("no_match", options=tuple(table))
 
 
 def plate_kwh(parts: Iterable[tuple[Decimal, Decimal]]) -> Decimal:
@@ -48,11 +48,13 @@ def plate_kwh(parts: Iterable[tuple[Decimal, Decimal]]) -> Decimal:
 
 
 def power_table(db: Session, device_id: int) -> dict[str, Decimal] | None:
-    """The power table of the printer's model; None without a model or without rows."""
+    """The power table of the printer's model in its saved order; None without a model or rows."""
     device = db.get(Device, device_id)
     if device is None or device.printer_model_id is None:
         return None
     rows = db.scalars(
-        select(PrinterModelPower).where(PrinterModelPower.model_id == device.printer_model_id)
+        select(PrinterModelPower)
+        .where(PrinterModelPower.model_id == device.printer_model_id)
+        .order_by(PrinterModelPower.position, PrinterModelPower.id)
     )
     return {row.material: row.kwh_per_hour for row in rows} or None

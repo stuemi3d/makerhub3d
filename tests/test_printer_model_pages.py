@@ -73,6 +73,18 @@ def stored_models() -> list[tuple[str, dict[str, str]]]:
         return result
 
 
+def stored_order(name: str = "P2S") -> list[str]:
+    """The materials of a model in the saved order."""
+    with Session(make_engine(Settings.from_env().database_path)) as db:
+        model = db.scalars(select(PrinterModel).where(PrinterModel.name == name)).one()
+        powers = db.scalars(
+            select(PrinterModelPower)
+            .where(PrinterModelPower.model_id == model.id)
+            .order_by(PrinterModelPower.position, PrinterModelPower.id)
+        )
+        return [p.material for p in powers]
+
+
 def model_id(name: str = "P2S") -> int:
     with Session(make_engine(Settings.from_env().database_path)) as db:
         return db.scalars(select(PrinterModel.id).where(PrinterModel.name == name)).one()
@@ -401,3 +413,142 @@ def test_lookup_for_a_device_uses_the_table_of_its_model(linked: AppClient) -> N
 
     assert printer_models.lookup(table, "PLA").kwh_per_hour == printer_models.D("0.10")
     assert printer_models.lookup(none, "PLA").status == "no_table"
+
+
+# --- Many rows and their order (issue #177) ----------------------------------------------------
+
+
+def test_twenty_rows_are_saved_and_shown_in_the_same_order(linked: AppClient) -> None:
+    pairs = [(f"Mat{n:02d}", f"0,{n + 1:02d}") for n in range(20)]
+    pairs.reverse()  # not alphabetical
+    create(linked, "P2S", *pairs)
+
+    assert stored_order() == [m for m, _ in pairs]
+    page = linked.get(f"{MODELS}/{model_id()}/edit").text
+    positions = [page.index(f'value="{m}"') for m, _ in pairs]
+    assert positions == sorted(positions)
+
+
+def test_the_chosen_order_is_kept_not_alphabetical(linked: AppClient) -> None:
+    create(linked, "P2S", ("PETG", "0,13"), ("PLA", "0,10"))
+    edit = f"{MODELS}/{model_id()}/edit"
+    assert stored_order() == ["PETG", "PLA"]
+
+    # PLA moves to the top
+    linked.post(edit, data=rows(("PLA", "0,10"), ("PETG", "0,13")))
+
+    assert stored_order() == ["PLA", "PETG"]
+    page = linked.get(edit).text
+    assert page.index('value="PLA"') < page.index('value="PETG"')
+
+
+def test_the_order_is_the_one_of_the_rows_even_after_removing_one(linked: AppClient) -> None:
+    create(linked, "P2S", ("A", "0,1"), ("B", "0,1"), ("C", "0,1"))
+
+    linked.post(f"{MODELS}/{model_id()}/edit", data=rows(("C", "0,1"), ("A", "0,1")))
+
+    assert stored_order() == ["C", "A"]
+
+
+def test_more_than_100_rows_are_refused_without_a_crash(linked: AppClient) -> None:
+    pairs = [(f"M{n}", "0,1") for n in range(101)]
+
+    response = create(linked, "P2S", *pairs)
+
+    assert response.status_code == 422
+    assert stored_models() == []
+    # The 101st row is shown again with the message, so nothing typed is lost.
+    assert 'value="M100"' in response.text
+
+
+def test_a_change_of_order_alone_is_in_the_change_log(linked: AppClient) -> None:
+    create(linked, "P2S", ("PETG", "0,13"), ("PLA", "0,10"))
+    edit = f"{MODELS}/{model_id()}/edit"
+    linked.post(edit, data=rows(("PETG", "0,13"), ("PLA", "0,10")))  # nothing changed
+    assert log_actions() == ["printer_model.created"]
+
+    linked.post(edit, data=rows(("PLA", "0,10"), ("PETG", "0,13")))
+
+    assert log_actions() == ["printer_model.created", "printer_model.updated"]
+    with Session(make_engine(Settings.from_env().database_path)) as db:
+        details = db.scalars(
+            select(ChangeLogEntry.details).where(ChangeLogEntry.action == "printer_model.updated")
+        ).one()
+    assert {"field": "order", "old": "PETG, PLA", "new": "PLA, PETG"} in json.loads(details)
+
+
+def test_errors_keep_all_rows_in_their_order(linked: AppClient) -> None:
+    create(linked, "P2S", ("PLA", "0,10"))
+    edit = f"{MODELS}/{model_id()}/edit"
+
+    response = linked.post(edit, data=rows(("PETG", "0,13"), ("PLA", "0"), ("TPU", "0,09")))
+
+    assert response.status_code == 422
+    page = response.text
+    assert page.index('value="PETG"') < page.index('value="PLA"') < page.index('value="TPU"')
+    assert stored_order() == ["PLA"]
+
+
+def test_form_has_the_controls_for_adding_moving_and_removing(linked: AppClient) -> None:
+    create(linked, "P2S", ("PLA", "0,10"))
+
+    page = linked.get(f"{MODELS}/{model_id()}/edit").text
+
+    assert "data-power-add" in page
+    assert 'id="power-row-template"' in page
+    for control in ("data-power-handle", "data-power-up", "data-power-down", "data-power-remove"):
+        assert control in page
+    # Column heads once, symbol buttons with a name for screen readers
+    assert page.count(">Material<") >= 1
+    assert "Nach oben" in page and "Nach unten" in page and "Zeile entfernen" in page
+    assert "Material hinzufügen" in page
+
+
+def test_new_model_form_has_a_row_and_the_add_button(linked: AppClient) -> None:
+    page = linked.get(NEW).text
+
+    assert "data-power-add" in page
+    assert 'name="material_0"' in page
+
+
+def test_overview_has_one_row_per_material_in_the_saved_order(linked: AppClient) -> None:
+    create(linked, "P2S", ("PETG", "0,13"), ("PLA", "0,10"))
+    page = linked.get(LIST).text
+
+    assert page.index("PETG") < page.index("PLA")
+    assert "0,13" in page and "0,10" in page
+    # One row per material, the model name once as a group
+    assert page.count('data-model-row="P2S"') == 2
+    assert page.count('rowspan="2"') >= 1
+    assert "PETG 0,13 · PLA" not in page
+
+
+def test_overview_shows_a_row_without_values_for_an_empty_model(linked: AppClient) -> None:
+    create(linked)
+
+    page = linked.get(LIST).text
+
+    assert "Noch keine Werte" in page
+    assert page.count('data-model-row="P2S"') == 1
+
+
+def test_actions_of_a_model_are_once_in_the_last_column(linked: AppClient) -> None:
+    create(linked, "P2S", ("PETG", "0,13"), ("PLA", "0,10"))
+    page = linked.get(LIST).text
+
+    assert page.count(f'href="{MODELS}/{model_id()}/edit"') == 1
+    assert page.count(f'href="{MODELS}/{model_id()}/delete"') == 1
+
+
+def test_lookup_options_follow_the_saved_order(linked: AppClient) -> None:
+    from app import printer_models
+
+    create(linked, "P2S", ("TPU", "0,09"), ("PLA", "0,10"), ("PETG", "0,13"))
+    add(linked, printer_form(name="A", printer_model_id=str(model_id())))
+    with Session(make_engine(Settings.from_env().database_path)) as db:
+        table = printer_models.power_table(db, stored_devices()[0].id)
+
+    result = printer_models.lookup(table, "PLA-CF")
+
+    assert result.status == "no_match"
+    assert result.options == ("TPU", "PLA", "PETG")

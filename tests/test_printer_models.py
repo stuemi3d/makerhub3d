@@ -30,7 +30,8 @@ def test_no_exact_match_gives_the_materials_of_the_table_to_choose_from() -> Non
 
     assert result.status == "no_match"
     assert result.kwh_per_hour is None
-    assert result.options == ("PETG", "PLA")
+    # The order of the table (the one the person chose), not alphabetical
+    assert result.options == ("PLA", "PETG")
 
 
 def test_no_table_is_reported_for_a_missing_or_empty_table() -> None:
@@ -88,6 +89,25 @@ def test_the_same_material_twice_is_refused_ignoring_case() -> None:
     assert "material_1" in errors
 
 
+def test_up_to_100_rows_are_accepted_and_keep_their_order() -> None:
+    pairs = [(f"Material {n}", "0,1") for n in range(100)]
+
+    values, errors = printer_model_form.validate_rows(rows(*pairs))
+
+    assert errors == {}
+    assert [material for material, _ in values] == [m for m, _ in pairs]
+
+
+def test_more_than_100_rows_are_refused() -> None:
+    pairs = [(f"Material {n}", "0,1") for n in range(101)]
+    raw = rows(*pairs)
+
+    assert "material_100" in printer_model_form.field_names()
+    _, errors = printer_model_form.validate_rows(raw)
+
+    assert errors == {"rows": "model.error.too_many"}
+
+
 def test_material_name_is_limited() -> None:
     _, errors = printer_model_form.validate_rows(rows(("x" * 51, "0,1")))
 
@@ -125,4 +145,43 @@ def test_migration_keeps_devices_and_adds_models_and_goes_back(tmp_path: Path) -
         assert "printer_models" not in tables
         assert "printer_model_id" not in columns
         assert connection.execute("SELECT name FROM devices").fetchall() == [("Alt",)]
+    run_migrations(engine)
+
+
+# --- Migration 0023: the position of a row (issue #177, case 20) -------------------------------
+
+
+def test_migration_gives_existing_rows_a_fixed_order_and_goes_back(tmp_path: Path) -> None:
+    database = tmp_path / "position.db"
+    engine = make_engine(database)
+    with engine.begin() as connection:
+        command.upgrade(alembic_config(connection), "0022")
+    with sqlite3.connect(database) as connection:
+        connection.execute(
+            "INSERT INTO printer_models (id, name, created_at) VALUES (1, 'P2S',"
+            " '2026-11-17 10:00:00')"
+        )
+        # Created in this order: TPU first, then PLA (not alphabetical)
+        for material in ("TPU", "PLA", "PETG"):
+            connection.execute(
+                "INSERT INTO printer_model_powers (model_id, material, kwh_per_hour)"
+                " VALUES (1, ?, '0.1')",
+                (material,),
+            )
+
+    run_migrations(engine)
+
+    with sqlite3.connect(database) as connection:
+        rows_ = connection.execute(
+            "SELECT material FROM printer_model_powers ORDER BY position, id"
+        ).fetchall()
+        assert rows_ == [("TPU",), ("PLA",), ("PETG",)]
+        positions = connection.execute("SELECT position FROM printer_model_powers").fetchall()
+        assert len({p for (p,) in positions}) == 3
+    with engine.begin() as connection:
+        command.downgrade(alembic_config(connection), "0022")
+    with sqlite3.connect(database) as connection:
+        columns = {row[1] for row in connection.execute("PRAGMA table_info(printer_model_powers)")}
+        assert "position" not in columns
+        assert connection.execute("SELECT count(*) FROM printer_model_powers").fetchone() == (3,)
     run_migrations(engine)
