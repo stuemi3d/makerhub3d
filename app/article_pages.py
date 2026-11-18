@@ -30,6 +30,7 @@ from app import (
     variants,
 )
 from app.article_form import FIELD_NAMES, form_values, number_key, validate
+from app.i18n import translate
 from app.models import Article
 from app.permissions import Permission, requires
 from app.settings_form import format_decimal
@@ -580,6 +581,11 @@ def add_article_routes(
         article = load(article_id)
         with new_session() as db:
             figures = analysis.compute(db, article_id)
+            points = analysis.cost_series(db, article_id)
+        labels = {
+            key: translate(language, f"analysis.chart.{key}")
+            for key in ("actual", "planned", "summary")
+        }
         return render(
             request,
             "article_analysis.html",
@@ -587,4 +593,6 @@ def add_article_routes(
             article=article,
             figures=figures,
             shown=analysis.texts(figures, language),
+            chart=analysis.chart_data(points, figures.planned_cost, labels, language),
+            point_rows=analysis.point_rows(points, language),
         )

@@ -403,6 +403,19 @@
   }
 }
 
+/* Chart on the analysis page (issue 204): fixed height, full width, never wider than the card. */
+.chart-box {
+  position: relative;
+  height: 18rem;
+  padding: 1rem;
+}
+
+.chart-empty {
+  margin: 0;
+  padding: 1rem;
+  color: var(--mh-text-muted);
+}
+
 /* Marks where a variant's value comes from (own value or inherited from the template). */
 .source-note {
   margin-left: 0.5rem;

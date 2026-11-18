@@ -10,6 +10,7 @@
   {# HTMX (issue #76); its safety settings are in app.js. #}
   <script src="/static/htmx.min.js" defer></script>
   <script src="/static/app.js" defer></script>
+  {% block head_scripts %}{% endblock %}
 </head>
 <body>
   <header class="container-fluid topbar">
