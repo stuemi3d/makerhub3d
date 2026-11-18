@@ -1,0 +1,52 @@
+# Deletes the test image "pr-<number>" from ghcr.io when a pull request is closed or merged
+# (issue #198). Only that tag is touched, never "latest" or the commit tags.
+# No checkout: nothing of the pull request is run here.
+name: Docker PR cleanup
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions: {}
+
+jobs:
+  delete-test-image:
+    name: Test-Image löschen
+    # Same condition as for publishing: forks never had a test image.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      packages: write
+    steps:
+      - name: Delete the versions tagged pr-<number>
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          OWNER: ${{ github.repository_owner }}
+          OWNER_TYPE: ${{ github.event.repository.owner.type }}
+          PACKAGE: ${{ github.event.repository.name }}
+        run: |
+          set -eu
+          if [ "$OWNER_TYPE" = "Organization" ]; then scope="orgs"; else scope="users"; fi
+          package="$(printf '%s' "$PACKAGE" | tr '[:upper:]' '[:lower:]')"
+          base="/$scope/$OWNER/packages/container/$package/versions"
+          # Only "no package yet" (404) ends quietly; any other error (e.g. missing rights)
+          # fails the job, so a leftover test image does not go unnoticed.
+          if ! versions="$(gh api --paginate "$base?per_page=100" 2>error.txt)"; then
+            if grep -q "404" error.txt; then
+              echo "Kein Paket vorhanden: nichts zu löschen."
+              exit 0
+            fi
+            echo "Die Paketversionen konnten nicht gelesen werden:" >&2
+            cat error.txt >&2
+            exit 1
+          fi
+          # Only versions whose tags are exactly [pr-<number>]; a version that also carries
+          # "latest" or a commit tag is never deleted.
+          ids="$(printf '%s' "$versions" | jq -r --arg tag "pr-${PR_NUMBER}" \
+            '.[] | select(.metadata.container.tags == [$tag]) | .id')"
+          for id in $ids; do
+            gh api --method DELETE "$base/$id"
+            echo "Version $id (pr-${PR_NUMBER}) gelöscht."
+          done

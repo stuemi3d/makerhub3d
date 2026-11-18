@@ -129,11 +129,12 @@ def test_image_workflow_default_token_is_read_only_and_actions_are_pinned() -> N
         assert re.fullmatch(r"[\w./-]+@[0-9a-f]{40}", reference), reference
 
 
-def test_only_the_publish_job_may_write_packages() -> None:
+def test_only_the_publish_jobs_may_write_packages() -> None:
     workflow = re.sub(r"#.*", "", read(".github/workflows/docker.yml"))
 
-    assert workflow.count("packages: write") == 1
+    assert workflow.count("packages: write") == 2  # publish (main) and publish-pr (issue #198)
     assert "packages: write" in workflow_job("publish")
+    assert "packages: write" in workflow_job("publish-pr")
     assert "write" not in workflow_job("image")
     assert not re.search(r"(?i)\w+:\s*write", workflow.replace("packages: write", ""))
 
