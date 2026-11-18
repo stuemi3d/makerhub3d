@@ -13,7 +13,7 @@
 <h1>{{ title }}</h1>
 <p>{{ article.number }} · {{ article.name }}</p>
 {% set groups = (
-  ('amounts', ('produced', 'sold', 'stock')),
+  ('amounts', ('produced', 'stock', 'sold')),
   ('costs', ('cost_planned', 'cost_actual', 'deviation')),
   ('profit', ('price_average', 'profit', 'profit_percent')),
   ('quality', ('hourly_wage', 'failed', 'failed_share')),

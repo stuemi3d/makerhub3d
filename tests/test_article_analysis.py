@@ -287,6 +287,11 @@ def test_the_figures_come_in_four_groups_in_this_order(client: AppClient) -> Non
     positions = [html.index(DE[f"analysis.group.{k}"]) for k in keys]
     assert positions == sorted(positions)
     assert html.index(DE["analysis.cost_planned"]) < html.index(DE["analysis.cost_actual"])
+    # Amounts: produced, then stock, then sold
+    produced, stock_, sold = (
+        html.index(DE[f"analysis.{k}"]) for k in ("produced", "stock", "sold")
+    )
+    assert produced < stock_ < sold
 
 
 def test_money_is_shown_with_two_decimals(client: AppClient) -> None:
