@@ -297,7 +297,9 @@ def test_detail_shows_fields_and_five_tiles_with_count(client: AppClient) -> Non
         tile = re.search(rf'<a href="/articles/{article_id}/{section}"[^>]*>(.*?)</a>', html, re.S)
         assert tile, section
         assert DE[f"article.tile.{section}"] in tile.group(1)
-        assert re.search(r">\s*0\s*<", tile.group(1)), section
+        # The analysis tile has no count (there is only one analysis per article, issue #203)
+        shown = DE["article.tile.analysis_open"] if section == "analysis" else "0"
+        assert re.search(rf">\s*{shown}\s*<", tile.group(1)), section
 
 
 def test_detail_shows_dash_for_empty_optional_fields(client: AppClient) -> None:

@@ -13,7 +13,7 @@
 <h1>{{ title }}</h1>
 <p>{{ article.number }} · {{ article.name }}</p>
 <div class="stats">
-  {% for key in ('cost_actual', 'cost_planned', 'deviation', 'price_average', 'profit', 'profit_percent', 'hourly_wage', 'produced', 'sold', 'stock', 'failed_share') %}
+  {% for key in ('cost_actual', 'cost_planned', 'deviation', 'price_average', 'profit', 'profit_percent', 'hourly_wage', 'produced', 'sold', 'stock', 'failed', 'failed_share') %}
   <article class="stat">
     <p class="stat-label">{{ t('analysis.' ~ key) }}</p>
     <p class="stat-value">{{ shown[key] }}</p>

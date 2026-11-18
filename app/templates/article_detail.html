@@ -90,7 +90,7 @@
 <div class="tiles">
   {% for section in sections %}
   <a href="/articles/{{ article.id }}/{{ section }}" class="tile">
-    <span class="tile-count">{{ counts[section] }}</span>
+    <span class="tile-count">{% if section == 'analysis' %}{{ t('article.tile.analysis_open') }}{% else %}{{ counts[section] }}{% endif %}</span>
     <span>{{ t('article.tile.' ~ section) }}</span>
   </a>
   {% endfor %}

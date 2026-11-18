@@ -253,6 +253,30 @@ def test_warning_depends_on_the_threshold_from_the_settings(client: AppClient) -
     assert DE["analysis.warning"] not in page(client, other)
 
 
+def test_cheaper_than_planned_by_more_than_the_threshold_also_warns(client: AppClient) -> None:
+    article_id = add_article()
+    book(article_id, 10, "30.00")
+    calculate(article_id, "5.00")  # 3.00 against 5.00 = -40 %
+    html = page(client, article_id)
+    assert figure(html, "analysis.deviation") == "-40 %"
+    assert DE["analysis.warning"] in html
+    set_threshold("50")
+    assert DE["analysis.warning"] not in page(client, article_id)
+
+
+def test_failed_pieces_are_counted(client: AppClient) -> None:
+    article_id = add_article()
+    book(article_id, 9, "45.00", failed_pieces=1)
+    book(article_id, 5, "25.00", failed_pieces=2)
+    assert figure(page(client, article_id), "analysis.failed") == "3"
+
+
+def test_the_tile_has_no_count_on_the_article(client: AppClient) -> None:
+    article_id = add_article()
+    detail = client.get(f"/articles/{article_id}").text
+    assert DE["article.tile.analysis_open"] in detail
+
+
 def test_money_is_shown_with_two_decimals(client: AppClient) -> None:
     article_id = add_article()
     book(article_id, 3, "100.00")
@@ -274,7 +298,7 @@ def test_an_article_without_anything_shows_dashes_and_no_error(client: AppClient
         "analysis.failed_share",
     ):
         assert figure(html, key) == DASH
-    for key in ("analysis.produced", "analysis.sold", "analysis.stock"):
+    for key in ("analysis.produced", "analysis.sold", "analysis.stock", "analysis.failed"):
         assert figure(html, key) == "0"
     assert DE["analysis.warning"] not in html
 

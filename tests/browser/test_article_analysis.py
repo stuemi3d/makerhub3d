@@ -29,7 +29,7 @@ def test_analysis_opens_from_the_tile_fits_the_screen_and_warns(
 
     admin_page.get_by_role("link", name=t("article.tile.analysis")).click()
     expect(admin_page.locator("h1")).to_contain_text(t("article.tile.analysis"))
-    expect(admin_page.locator(".stat")).to_have_count(11)
+    expect(admin_page.locator(".stat")).to_have_count(12)
     expect(admin_page.locator("body")).not_to_contain_text(t("analysis.warning"))
     assert fits_screen_width(admin_page)
 

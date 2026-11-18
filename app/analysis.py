@@ -38,6 +38,7 @@ class Figures:
     profit: Decimal | None
     profit_percent: Decimal | None
     hourly_wage: Decimal | None
+    failed: int
     # Percent of all pieces (good and failed) that failed
     failed_share: Decimal | None
 
@@ -96,7 +97,7 @@ def compute(db: Session, article_id: int) -> Figures:
     if planned is not None and cost_per_piece is not None:
         deviation = _divide((cost_per_piece - planned) * HUNDRED, planned)
     threshold = db.get(AppSettings, 1).deviation_threshold
-    warn = deviation is not None and deviation > threshold
+    warn = deviation is not None and abs(deviation) > threshold
 
     return Figures(
         produced=produced,
@@ -110,6 +111,7 @@ def compute(db: Session, article_id: int) -> Figures:
         profit=profit,
         profit_percent=profit_percent,
         hourly_wage=hourly_wage,
+        failed=failed,
         failed_share=_divide(Decimal(failed) * HUNDRED, Decimal(produced + failed)),
     )
 
@@ -143,5 +145,6 @@ def texts(figures: Figures, language: str) -> dict[str, str]:
         "produced": str(figures.produced),
         "sold": str(figures.sold),
         "stock": str(figures.stock),
+        "failed": str(figures.failed),
         "failed_share": _percent(figures.failed_share, language),
     }
