@@ -111,7 +111,7 @@ Der Artikel ist der Knotenpunkt; alles andere hängt über die Artikelnummer an 
 | Produktion | Liste erfolgreicher und fehlgeschlagener Bambuddy-Drucke; einen oder mehrere auswählen → Produktion mit einem Ergebnis-Artikel und den guten Stück; Kosten pro Stück in der Vorschau prüfen; oder „Ignorieren“ |
 | Verkäufe | Liste aller Verkäufe (Datum, Artikel, Menge, Preis pro Stück, Summe, Notiz, Status), filterbar nach Artikel; „Verkauf erfassen“ und Stornieren als Pop-ups; der Preis ist mit dem Soll-Verkaufspreis vorbelegt. Die Kachel „Verkäufe“ am Artikel öffnet dieselbe Liste, gefiltert |
 | Lager | Bestand je Artikel, Abgang/Korrektur von Hand, Bewegungsliste |
-| Auswertung | pro Artikel, pro Vorlage und gesamt |
+| Auswertung | pro Artikel und gesamt |
 | Einstellungen | Werte, Geräte, Bambuddy-Verbindung (mit Verbindungstest), Benutzer (nur Admin) |
 
 **Oberfläche und Bedienung** (in zwei Stufen):
@@ -179,7 +179,6 @@ Gerechnet wird in dieser Reihenfolge. Standardwerte (Ausschussquote, Gewinnaufsc
 ## 7. Auswertung und Dashboard
 
 - **Pro Artikel:** kalkulierte vs. tatsächliche Kosten pro Stück, Ø Verkaufspreis, Gewinn pro Stück (€ und %) und effektiver Stundenlohn – berechnet wie in Abschnitt 6 (Schritte 8 und 9), aber mit tatsächlichen Werten: echter Verkaufspreis und tatsächliche Produktionskosten statt Kalkulation (für „ohne Arbeitszeit“ werden die Arbeitskosten der Produktion herausgerechnet); produziert / verkauft / Bestand, Fehldruck-Anteil; Diagramm „Kosten pro Stück über die Zeit“; Warnung bei Abweichung über X % (Standard 15 %).
-- **Pro Vorlage:** alle Varianten nebeneinander.
 - **Gesamt (Zeitraum wählbar):** Umsatz, Kosten der verkauften Teile, Rohgewinn, Top/Flop, Lagerwert, Ladenhüter, Fehldruckkosten, CSV-Export.
 - **Kosten verkaufter Teile:** gleitender Durchschnitt; FIFO später umschaltbar.
 - **Dashboard:** Verkauf (Umsatz, Rohgewinn, Ø Marge), Produktion (Stück, Kosten, Druckstunden, kg Filament, kWh), Qualität (Fehldruckquote/-kosten), Lager (Lagerwert, unter Mindestbestand), Zu erledigen (nicht zugeordnete Drucke, Warnungen, Ladenhüter); Diagramm „Umsatz und Kosten pro Monat“.
@@ -308,7 +307,7 @@ Der Maintainer hat die frühere Bedingung („erst nach Alltagsnutzung von M1“
 **M4 – Verkauf und Auswertung**
 
 - [x] Verkauf von Hand (#201)
-- [ ] Auswertung pro Artikel, pro Vorlage, gesamt; Dashboard vollständig
+- [ ] Auswertung pro Artikel, gesamt; Dashboard vollständig
 - [ ] CSV-Export
 
 **M5 – Anbindung Rechnungs-Software (später)**
@@ -323,4 +322,5 @@ Der Maintainer hat die frühere Bedingung („erst nach Alltagsnutzung von M1“
 - Risiko: Bambuddy entwickelt sich sehr schnell → Anbindung in einem einzigen Baustein, Tests mit aufgezeichneten Antworten, Verbindungstest in den Einstellungen.
 - ~~**Umfang der tatsächlichen Kosten** (M2/M4)~~ Entschieden (Maintainer): Eine Produktion erfasst Material-, Strom- und **Maschinenkosten** (Druckstunden × Druckerstundensatz; der Verschleiß aus Bambuddy entfällt, weil er schon im Druckerstundensatz steckt, #135) sowie **Arbeitskosten** (Arbeitszeit × Stundensatz, #134). **Zusatzteile** gibt es in MakerHub 3D nicht (Entscheidung des Maintainers, #159); weder Kalkulation noch Produktion berücksichtigen sie.
 - ~~**Verkaufspreis bei einer Kalkulation an einer Vorlage** (M3)~~ Entfällt (Entscheidung des Maintainers, #180): Kalkulationen gibt es nur an Artikeln und Varianten, nie an Vorlagen.
+- ~~**Auswertung pro Vorlage** (M4)~~ Entfällt (Entscheidung des Maintainers, #205): Varianten sind normale Artikel und werden nicht miteinander verglichen; es gibt nur die Auswertung pro Artikel und die Gesamt-Auswertung.
 - ~~**Druckerstundensatz mit Trocknung** (M3)~~ Entschieden (Maintainer): Satz pro Drucker plus gemeinsamer Trocknungsaufschlag, ohne Strom beim Trockner; Formeln in Abschnitt 6.
