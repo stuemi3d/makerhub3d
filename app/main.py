@@ -30,6 +30,7 @@ from app import (
     two_factor,
 )
 from app.account_two_factor import add_two_factor_routes
+from app.analysis_pages import add_analysis_routes
 from app.article_pages import add_article_routes
 from app.backup_pages import add_backup_routes
 from app.bambuddy_pages import add_bambuddy_routes, connection_is_set_up
@@ -68,7 +69,7 @@ NAV_ITEMS = (
     {"key": "nav.production", "href": "/production", "permission": Permission.VIEW},
     {"key": "nav.stock", "href": "/stock", "permission": Permission.VIEW},
     {"key": "nav.sales", "href": "/sales", "permission": Permission.VIEW},
-    {"key": "nav.analysis", "href": None, "permission": Permission.VIEW},
+    {"key": "nav.analysis", "href": "/analysis", "permission": Permission.VIEW},
     # Open to everyone (issue #73): others only reach the appearance page, not the admin pages.
     {
         "key": "nav.settings",
@@ -607,6 +608,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     add_variant_bulk_routes(app, new_session, render, read_form)
     add_stock_routes(app, new_session, render, read_form, language)
     add_sales_routes(app, new_session, render, read_form, language)
+    add_analysis_routes(app, new_session, render, language)
     add_production_routes(app, new_session, bambuddy_cipher, render, read_form, language)
     add_calculation_routes(app, new_session, bambuddy_cipher, render, language, file_store)
     add_device_routes(app, new_session, bambuddy_cipher, render, read_form, language)

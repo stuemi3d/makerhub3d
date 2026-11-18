@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% from "_data_table.html" import head %}
+{% block title %}{{ t('analysis_total.title') }} – {{ app_name }}{% endblock %}
+{% macro line_table(id, lines, title_key, empty_key) %}
+<article class="data-card" id="{{ id }}">
+  <header class="card-head"><h2>{{ t(title_key) }}</h2></header>
+  {% if lines %}
+  <div class="data-scroll">
+    <table class="data-table">
+      <thead><tr>
+        {{ head(t('analysis_total.col.article')) }}
+        {{ head(t('analysis_total.col.name')) }}
+        {{ head(t('analysis_total.col.quantity'), numeric=true) }}
+        {{ head(t('analysis_total.col.revenue'), numeric=true) }}
+        {{ head(t('analysis_total.col.cost'), numeric=true) }}
+        {{ head(t('analysis_total.col.profit'), numeric=true) }}
+      </tr></thead>
+      <tbody>
+        {% for l in lines %}
+        <tr>
+          <td class="cell-strong"><a href="/articles/{{ l.article_id }}/analysis">{{ l.number }}</a></td>
+          <td>{{ l.name }}</td>
+          <td class="num">{{ l.quantity }}</td>
+          <td class="num">{{ money(l.revenue) }}</td>
+          <td class="num">{{ money(l.cost) }}</td>
+          <td class="num">{{ money(l.profit) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="chart-empty">{{ t(empty_key) }}</p>
+  {% endif %}
+</article>
+{% endmacro %}
+{% block content %}
+<h1>{{ t('analysis_total.title') }}</h1>
+<form method="get" action="/analysis">
+  <div class="field-grid field-grid-3">
+    <div>
+      <label for="period">{{ t('analysis_total.period') }}</label>
+      <select id="period" name="period">
+        {% for key in periods %}
+        <option value="{{ key }}" {{ 'selected' if period_choice.key == key }}>{{ t('analysis_total.period.' ~ key) }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label for="from">{{ t('analysis_total.from') }}</label>
+      <input type="date" id="from" name="from" value="{{ start_text if period_choice.key == 'custom' else '' }}">
+    </div>
+    <div>
+      <label for="to">{{ t('analysis_total.to') }}</label>
+      <input type="date" id="to" name="to" value="{{ end_text if period_choice.key == 'custom' else '' }}">
+    </div>
+  </div>
+  <button type="submit">{{ t('analysis_total.show') }}</button>
+</form>
+{% if period_choice.error %}
+<p role="alert"><mark>{{ t(period_choice.error) }}</mark></p>
+{% else %}
+<p>{{ t('analysis_total.shown_period') }} {{ period_text }}</p>
+<h2 class="stat-group">{{ t('analysis_total.group.sales') }}</h2>
+<div class="stats">
+  {% for key in ('revenue', 'cost_of_sold', 'gross_profit') %}
+  <article class="stat">
+    <p class="stat-label">{{ t('analysis_total.' ~ key) }}</p>
+    <p class="stat-value">{{ shown[key] }}</p>
+  </article>
+  {% endfor %}
+</div>
+<h2 class="stat-group">{{ t('analysis_total.group.other') }}</h2>
+<div class="stats">
+  {% for key in ('stock_value', 'failed_cost') %}
+  <article class="stat">
+    <p class="stat-label">{{ t('analysis_total.' ~ key) }}</p>
+    <p class="stat-value">{{ shown[key] }}</p>
+  </article>
+  {% endfor %}
+</div>
+{{ line_table('top', totals.top, 'analysis_total.top', 'analysis_total.empty.top') }}
+{{ line_table('flop', totals.flop, 'analysis_total.flop', 'analysis_total.empty.flop') }}
+<article class="data-card" id="slow">
+  <header class="card-head"><h2>{{ t('analysis_total.slow') }}</h2></header>
+  {% if totals.slow %}
+  <div class="data-scroll">
+    <table class="data-table">
+      <thead><tr>
+        {{ head(t('analysis_total.col.article')) }}
+        {{ head(t('analysis_total.col.name')) }}
+        {{ head(t('analysis_total.col.stock'), numeric=true) }}
+        {{ head(t('analysis_total.col.last_sale')) }}
+      </tr></thead>
+      <tbody>
+        {% for r in totals.slow %}
+        <tr>
+          <td class="cell-strong"><a href="/articles/{{ r.article_id }}/analysis">{{ r.number }}</a></td>
+          <td>{{ r.name }}</td>
+          <td class="num">{{ r.stock }}</td>
+          <td>{{ day(r.last_sale) if r.last_sale else t('analysis_total.never') }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="chart-empty">{{ t('analysis_total.empty.slow') }}</p>
+  {% endif %}
+</article>
+<p>{{ t('analysis_total.note') }}</p>
+{% endif %}
+{% endblock %}
