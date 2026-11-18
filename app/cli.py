@@ -7,6 +7,9 @@ MAKERHUB_2FA_KEY was lost. Nothing else changes; everybody can set it up again.
 
 reset-2fa <username>: turns it off for this one user only, e.g. when the only admin lost the
 phone and the recovery codes. Case does not matter, as at the login.
+
+restore <backup name>: puts a backup back (database and stored calculation files). The app
+must be stopped first (issue #195).
 """
 
 import sys
@@ -18,9 +21,10 @@ from app.config import Settings
 from app.db import make_engine, run_migrations
 from app.i18n import translate
 
-# Exit codes: 0 done, 1 unknown user, 2 wrong call.
+# Exit codes: 0 done, 1 unknown user, 2 wrong call, 3 restore failed (nothing changed).
 UNKNOWN_USER = 1
 USAGE = 2
+RESTORE_FAILED = 3
 
 
 def _reset_all(db: Session, language: str) -> tuple[str, int]:
@@ -42,9 +46,21 @@ def _reset_one(db: Session, language: str, username: str) -> tuple[str, int]:
     return translate(language, key), exit_code
 
 
+def _restore(settings: Settings, name: str) -> int:
+    try:
+        backup.restore(settings, name)
+    except backup.RestoreError:
+        print(translate(settings.language, "cli.restore.failed"), file=sys.stderr)
+        return RESTORE_FAILED
+    print(translate(settings.language, "cli.restore.done"))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     args = sys.argv[1:] if argv is None else argv
     settings = Settings.from_env()
+    if args and args[0] == "restore" and len(args) == 2:
+        return _restore(settings, args[1])
     if not args or args[0] != "reset-2fa" or len(args) > 2:
         print(translate(settings.language, "cli.usage"), file=sys.stderr)
         return USAGE

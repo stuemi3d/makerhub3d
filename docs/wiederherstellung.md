@@ -2,7 +2,7 @@
 
 ## Was gesichert wird
 
-Die App sichert ihre Datenbank (Artikel, Benutzer, Einstellungen, Protokolle) in den Ordner `/data/backups` im Container. Das ist das Volume `makerhub-data`, es bleibt bei einem Update erhalten.
+Die App sichert ihre Datenbank (Artikel, Benutzer, Einstellungen, Protokolle) **und die gespeicherten Kalkulations-Dateien** (`/data/calculation_files`, ohne noch nicht gespeicherte Uploads) in den Ordner `/data/backups` im Container. Das ist das Volume `makerhub-data`, es bleibt bei einem Update erhalten.
 
 | Art | Wann | Wie lange aufgehoben |
 | --- | --- | --- |
@@ -10,7 +10,7 @@ Die App sichert ihre Datenbank (Artikel, Benutzer, Einstellungen, Protokolle) in
 | Von Hand | Knopf „Jetzt sichern“ unter Einstellungen → Sicherung | wie die nächtlichen |
 | Vor Update (Migration) | automatisch beim Start, wenn die neue Version die Datenbank umbauen muss | die letzten 5 |
 
-Die Dateien heißen z. B. `makerhub3d-20261113-030000-daily.db` (Zeit in UTC; Art: `daily`, `manual` oder `premigration`). Sie sind nur für den App-Benutzer lesbar und enthalten alle Daten, auch Passwort-Prüfwerte und verschlüsselte Zwei-Faktor-Geheimnisse. Bewahre Kopien nur an sicheren Orten auf.
+Jede Sicherung ist ein Archiv und heißt z. B. `makerhub3d-20261113-030000-daily.zip` (Zeit in UTC; Art: `daily`, `manual` oder `premigration`). Darin liegen `makerhub3d.db` und der Ordner `calculation_files`. Ältere Sicherungen (vor dieser Änderung) sind einzelne `.db`-Dateien mit nur der Datenbank; sie bleiben sichtbar, werden nach denselben Regeln aufgeräumt und lassen sich weiter wiederherstellen (dann bleiben die vorhandenen Kalkulations-Dateien, wie sie sind). Alle Sicherungen sind nur für den App-Benutzer lesbar und enthalten alle Daten, auch Passwort-Prüfwerte und verschlüsselte Zwei-Faktor-Geheimnisse. Bewahre Kopien nur an sicheren Orten auf.
 
 Schlägt die Sicherung vor einem Update fehl, startet die App nicht (damit nichts verloren geht); der Grund steht im Protokoll: `docker compose logs app`.
 
@@ -40,14 +40,13 @@ Schritte (auf dem Server, im Ordner mit der `compose.yml`; `DATEI` ist der Name 
    docker compose stop
    ```
 
-2. Die Sicherung an die Stelle der Datenbank kopieren. Ein Hilfs-Container greift dafür auf dasselbe Volume zu; die Datenbank wird dabei ersetzt, deshalb vorher unbedingt prüfen, dass `DATEI` stimmt:
+2. Die Sicherung zurückspielen. Ein Hilfs-Container greift dafür auf dasselbe Volume zu. Datenbank und Kalkulations-Dateien werden dabei ersetzt (Dateien, die nach der Sicherung hinzukamen, sind danach weg), deshalb vorher unbedingt prüfen, dass `DATEI` stimmt:
 
    ```
-   docker compose run --rm --no-deps --entrypoint sh app -c \
-     'cp /data/backups/DATEI /data/makerhub3d.db && rm -f /data/makerhub3d.db-wal /data/makerhub3d.db-shm'
+   docker compose run --rm --no-deps app python -m app.cli restore DATEI
    ```
 
-   Das Volume wird dabei über die `compose.yml` automatisch eingehängt; du musst keinen Volume-Namen angeben. Hast du die Sicherung nur heruntergeladen und liegt sie nicht mehr im Ordner `/data/backups`, kopiere sie zuerst dorthin, z. B. mit `docker compose cp` (bei laufendem oder gestopptem Dienst) oder über einen Hilfs-Container.
+   Das Volume wird dabei über die `compose.yml` automatisch eingehängt; du musst keinen Volume-Namen angeben. Der Befehl prüft das Archiv zuerst und ändert nichts, wenn es nicht passt (Meldung „Nichts geändert“). Hast du die Sicherung nur heruntergeladen und liegt sie nicht mehr im Ordner `/data/backups`, kopiere sie zuerst dorthin, z. B. mit `docker compose cp` (bei laufendem oder gestopptem Dienst) oder über einen Hilfs-Container.
 
 3. App starten:
 
@@ -57,6 +56,6 @@ Schritte (auf dem Server, im Ordner mit der `compose.yml`; `DATEI` ist der Name 
 
 4. Prüfen: `docker compose ps` zeigt „healthy“, und du kannst dich anmelden. Die Daten entsprechen dem Stand der Sicherung; alles danach Eingegebene fehlt.
 
-Der Ablauf (Sicherung anlegen, Daten ändern, Datei zurückkopieren, App starten) wird in `tests/test_backup.py` automatisch geprüft.
+Der Ablauf (Sicherung anlegen, Daten und Dateien ändern, zurückspielen, App starten) wird in `tests/test_backup.py` automatisch geprüft.
 
 Wichtig: Der Schlüssel `MAKERHUB_SECRET_KEY` (oder der ältere Name `MAKERHUB_2FA_KEY`) in der `.env` muss derselbe sein wie zur Sicherungszeit, sonst startet die App nicht.
