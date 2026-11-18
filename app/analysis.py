@@ -7,6 +7,7 @@ Python as Decimal (it is stored as text, so the database must not add it up).
 """
 
 from dataclasses import dataclass
+from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
 
 from sqlalchemy import select
@@ -114,6 +115,62 @@ def compute(db: Session, article_id: int) -> Figures:
         failed=failed,
         failed_share=_divide(Decimal(failed) * HUNDRED, Decimal(produced + failed)),
     )
+
+
+@dataclass(frozen=True)
+class Point:
+    """One production on the chart: the day, the good pieces and the cost per piece."""
+
+    day: date
+    quantity: int
+    cost_per_piece: Decimal
+
+
+def cost_series(db: Session, article_id: int) -> list[Point]:
+    """One point per production that is not cancelled, oldest first (issue #204)."""
+    query = (
+        select(Production, ProductionResult)
+        .join(ProductionResult, ProductionResult.production_id == Production.id)
+        .where(ProductionResult.article_id == article_id, Production.cancelled.is_(False))
+        .order_by(Production.booked_on, Production.id)
+    )
+    return [
+        Point(item.booked_on, result.quantity, result.allocated_cost / result.quantity)
+        for item, result in db.execute(query)
+    ]
+
+
+def _cents(value: Decimal) -> str:
+    """Plain number text with a dot and two decimals; the chart reads it, no float on our side."""
+    return format(value.quantize(CENT, rounding=ROUND_HALF_UP), "f")
+
+
+def chart_data(points: list[Point], planned: Decimal | None, labels: dict[str, str], language: str):
+    """What the page hands to the chart script (as JSON in a data attribute)."""
+    return {
+        "points": [
+            {"date": p.day.isoformat(), "quantity": p.quantity, "cost": _cents(p.cost_per_piece)}
+            for p in points
+        ],
+        "planned": None if planned is None else _cents(planned),
+        "labels": labels,
+        "language": language,
+    }
+
+
+TABLE_LIMIT = 20
+
+
+def point_rows(points: list[Point], language: str) -> list[dict[str, str]]:
+    """The newest points as table rows for the page, oldest first (the chart shows all)."""
+    return [
+        {
+            "date": stock.format_date(p.day, language),
+            "quantity": str(p.quantity),
+            "cost": _money(p.cost_per_piece, language),
+        }
+        for p in points[-TABLE_LIMIT:]
+    ]
 
 
 def _money(value: Decimal | None, language: str) -> str:

@@ -1,7 +1,14 @@
 {% extends "base.html" %}
-{% from "_data_table.html" import chip with context %}
+{% from "_data_table.html" import chip, head with context %}
 {% set title = t('article.tile.analysis') %}
 {% block title %}{{ title }} – {{ article.number }} – {{ app_name }}{% endblock %}
+{% block head_scripts %}
+{% if point_rows %}
+{# Chart.js is delivered with the app (issue 204), never loaded from a foreign server. #}
+<script src="/static/chart.min.js" defer></script>
+<script src="/static/analysis_chart.js" defer></script>
+{% endif %}
+{% endblock %}
 {% block content %}
 <nav aria-label="breadcrumb">
   <ul>
@@ -30,5 +37,33 @@
   {% endfor %}
 </div>
 {% endfor %}
+<article class="data-card">
+  <header class="card-head"><h2>{{ t('analysis.chart.title') }}</h2></header>
+  {% if point_rows %}
+  <div class="chart-box">
+    {# The data sits in an attribute, escaped by tojson and the template; no inline script. #}
+    <canvas data-chart="{{ chart|tojson|forceescape }}" role="img" aria-label="{{ t('analysis.chart.summary') }}"></canvas>
+  </div>
+  <div class="data-scroll">
+    <table class="data-table">
+      <thead><tr>
+        {{ head(t('analysis.chart.date')) }}
+        {{ head(t('analysis.chart.pieces'), numeric=true) }}
+        {{ head(t('analysis.chart.cost'), numeric=true) }}
+      </tr></thead>
+      <tbody>
+        {% for row in point_rows %}
+        <tr><td>{{ row.date }}</td><td class="num">{{ row.quantity }}</td><td class="num">{{ row.cost }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if point_total > point_rows|length %}
+  <p class="chart-empty">{{ t('analysis.chart.limited').format(shown=point_rows|length, total=point_total) }}</p>
+  {% endif %}
+  {% else %}
+  <p class="chart-empty">{{ t('analysis.chart.empty') }}</p>
+  {% endif %}
+</article>
 <p>{{ t('analysis.note') }}</p>
 {% endblock %}
