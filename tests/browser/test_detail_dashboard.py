@@ -42,7 +42,7 @@ def test_edit_on_the_detail_updates_heading_and_path_without_reload(
     assert admin_page.evaluate("window.__stays === true"), "the page was reloaded"
     assert fits_screen_width(admin_page)
     # The tiles are still there and still lead on.
-    expect(admin_page.locator("a.tile")).to_have_count(5)
+    expect(admin_page.locator("a.tile")).to_have_count(4)
 
 
 def test_edit_errors_on_the_detail_stay_in_the_pop_up(admin_page: Page, viewport_name: str) -> None:

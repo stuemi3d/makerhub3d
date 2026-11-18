@@ -27,7 +27,8 @@ from tests.auth import (
 APP_DIR = Path(__file__).resolve().parent.parent / "app"
 DE = json.loads((APP_DIR / "locales" / "de.json").read_text(encoding="utf-8"))
 EN = json.loads((APP_DIR / "locales" / "en.json").read_text(encoding="utf-8"))
-SECTIONS = ["calculations", "productions", "stock", "sales", "analysis"]
+TILES = ["calculations", "productions", "stock", "sales"]
+SECTIONS = [*TILES, "analysis"]
 
 
 def db() -> Session:
@@ -284,7 +285,7 @@ def test_articles_cannot_be_deleted(client: AppClient) -> None:
 # --- Test cases 6 and 7: detail page with tiles ------------------------------------------
 
 
-def test_detail_shows_fields_and_five_tiles_with_count(client: AppClient) -> None:
+def test_detail_shows_fields_and_four_tiles_with_count(client: AppClient) -> None:
     create(client, selling_price="12,9", min_stock="5")
     article_id = articles()[0].id
 
@@ -293,7 +294,7 @@ def test_detail_shows_fields_and_five_tiles_with_count(client: AppClient) -> Non
     assert "3D-0001" in html
     assert "Kabelhalter" in html
     assert "12,90" in html
-    for section in SECTIONS:
+    for section in TILES:
         tile = re.search(rf'<a href="/articles/{article_id}/{section}"[^>]*>(.*?)</a>', html, re.S)
         assert tile, section
         assert DE[f"article.tile.{section}"] in tile.group(1)
@@ -323,6 +324,7 @@ def test_every_tile_opens_a_page_for_this_article(client: AppClient, section: st
         "productions": "article.productions.empty",
         "calculations": "calc.list.empty",
         "sales": "sales.list.empty",
+        "analysis": "analysis.cost_actual",
     }
     empty = own.get(section, "article.section.empty")
     assert DE[empty] in response.text
@@ -448,7 +450,7 @@ def test_templates_do_not_switch_off_escaping() -> None:
         "articles.html",
         "article_detail.html",
         "article_form.html",
-        "article_section.html",
+        "article_analysis.html",
     ):
         source = (APP_DIR / "templates" / name).read_text(encoding="utf-8")
         assert "|safe" not in source.replace(" ", "")

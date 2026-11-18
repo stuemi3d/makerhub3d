@@ -381,6 +381,11 @@
   margin: 0;
 }
 
+.stat-group {
+  margin: 1.5rem 0 0.75rem;
+  font-size: 1.1rem;
+}
+
 .stat-label {
   margin: 0;
   font-size: 0.875rem;
