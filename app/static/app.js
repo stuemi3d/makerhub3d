@@ -33,6 +33,33 @@
   });
 })();
 
+// Offers the target price when an article is chosen in the sale form (issue #201). Stops as soon
+// as the person has typed a price themselves. The form may arrive later in the pop-up.
+(() => {
+  const setUp = (root) => {
+    const select = root.querySelector("select[data-price-source]");
+    const input = root.querySelector("input[name='price']");
+    if (!select || !input || select.dataset.suggesting) return;
+    select.dataset.suggesting = "1";
+    let touched = input.value !== "" && select.selectedIndex <= 0;
+    input.addEventListener("input", () => {
+      touched = true;
+    });
+    select.addEventListener("change", () => {
+      const option = select.options[select.selectedIndex];
+      if (!touched || input.value === "") {
+        input.value = option && option.dataset.price ? option.dataset.price : "";
+        touched = false;
+      }
+    });
+  };
+  setUp(document);
+  document.body.addEventListener("htmx:afterSettle", (event) => {
+    const popupBody = document.getElementById("popup-body");
+    if (popupBody && event.detail.target === popupBody) setUp(popupBody);
+  });
+})();
+
 // Phone menu: the button folds the navigation entries in and out (issue #74).
 (() => {
   const toggle = document.querySelector(".nav-toggle");

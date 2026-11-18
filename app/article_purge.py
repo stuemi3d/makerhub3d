@@ -2,14 +2,14 @@
 
 The only exception to "never delete, only cancel" (plan, section 4): the article goes away
 together with everything that hangs on it. Calculations (issue #161) and productions
-(issue #118) are deleted with it; sales do not exist yet (their count is 0 until M4).
+(issue #118) and sales (issue #201) are deleted with it.
 """
 
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
-from app import audit, calc_store, stock
-from app.models import Article, Production, ProductionResult, StockMovement
+from app import audit, calc_store, sales, stock
+from app.models import Article, Production, ProductionResult, Sale, StockMovement
 
 # The kinds of records that can hang on an article, in the order the warning lists them.
 COUNT_KEYS = ("calculations", "productions", "stock_movements", "sales")
@@ -31,7 +31,7 @@ def counts(db: Session, article_id: int) -> dict[str, int]:
         "calculations": calc_store.count(db, article_id),
         "productions": count_productions(db, article_id),
         "stock_movements": stock.count_movements(db, article_id),
-        "sales": 0,
+        "sales": sales.count_all(db, article_id),
     }
 
 
@@ -71,6 +71,8 @@ def purge(db: Session, actor_id: int, article: Article) -> None:
         db.refresh(production)
         if not production.results:
             db.delete(production)
+    db.flush()
+    db.execute(delete(Sale).where(Sale.article_id == article.id))
     db.flush()
     # A cancellation points to its original; break these links before deleting both.
     db.execute(

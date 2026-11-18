@@ -1,0 +1,51 @@
+{% extends "_popup_layout.html" if popup else "base.html" %}
+{% from "_form_macros.html" import field_attrs, feedback %}
+{% block title %}{{ t('sales.new') }} – {{ app_name }}{% endblock %}
+{% block content %}
+{% if not popup %}
+<nav aria-label="breadcrumb">
+  <ul>
+    <li><a href="/sales">{{ t('sales.title') }}</a></li>
+    <li>{{ t('sales.new') }}</li>
+  </ul>
+</nav>
+{% endif %}
+<h1{% if popup %} id="popup-title"{% endif %}>{{ t('sales.new') }}</h1>
+{% if errors %}
+<p role="alert"><mark>{{ t('sales.has_errors') }}</mark></p>
+{% endif %}
+<form method="post" action="/sales/new" novalidate{% if popup %} hx-post="/sales/new" hx-target="#popup-body" hx-swap="innerHTML"{% endif %}>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label for="article_id">{{ t('sales.field.article_id') }}</label>
+  <select {{ field_attrs('article_id', errors) }} data-price-source{% if popup %} autofocus{% endif %}>
+    <option value="">{{ t('stock.choose') }}</option>
+    {% for a in articles %}
+    <option value="{{ a.id }}" data-price="{{ a.price }}"{% if values.get('article_id') == a.id|string %} selected{% endif %}>{{ a.number }} · {{ a.name }}</option>
+    {% endfor %}
+  </select>
+  {{ feedback('article_id', errors, t, 'sales.hint.') }}
+  <div class="field-grid field-grid-2">
+    <div>
+      <label for="quantity">{{ t('sales.field.quantity') }}</label>
+      <input type="text" inputmode="numeric" autocomplete="off" {{ field_attrs('quantity', errors) }} value="{{ values.get('quantity', '') }}">
+      {{ feedback('quantity', errors, t, 'sales.hint.') }}
+    </div>
+    <div>
+      <label for="price">{{ t('sales.field.price') }}</label>
+      <input type="text" inputmode="decimal" autocomplete="off" {{ field_attrs('price', errors) }} value="{{ values.get('price', '') }}">
+      {{ feedback('price', errors, t, 'sales.hint.') }}
+    </div>
+  </div>
+  <label for="date">{{ t('sales.field.date') }}</label>
+  <input type="date" max="{{ today }}" {{ field_attrs('date', errors) }} value="{{ values.get('date', '') }}">
+  {{ feedback('date', errors, t, 'sales.hint.') }}
+  <label for="note">{{ t('sales.field.note') }}</label>
+  <input type="text" maxlength="200" autocomplete="off" {{ field_attrs('note', errors) }} value="{{ values.get('note', '') }}">
+  {{ feedback('note', errors, t, 'sales.hint.') }}
+  <div class="form-actions">
+    <button type="submit">{{ t('sales.book') }}</button>
+    {% if popup %}<button type="button" class="secondary outline" data-popup-close>{{ t('article.cancel') }}</button>
+    {% else %}<a href="/sales" role="button" class="secondary outline">{{ t('article.cancel') }}</a>{% endif %}
+  </div>
+</form>
+{% endblock %}
