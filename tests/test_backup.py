@@ -6,6 +6,7 @@ import shutil
 import sqlite3
 import stat
 import threading
+import zipfile
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -13,10 +14,10 @@ from zoneinfo import ZoneInfo
 import pytest
 from sqlalchemy.orm import Session
 
-from app import backup
+from app import backup, cli
 from app.backup import BackupError, Kind
 from app.config import Settings
-from app.db import DATABASE_FILE, make_engine, run_migrations
+from app.db import make_engine, run_migrations
 from app.main import create_app
 from app.models import ChangeLogEntry, User
 from tests.auth import (
@@ -48,7 +49,18 @@ def make_database() -> Path:
     return current.database_path
 
 
+def database_of(path: Path) -> Path:
+    """The database inside a backup: a zip archive is unpacked next to it, an old .db is as is."""
+    if path.suffix != ".zip":
+        return path
+    target = path.with_suffix(".extracted.db")
+    with zipfile.ZipFile(path) as archive, archive.open("makerhub3d.db") as source:
+        target.write_bytes(source.read())
+    return target
+
+
 def usernames(database: Path) -> set[str]:
+    database = database_of(database)
     with Session(make_engine(database)) as session:
         return {user.username for user in session.query(User)}
 
@@ -115,7 +127,7 @@ def test_backup_while_the_app_writes_is_complete_and_intact() -> None:
 
     assert written[0] > 0
     for path in paths:
-        copy = sqlite3.connect(path)
+        copy = sqlite3.connect(database_of(path))
         assert copy.execute("PRAGMA integrity_check").fetchone() == ("ok",)
         copy.close()
 
@@ -318,7 +330,7 @@ def test_the_newest_5_pre_migration_backups_are_kept() -> None:
     backup.prune(settings().backup_dir, BERLIN)
 
     assert names(Kind.PREMIGRATION) == [
-        f"makerhub3d-202611{day:02d}-120000-premigration.db" for day in range(4, 9)
+        f"makerhub3d-202611{day:02d}-120000-premigration.zip" for day in range(4, 9)
     ]
 
 
@@ -352,11 +364,11 @@ def test_admin_sees_the_list_and_downloads_a_valid_database(client: AppClient) -
         assert item.name in page.text
         assert f"/settings/backups/{item.name}/download" in page.text
 
-    name = "makerhub3d-20261112-030000-daily.db"
+    name = "makerhub3d-20261112-030000-daily.zip"
     download = client.get(f"/settings/backups/{name}/download")
     assert download.status_code == 200
     assert "attachment" in download.headers["content-disposition"]
-    copy = settings().data_dir / "downloaded.db"
+    copy = settings().data_dir / "downloaded.zip"
     copy.write_bytes(download.content)
     assert usernames(copy)
 
@@ -377,7 +389,7 @@ def test_visitors_who_are_not_logged_in_are_sent_to_the_login(anon_client: AppCl
     add_user("anna", "admin")
     assert anon_client.get("/settings/backups", follow_redirects=False).status_code == 303
     response = anon_client.get(
-        "/settings/backups/makerhub3d-20261112-030000-daily.db/download", follow_redirects=False
+        "/settings/backups/makerhub3d-20261112-030000-daily.zip/download", follow_redirects=False
     )
     assert response.status_code == 303
     assert "/login" in response.headers["location"]
@@ -388,7 +400,7 @@ def test_visitors_who_are_not_logged_in_are_sent_to_the_login(anon_client: AppCl
     [
         "..%2Fmakerhub3d.db",
         "..%2F..%2Fetc%2Fpasswd",
-        "makerhub3d-20990101-000000-daily.db",  # fits the pattern but does not exist
+        "makerhub3d-20990101-000000-daily.zip",  # fits the pattern but does not exist
         "notes.txt",
     ],
 )
@@ -441,13 +453,8 @@ def test_restoring_a_backup_brings_the_old_data_back_and_the_app_starts() -> Non
     add_user("nachher", "admin")
     assert usernames(database) == {"vorher", "nachher"}
 
-    # The steps of the guide: app stopped (no engine open here), copy the file back.
-    shutil.copyfile(saved, database)
-    for leftover in (
-        database.with_name(DATABASE_FILE + "-wal"),
-        database.with_name(DATABASE_FILE + "-shm"),
-    ):
-        leftover.unlink(missing_ok=True)
+    # The steps of the guide: app stopped (no engine open here), restore with the command.
+    assert cli.main(["restore", saved.name]) == 0
 
     with AppClient(create_app()) as restarted:
         assert log_in(restarted, "vorher", OTHER_PASSWORD).status_code == 200
@@ -458,5 +465,334 @@ def test_restoring_a_backup_brings_the_old_data_back_and_the_app_starts() -> Non
 def test_the_guide_names_the_steps() -> None:
     guide = (ROOT / "docs" / "wiederherstellung.md").read_text(encoding="utf-8")
 
-    for part in ("docker compose stop", "/data/backups", "docker compose up -d", "premigration"):
+    for part in (
+        "docker compose stop",
+        "/data/backups",
+        "docker compose up -d",
+        "premigration",
+        "app.cli restore",
+        "calculation_files",
+    ):
         assert part in guide
+
+
+# --- Issue #195: the stored calculation files belong to the backup -----------------------
+
+STORED = "{:032x}.gcode.3mf"
+
+
+def files_dir() -> Path:
+    return settings().data_dir / "calculation_files"
+
+
+def put_file(number: int, content: bytes | None = None) -> Path:
+    folder = files_dir()
+    folder.mkdir(parents=True, exist_ok=True)
+    path = folder / STORED.format(number)
+    path.write_bytes(content or f"file {number}".encode())
+    return path
+
+
+def put_pending(token: str = "a" * 32) -> Path:
+    pending = files_dir() / "pending"
+    pending.mkdir(parents=True, exist_ok=True)
+    (pending / token).write_bytes(b"waiting")
+    return pending / token
+
+
+def archive_names(path: Path) -> set[str]:
+    with zipfile.ZipFile(path) as archive:
+        return set(archive.namelist())
+
+
+def test_195_1_the_backup_holds_the_database_and_every_stored_file() -> None:
+    make_database()
+    first, second = put_file(1), put_file(2, b"other")
+
+    path = backup.make_backup(settings(), Kind.MANUAL, at(2026, 11, 13))
+
+    assert path.suffix == ".zip"
+    assert archive_names(path) == {
+        "makerhub3d.db",
+        f"calculation_files/{first.name}",
+        f"calculation_files/{second.name}",
+    }
+    with zipfile.ZipFile(path) as archive:
+        assert archive.read(f"calculation_files/{second.name}") == b"other"
+
+
+def test_195_2_without_stored_files_the_backup_still_works() -> None:
+    make_database()
+
+    path = backup.make_backup(settings(), Kind.MANUAL, at(2026, 11, 13))
+
+    assert archive_names(path) == {"makerhub3d.db"}
+
+
+def test_195_3_waiting_uploads_and_foreign_files_are_not_in_the_backup() -> None:
+    make_database()
+    stored = put_file(1)
+    put_pending()
+    (files_dir() / "notes.txt").write_text("x", encoding="utf-8")
+
+    path = backup.make_backup(settings(), Kind.MANUAL, at(2026, 11, 13))
+
+    assert archive_names(path) == {"makerhub3d.db", f"calculation_files/{stored.name}"}
+
+
+def test_195_4_nightly_and_pre_migration_backups_hold_the_files(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    make_database()
+    stored = put_file(1)
+
+    nightly = backup.run_nightly(settings(), at(2026, 11, 13))
+    monkeypatch.setattr("app.db.head_revision", lambda: "9999")
+    with AppClient(create_app()):
+        pass
+
+    [before] = [
+        i for i in backup.list_backups(settings().backup_dir) if i.kind == Kind.PREMIGRATION
+    ]
+    for path in (nightly, settings().backup_dir / before.name):
+        assert f"calculation_files/{stored.name}" in archive_names(path)
+
+
+def test_195_5_the_download_is_the_archive_with_the_files(client: AppClient) -> None:
+    stored = put_file(1)
+    client.post("/settings/backups", data={})
+    [item] = backup.list_backups(settings().backup_dir)
+
+    download = client.get(f"/settings/backups/{item.name}/download")
+
+    assert download.status_code == 200
+    copy = settings().data_dir / "downloaded.zip"
+    copy.write_bytes(download.content)
+    assert f"calculation_files/{stored.name}" in archive_names(copy)
+
+
+def test_195_6_no_leftover_after_a_failure_and_the_archive_is_private() -> None:
+    make_database()
+    put_file(1)
+    path = backup.make_backup(settings(), Kind.MANUAL, at(2026, 11, 13))
+    assert stat.S_IMODE(path.stat().st_mode) == 0o600
+    assert list(settings().backup_dir.glob(".tmp-*")) == []
+
+
+def test_195_7_an_unreadable_file_fails_the_backup_without_a_leftover(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    make_database()
+    broken = put_file(1)
+    original = zipfile.ZipFile.write
+
+    def write(self, filename, *args, **kwargs):
+        if Path(filename) == broken:
+            raise PermissionError
+        return original(self, filename, *args, **kwargs)
+
+    monkeypatch.setattr(zipfile.ZipFile, "write", write)
+
+    with pytest.raises(BackupError):
+        backup.make_backup(settings(), Kind.MANUAL, at(2026, 11, 13))
+
+    assert backup.list_backups(settings().backup_dir) == []
+    assert list(settings().backup_dir.glob(".tmp-*")) == []
+
+
+def test_195_7_a_failed_backup_before_a_migration_stops_the_start_also_for_files(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    make_database()
+    put_file(1)
+
+    def fail(*args, **kwargs):
+        raise BackupError("x")
+
+    monkeypatch.setattr("app.backup.create_backup", fail)
+    monkeypatch.setattr("app.db.head_revision", lambda: "9999")
+
+    with pytest.raises(BackupError), AppClient(create_app()):
+        pass
+
+
+def test_195_8_old_db_backups_are_listed_kept_by_the_same_rules_and_foreign_files_stay() -> None:
+    make_database()
+    folder = settings().backup_dir
+    folder.mkdir(parents=True, exist_ok=True)
+    for day in range(1, 21):  # 20 old-style backups plus 20 new ones, on the same days
+        (folder / f"makerhub3d-202610{day:02d}-030000-daily.db").write_bytes(b"old")
+    for back in range(20):
+        put_backup(Kind.DAILY, at(2026, 11, 20) - timedelta(days=back))
+    (folder / "notes.txt").write_text("keep", encoding="utf-8")
+
+    backup.prune(folder, BERLIN)
+
+    kept = backup.list_backups(folder)
+    assert any(item.name.endswith(".zip") for item in kept)
+    # old and new backups count together: the newest 14 days stay, all of them from November
+    november = {item.name for item in kept if item.name.startswith("makerhub3d-202611")}
+    assert len(november) == backup.DAYS_KEPT
+    assert not (
+        folder / "makerhub3d-20261001-030000-daily.db"
+    ).exists()  # beyond 14 days, not month end
+    assert (folder / "makerhub3d-20261020-030000-daily.db").exists()  # last backup of October
+    assert (folder / "notes.txt").exists()
+
+
+def test_195_8_an_old_db_backup_is_listed_with_its_kind_and_size(client: AppClient) -> None:
+    folder = settings().backup_dir
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / "makerhub3d-20261001-030000-daily.db").write_bytes(b"x" * 2048)
+    put_backup(Kind.MANUAL, at(2026, 11, 13))
+
+    page = client.get("/settings/backups").text
+
+    assert "makerhub3d-20261001-030000-daily.db" in page
+    assert "makerhub3d-20261113-030000-manual.zip" in page
+    assert "2 kB" in page
+    assert (
+        client.get("/settings/backups/makerhub3d-20261001-030000-daily.db/download").status_code
+        == 200
+    )
+
+
+def test_195_9_restoring_brings_database_and_files_back() -> None:
+    database = make_database()
+    add_user("vorher", "admin")
+    kept, removed_later = put_file(1, b"kept"), put_file(2, b"gone later")
+    saved = backup.make_backup(settings(), Kind.MANUAL, at(2026, 11, 13))
+    add_user("nachher", "admin")
+    kept.write_bytes(b"changed")
+    removed_later.unlink()
+    added_later = put_file(3)
+    waiting = put_pending()
+
+    assert cli.main(["restore", saved.name]) == 0
+
+    assert kept.read_bytes() == b"kept"
+    assert removed_later.read_bytes() == b"gone later"
+    assert not added_later.exists()
+    assert waiting.exists()
+    assert usernames(database) == {"vorher"}
+    with AppClient(create_app()) as restarted:
+        assert log_in(restarted, "vorher", OTHER_PASSWORD).status_code == 200
+
+
+def test_195_10_restoring_an_old_db_backup_keeps_the_files() -> None:
+    database = make_database()
+    add_user("vorher", "admin")
+    folder = settings().backup_dir
+    folder.mkdir(parents=True, exist_ok=True)
+    old = folder / "makerhub3d-20261001-030000-manual.db"
+    shutil.copyfile(database, old)
+    add_user("nachher", "admin")
+    stored = put_file(1)
+
+    assert cli.main(["restore", old.name]) == 0
+
+    assert usernames(database) == {"vorher"}
+    assert stored.exists()
+
+
+def _evil_archive(entry: str) -> str:
+    database = make_database()
+    put_file(1)
+    folder = settings().backup_dir
+    folder.mkdir(parents=True, exist_ok=True)
+    name = "makerhub3d-20261113-030000-manual.zip"
+    with zipfile.ZipFile(folder / name, "w") as archive:
+        archive.write(database, "makerhub3d.db")
+        archive.writestr(entry, "evil")
+    return name
+
+
+@pytest.mark.parametrize(
+    "entry",
+    [
+        "calculation_files/../evil.txt",
+        "../evil.txt",
+        "/evil.txt",
+        "calculation_files/notes.txt",
+        "calculation_files/pending/" + "a" * 32,
+        "other/" + "0" * 32 + ".gcode.3mf",
+    ],
+)
+def test_195_11_an_archive_with_unexpected_entries_changes_nothing(entry: str) -> None:
+    name = _evil_archive(entry)
+    add_user("nachher", "admin")
+    stored = files_dir() / STORED.format(1)
+    before = stored.read_bytes()
+
+    assert cli.main(["restore", name]) != 0
+
+    assert usernames(settings().database_path) == {"nachher"}
+    assert stored.read_bytes() == before
+    assert not (settings().data_dir.parent / "evil.txt").exists()
+    assert list(settings().data_dir.glob(".restore-*")) == []
+
+
+def test_195_11_an_unknown_or_dangerous_name_changes_nothing() -> None:
+    make_database()
+    add_user("nachher", "admin")
+
+    for name in ("../makerhub3d.db", "notes.txt", "makerhub3d-20990101-000000-daily.zip"):
+        assert cli.main(["restore", name]) != 0
+    assert usernames(settings().database_path) == {"nachher"}
+
+
+def test_195_12_the_plan_no_longer_says_the_files_are_not_backed_up() -> None:
+    plan = (ROOT / "docs" / "plan.md").read_text(encoding="utf-8")
+
+    assert "werden noch nicht gesichert" not in plan
+
+
+def test_195_13_restored_files_are_private() -> None:
+    database = make_database()
+    stored = put_file(1)
+    saved = backup.make_backup(settings(), Kind.MANUAL, at(2026, 11, 13))
+    os.umask(0o022)
+
+    assert cli.main(["restore", saved.name]) == 0
+
+    assert stat.S_IMODE(database.stat().st_mode) == 0o600
+    assert stat.S_IMODE(stored.stat().st_mode) == 0o600
+
+
+def test_195_13_a_broken_archive_or_database_changes_nothing() -> None:
+    make_database()
+    add_user("nachher", "admin")
+    folder = settings().backup_dir
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / "makerhub3d-20261113-030000-manual.zip").write_bytes(b"no zip")
+    with zipfile.ZipFile(folder / "makerhub3d-20261113-040000-manual.zip", "w") as archive:
+        archive.writestr("makerhub3d.db", "not a database")
+    (folder / "makerhub3d-20261001-030000-manual.db").write_bytes(b"not a database")
+
+    for name in sorted(p.name for p in folder.iterdir()):
+        assert cli.main(["restore", name]) != 0
+
+    assert usernames(settings().database_path) == {"nachher"}
+    assert list(settings().data_dir.glob(".restore-*")) == []
+
+
+def test_195_13_a_failure_while_replacing_files_is_reported_and_keeps_the_database(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    make_database()
+    add_user("vorher", "admin")
+    put_file(1)
+    saved = backup.make_backup(settings(), Kind.MANUAL, at(2026, 11, 13))
+    add_user("nachher", "admin")
+
+    def fail(*args, **kwargs):
+        raise PermissionError
+
+    monkeypatch.setattr("app.backup.os.replace", fail)
+
+    assert cli.main(["restore", saved.name]) == backup_exit_code()
+    assert usernames(settings().database_path) == {"vorher", "nachher"}
+
+
+def backup_exit_code() -> int:
+    return cli.RESTORE_FAILED
