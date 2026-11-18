@@ -58,6 +58,9 @@
       </tbody>
     </table>
   </div>
+  {% if point_total > point_rows|length %}
+  <p class="chart-empty">{{ t('analysis.chart.limited').format(shown=point_rows|length, total=point_total) }}</p>
+  {% endif %}
   {% else %}
   <p class="chart-empty">{{ t('analysis.chart.empty') }}</p>
   {% endif %}

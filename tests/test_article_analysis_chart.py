@@ -175,3 +175,28 @@ def test_chart_texts_exist_in_both_languages() -> None:
     keys = [k for k in DE if k.startswith("analysis.chart.")]
     assert len(keys) >= 6
     assert {k for k in EN if k.startswith("analysis.chart.")} == set(keys)
+
+
+# Limit of the table (answer to the maintainer's question on the pull request)
+def test_the_table_shows_only_the_last_20_productions_but_the_chart_all(
+    client: AppClient,
+) -> None:
+    article_id = add_article()
+    for day in range(1, 26):
+        book_on(article_id, date(2026, 10, day), 1, f"{day}.00")
+    html = page(client, article_id)
+    assert len(chart_data(html)["points"]) == 25
+    rows = re.findall(r"<tr><td>(.*?)</td>", html)
+    assert len(rows) == 20
+    # The newest 20, oldest of them first: 6 to 25 October
+    assert rows[0] == "06.10.2026" and rows[-1] == "25.10.2026"
+    assert DE["analysis.chart.limited"].format(shown=20, total=25) in text(html)
+
+
+def test_up_to_20_productions_show_no_limit_hint(client: AppClient) -> None:
+    article_id = add_article()
+    for day in range(1, 21):
+        book_on(article_id, date(2026, 10, day), 1, f"{day}.00")
+    html = page(client, article_id)
+    assert len(re.findall(r"<tr><td>", html)) == 20
+    assert DE["analysis.chart.limited"].split("{")[0] not in text(html)

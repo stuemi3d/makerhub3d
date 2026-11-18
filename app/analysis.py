@@ -158,15 +158,18 @@ def chart_data(points: list[Point], planned: Decimal | None, labels: dict[str, s
     }
 
 
+TABLE_LIMIT = 20
+
+
 def point_rows(points: list[Point], language: str) -> list[dict[str, str]]:
-    """The same points as table rows for the page."""
+    """The newest points as table rows for the page, oldest first (the chart shows all)."""
     return [
         {
             "date": stock.format_date(p.day, language),
             "quantity": str(p.quantity),
             "cost": _money(p.cost_per_piece, language),
         }
-        for p in points
+        for p in points[-TABLE_LIMIT:]
     ]
 
 

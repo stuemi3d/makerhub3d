@@ -327,6 +327,7 @@
   "analysis.chart.actual": "Tatsächlich",
   "analysis.chart.planned": "Kalkuliert",
   "analysis.chart.summary": "Liniendiagramm: Kosten pro Stück je Produktion",
+  "analysis.chart.limited": "Die letzten {shown} von {total} Produktionen. Das Diagramm zeigt alle.",
   "article.section.empty": "Noch keine Einträge.",
   "log.action.article.created": "Artikel angelegt",
   "log.action.article.changed": "Artikel geändert",

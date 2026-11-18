@@ -595,4 +595,5 @@ def add_article_routes(
             shown=analysis.texts(figures, language),
             chart=analysis.chart_data(points, figures.planned_cost, labels, language),
             point_rows=analysis.point_rows(points, language),
+            point_total=len(points),
         )
