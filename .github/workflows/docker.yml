@@ -1,6 +1,10 @@
 # Builds the container image and scans it with Trivy for every pull request and push to main.
-# Only after a push to main, and only when build and scan are green, the scanned image is
-# published to ghcr.io. Pull requests never publish. Nothing is deployed.
+# Only when build and scan are green, the scanned image is published to ghcr.io:
+# - after a push to main as "latest" and the short commit hash,
+# - for a pull request of this repository (never from a fork) as "pr-<number>", so the
+#   maintainer can try it out without merging (issue #198). The tag is overwritten on every
+#   push; the cleanup workflow deletes it when the pull request is closed.
+# Nothing is deployed.
 name: Docker
 
 on:
@@ -110,3 +114,42 @@ jobs:
           docker tag makerhub3d:ci "$IMAGE:$SHORT_SHA"
           docker push "$IMAGE:$SHORT_SHA"
           docker push "$IMAGE:latest"
+
+  publish-pr:
+    name: Test-Image des Pull Requests veröffentlichen (ghcr.io)
+    needs: image
+    # Not for forks (no write token there, and foreign code must not publish) and not for
+    # Dependabot (its token is read-only).
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    # Write access only to packages.
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Download scanned image
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: image
+
+      - name: Load scanned image
+        run: docker load --input image.tar
+
+      - name: Log in to ghcr.io
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tag and push (pr-number only)
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          IMAGE="ghcr.io/${GITHUB_REPOSITORY,,}"
+          docker tag makerhub3d:ci "$IMAGE:pr-${PR_NUMBER}"
+          docker push "$IMAGE:pr-${PR_NUMBER}"
