@@ -168,6 +168,7 @@ def test_the_data_is_embedded_safely(client: AppClient) -> None:
     data = chart_data(html)
     assert data["labels"]["actual"] == DE["analysis.chart.actual"]
     assert data["labels"]["planned"] == DE["analysis.chart.planned"]
+    assert data["labels"]["pieces"] == DE["analysis.chart.pieces"]
     assert set(data) == {"points", "planned", "labels", "language"}
 
 

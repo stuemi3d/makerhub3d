@@ -23,6 +23,9 @@
     });
   const costs = data.points.map((point) => Number(point.cost));
 
+  // Many points would melt into one thick line: smaller markers, none at all from 200 points.
+  const markerSize = costs.length > 200 ? 0 : costs.length > 60 ? 2 : 4;
+
   const datasets = () => {
     const sets = [
       {
@@ -31,7 +34,8 @@
         borderColor: color("--mh-accent"),
         backgroundColor: color("--mh-accent"),
         tension: 0,
-        pointRadius: 4,
+        pointRadius: markerSize,
+        pointHoverRadius: 5,
       },
     ];
     if (data.planned !== null) {
@@ -54,6 +58,8 @@
       responsive: true,
       maintainAspectRatio: false,
       animation: false,
+      // The values show up as soon as the mouse is near a day, not only exactly on a point
+      interaction: { mode: "index", intersect: false },
       scales: {
         x: { ticks: { color: color("--mh-text-muted") }, grid: { color: color("--mh-border") } },
         y: {
@@ -64,7 +70,13 @@
       },
       plugins: {
         legend: { labels: { color: color("--mh-text") } },
-        tooltip: { callbacks: { label: (item) => `${item.dataset.label}: ${euro(item.parsed.y)}` } },
+        tooltip: {
+          callbacks: {
+            label: (item) => `${item.dataset.label}: ${euro(item.parsed.y)}`,
+            footer: (items) =>
+              `${data.labels.pieces}: ${data.points[items[0].dataIndex].quantity}`,
+          },
+        },
       },
     },
   });

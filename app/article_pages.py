@@ -584,7 +584,7 @@ def add_article_routes(
             points = analysis.cost_series(db, article_id)
         labels = {
             key: translate(language, f"analysis.chart.{key}")
-            for key in ("actual", "planned", "summary")
+            for key in ("actual", "planned", "pieces", "summary")
         }
         return render(
             request,
