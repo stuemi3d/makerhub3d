@@ -213,7 +213,7 @@ Das Tool wird von Anfang an so gebaut, dass es als Open Source veröffentlicht *
 
 **Container:** läuft als normaler Benutzer, kein Docker-Socket, `cap_drop: ALL`, `no-new-privileges`, schreibgeschütztes Dateisystem außer `/data` und temporärem Ordner; die App lauscht im Container auf `0.0.0.0`, der Port wird auf dem Server nur auf `127.0.0.1` veröffentlicht und ist nur über den Reverse Proxy erreichbar. Uploads mit Größenlimit, nur Metadaten auslesen, Schutz gegen manipulierte ZIP-Dateien (3MF), Datei danach löschen.
 
-**Datei-Uploads:** Hochgeladene `.gcode.3mf`-Dateien (Kalkulation) haben ein Größenlimit und eine Typprüfung, werden nur in einem temporären Ordner ausgepackt und unter einem erzeugten Namen in `/data` abgelegt (nie unter dem Dateinamen des Nutzers). Ob die gespeicherten Dateien zur Sicherung gehören, wird in #182 entschieden (Empfehlung: ja).
+**Datei-Uploads:** Hochgeladene `.gcode.3mf`-Dateien (Kalkulation) haben ein Größenlimit und eine Typprüfung, werden nur in einem temporären Ordner ausgepackt und unter einem erzeugten Namen in `/data` abgelegt (nie unter dem Dateinamen des Nutzers). Die gespeicherten Dateien (`/data/calculation_files`) sollen zur Sicherung gehören; das kommt als eigene Folgeaufgabe, bis dahin werden sie noch nicht gesichert.
 
 **Datensicherung:** nächtliche Sicherung der Datenbank nach `/data/backups` über die SQLite-Backup-Funktion; 14 Tages- und 12 Monatssicherungen; automatische Sicherung vor jeder Migration; „Sicherung herunterladen“ für Admins; getestete Wiederherstellung mit Anleitung.
 
@@ -302,7 +302,7 @@ Der Maintainer hat die frühere Bedingung („erst nach Alltagsnutzung von M1“
 - [x] Produktion: Maschinensatz des Druckers aus den Geräten, Einstellungswert entfällt (#162)
 - [ ] Kalkulation, Teil 1: von Hand rechnen und am Artikel speichern (#161)
 - [x] Kalkulation, Teil 2: mit `.gcode.3mf`-Datei (#181)
-- [ ] Kalkulation, Teil 3: Datei mit der Kalkulation speichern (#182)
+- [x] Kalkulation, Teil 3: Datei mit der Kalkulation speichern (#182)
 
 **M4 – Verkauf und Auswertung**
 

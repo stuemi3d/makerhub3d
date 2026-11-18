@@ -19,6 +19,7 @@
   {% if article_id %}<input type="hidden" name="article" value="{{ article_id }}">{% endif %}
   <input type="hidden" name="plates" value="{{ payload }}">
   <input type="hidden" name="file_name" value="{{ file_name }}">
+  <input type="hidden" name="file_token" value="{{ file_token }}">
   <input type="hidden" name="file_printer" value="{{ file_printer }}">
   <input type="hidden" name="file_model" value="{{ file_model }}">
   {% if error %}<p role="alert"><mark id="plate-error">{{ t(error) }}</mark></p>{% endif %}

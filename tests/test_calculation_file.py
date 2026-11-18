@@ -66,7 +66,15 @@ def take(ready: Ready, page: str, picked: list[str], **over: str):
     """Chooses plates on the answer of the upload."""
     form = {
         name: hidden(page, name)
-        for name in ("printer", "plates", "file_name", "file_printer", "file_model", "article")
+        for name in (
+            "printer",
+            "plates",
+            "file_name",
+            "file_token",
+            "file_printer",
+            "file_model",
+            "article",
+        )
         if f'name="{name}"' in page
     }
     form["plate"] = picked

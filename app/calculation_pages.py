@@ -8,12 +8,13 @@ edit. A calculation lives under its own number, its article follows from it.
 
 import re
 from collections.abc import Callable
+from datetime import date
 from urllib.parse import quote
 
 import httpx2
 from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.concurrency import run_in_threadpool
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from starlette.datastructures import UploadFile
@@ -29,6 +30,7 @@ from app import (
     variants,
 )
 from app.article_pages import confirmed, varied, wants_popup
+from app.calculation_file_store import FileStore
 from app.models import AppSettings, Article, Calculation, Device, PrinterModel
 from app.permissions import Permission, has_permission, requires
 from app.two_factor import Cipher
@@ -36,6 +38,7 @@ from app.two_factor import Cipher
 MAX_ID = 2**31 - 1
 _ID = re.compile(r"[0-9]{1,10}")
 LIST = "/calculation"
+FILE_SUFFIX = ".gcode.3mf"
 
 
 def number(text: str) -> int:
@@ -43,6 +46,12 @@ def number(text: str) -> int:
     if not _ID.fullmatch(text) or not 0 < int(text) <= MAX_ID:
         raise HTTPException(status_code=404)
     return int(text)
+
+
+def download_name(number: str, day: date) -> str:
+    """The name of the downloaded file: article number and date, safe for every system."""
+    clean = re.sub(r"[^A-Za-z0-9._-]+", "_", number).strip("._") or "calculation"
+    return f"{clean}-{day.isoformat()}{FILE_SUFFIX}"
 
 
 def back_to_list(article: Article, filter_text: str, flag: str) -> str:
@@ -59,6 +68,7 @@ def add_calculation_routes(
     cipher: Cipher | None,
     render: Callable[..., HTMLResponse],
     language: str,
+    file_store: FileStore,
 ) -> None:
     view_right = [requires(Permission.VIEW)]
     edit_right = [requires(Permission.EDIT)]
@@ -214,6 +224,12 @@ def add_calculation_routes(
                 source = stored_of(db, number(copy_text))
                 draft = calc_store.draft_of(source, language)
                 article_id = source.article_id
+                # The copy gets its own file
+                draft.file_token = (
+                    file_store.copy_of(source.file_stored) if can_edit(request) else ""
+                ) or ""
+                if not draft.file_token:
+                    draft.file_name = ""
         return page(request, draft, article_id, f"{LIST}/new", filter_text)[0]
 
     @app.get(f"{LIST}/new", response_class=HTMLResponse, dependencies=view_right)
@@ -293,6 +309,7 @@ def add_calculation_routes(
                 picked=picked,
                 error=error,
                 file_name=info["file_name"],
+                file_token=info["file_token"],
                 file_printer=info["file_printer"],
                 file_model=info["file_model"],
             )
@@ -326,7 +343,9 @@ def add_calculation_routes(
             return file_page(request, article_id, printer, errors)
         payload = calculation_files.payload_of(found)
         plates = calculation_files.plates_of(payload)
+        token = await run_in_threadpool(file_store.keep, data)
         info = {
+            "file_token": token,
             "file_name": name,
             "file_printer": (found.printer_name or "")[: calculation_files.MAX_NAME],
             "file_model": (found.printer_model or "")[: calculation_files.MAX_NAME],
@@ -350,6 +369,7 @@ def add_calculation_routes(
         printer = text("printer", 12)
         payload = form.get("plates")
         info = {
+            "file_token": text("file_token", 32),
             "file_name": text("file_name", calculation_files.MAX_NAME),
             "file_printer": text("file_printer", calculation_files.MAX_NAME),
             "file_model": text("file_model", calculation_files.MAX_NAME),
@@ -371,6 +391,7 @@ def add_calculation_routes(
             print_minutes=minutes,
             rows=rows,
             file_name=info["file_name"],
+            file_token=info["file_token"],
             file_plates=numbers_text,
             file_printer=info["file_printer"],
             file_model=info["file_model"],
@@ -379,6 +400,27 @@ def add_calculation_routes(
         return await run_in_threadpool(
             lambda: page(request, draft, article_id, f"{LIST}/new", filter_text)[0]
         )
+
+    def gone_page(
+        request: Request,
+        draft: calc_form.Draft,
+        article_id: int,
+        form_action: str,
+        filter_text: str,
+        editing: bool,
+    ) -> Response:
+        """The waiting upload is not there any more: the form again, with a notice."""
+        return page(
+            request,
+            draft,
+            article_id,
+            form_action,
+            filter_text,
+            422,
+            {"file": "calc.file.error.gone"},
+            save_failed=True,
+            editing=editing,
+        )[0]
 
     def work(
         request: Request,
@@ -413,14 +455,36 @@ def add_calculation_routes(
         )
         if outcome.plan is None:
             return response
-        with new_session() as db, db.begin():
-            article = article_of(db, article_id)
-            if item_id is None:
-                calc_store.create(db, request.state.user.id, article, outcome.plan, language)
-            else:
-                item = stored_of(db, item_id)
-                calc_store.update(db, request.state.user.id, article, item, outcome.plan, language)
-            target = back_to_list(article, filter_text, "saved")
+        wants_file = item_id is None and bool(draft.file_token)
+        if wants_file and not file_store.has_pending(draft.file_token):
+            return gone_page(request, draft, article_id, form_action, filter_text, editing)
+        stored_name: str | None = None
+        if wants_file:
+            stored_name = file_store.adopt(draft.file_token)
+            if stored_name is None:
+                return gone_page(request, draft, article_id, form_action, filter_text, editing)
+        try:
+            with new_session() as db, db.begin():
+                article = article_of(db, article_id)
+                if item_id is None:
+                    file = (
+                        (draft.file_name or f"calculation{FILE_SUFFIX}", stored_name)
+                        if stored_name
+                        else None
+                    )
+                    calc_store.create(
+                        db, request.state.user.id, article, outcome.plan, language, file
+                    )
+                else:
+                    item = stored_of(db, item_id)
+                    calc_store.update(
+                        db, request.state.user.id, article, item, outcome.plan, language
+                    )
+                target = back_to_list(article, filter_text, "saved")
+        except BaseException:
+            # Nothing was saved, so the file must not stay behind
+            file_store.delete(stored_name)
+            raise
         if wants_popup(request):
             return Response(status_code=204, headers={"HX-Redirect": target})
         return RedirectResponse(target, status_code=303)
@@ -452,6 +516,7 @@ def add_calculation_routes(
                 "date": stock.format_date(item.created_on, language),
                 "printer": item.printer_name,
                 "is_main": item.is_main,
+                "file_name": item.file_name if file_store.path_of(item.file_stored) else None,
                 "print_minutes": production_form.input_text(item.print_minutes, language),
                 "pieces": item.pieces,
                 "setup": production_form.input_text(item.setup_minutes, language),
@@ -489,6 +554,22 @@ def add_calculation_routes(
                 article=article_view,
                 item=shown,
             )
+        )
+
+    @app.get(LIST + "/{calculation_id}/file", dependencies=view_right)
+    def download_calculation_file(calculation_id: int) -> Response:
+        with new_session() as db:
+            item = stored_of(db, calculation_id)
+            article = article_of(db, item.article_id)
+            path = file_store.path_of(item.file_stored)
+            name = download_name(article.number, item.created_on)
+        if path is None:
+            raise HTTPException(status_code=404)
+        return FileResponse(
+            path,
+            media_type="application/octet-stream",
+            filename=name,
+            headers={"X-Content-Type-Options": "nosniff"},
         )
 
     @app.get(LIST + "/{calculation_id}/edit", response_class=HTMLResponse, dependencies=edit_right)

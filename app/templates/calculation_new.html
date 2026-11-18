@@ -25,10 +25,12 @@
   {% if filter_text %}<input type="hidden" name="filter" value="{{ filter_text }}">{% endif %}
   {% if draft.file_name %}
   <input type="hidden" name="file_name" value="{{ draft.file_name }}">
+  {% if draft.file_token %}<input type="hidden" name="file_token" value="{{ draft.file_token }}">{% endif %}
   <input type="hidden" name="file_plates" value="{{ draft.file_plates }}">
   <input type="hidden" name="file_printer" value="{{ draft.file_printer }}">
   <input type="hidden" name="file_model" value="{{ draft.file_model }}">
   <p role="status"><small>{{ t('calc.file.from') }}: <strong>{{ draft.file_name }}</strong>{% if draft.file_plates %} · {{ t('calc.file.from_plates') }} {{ draft.file_plates }}{% endif %}</small></p>
+  {% if errors.get('file') %}<p role="alert"><mark id="file-error">{{ t(errors['file']) }}</mark></p>{% endif %}
   {% if file_hint %}<p role="status"><mark id="file-printer-hint">{{ t('calc.file.printer_differs')|replace('{file}', draft.file_printer) }}</mark></p>{% endif %}
   {% endif %}
   {% if outcome.spool_problem %}<p role="alert"><mark>{{ t(outcome.spool_problem) }}</mark></p>{% endif %}

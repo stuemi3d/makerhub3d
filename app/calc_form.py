@@ -73,6 +73,8 @@ class Draft:
     file_plates: str = ""
     file_printer: str = ""
     file_model: str = ""
+    # The waiting upload (issue #182): saving the calculation stores this file with it
+    file_token: str = ""
 
     def blank(self) -> bool:
         """Nothing was typed yet: no errors and no result."""
@@ -115,6 +117,7 @@ def read(form: FormData | None) -> Draft:
         file_plates=_text(form, "file_plates"),
         file_printer=_text(form, "file_printer", MAX_NAME),
         file_model=_text(form, "file_model", MAX_NAME),
+        file_token=_text(form, "file_token", 32),
     )
     if draft.action == "add_row":
         rows_wanted = min(rows_wanted + 1, MAX_ROWS)
