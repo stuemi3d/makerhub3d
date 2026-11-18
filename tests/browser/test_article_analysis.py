@@ -15,7 +15,7 @@ from tests.browser.conftest import LiveServer, t
 from tests.browser.test_pages import fits_screen_width
 
 
-def test_analysis_opens_from_the_tile_fits_the_screen_and_warns(
+def test_analysis_opens_from_the_button_fits_the_screen_and_warns(
     admin_page: Page, live_server: LiveServer, viewport_name: str
 ) -> None:
     number = f"3D-AN-{viewport_name}"
@@ -27,7 +27,7 @@ def test_analysis_opens_from_the_tile_fits_the_screen_and_warns(
     article_url = admin_page.url
     article_id = int(article_url.rstrip("/").rsplit("/", 1)[1])
 
-    admin_page.get_by_role("link", name=t("article.tile.analysis")).click()
+    admin_page.get_by_role("button", name=t("article.analysis.open")).click()
     expect(admin_page.locator("h1")).to_contain_text(t("article.tile.analysis"))
     expect(admin_page.locator(".stat")).to_have_count(12)
     expect(admin_page.locator("body")).not_to_contain_text(t("analysis.warning"))

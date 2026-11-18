@@ -29,8 +29,9 @@
 </nav>
 <div class="page-head">
   <h1>{{ article.number }} · {{ article.name }}</h1>
-  {% if can('edit') %}
   <div class="page-actions">
+    <a href="/articles/{{ article.id }}/analysis" role="button" class="secondary">{{ t('article.analysis.open') }}</a>
+    {% if can('edit') %}
     <a {{ popup_attrs('/articles/' ~ article.id ~ '/edit') }} role="button" class="secondary">{{ t('article.edit') }}</a>
     <form method="post" action="/articles/{{ article.id }}/{{ 'deactivate' if article.active else 'activate' }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -42,8 +43,8 @@
     {% if can_purge and can('manage') %}
     <a {{ popup_attrs('/articles/' ~ article.id ~ '/purge') }} role="button" class="secondary outline">{{ t('article.purge.button') }}</a>
     {% endif %}
+    {% endif %}
   </div>
-  {% endif %}
 </div>
 {% if not can_delete and can('edit') %}
 <p><small>{{ t('article.delete.blocked') }}</small></p>
@@ -90,7 +91,7 @@
 <div class="tiles">
   {% for section in sections %}
   <a href="/articles/{{ article.id }}/{{ section }}" class="tile">
-    <span class="tile-count">{% if section == 'analysis' %}{{ t('article.tile.analysis_open') }}{% else %}{{ counts[section] }}{% endif %}</span>
+    <span class="tile-count">{{ counts[section] }}</span>
     <span>{{ t('article.tile.' ~ section) }}</span>
   </a>
   {% endfor %}

@@ -2,7 +2,7 @@
 
 Articles are only deactivated; the one way to delete one is the admin's "delete for good"
 (issue #47, app/article_purge.py). Calculations, productions and
-sales have their own lists; the analysis tile opens the key figures (issue #203).
+sales have their own lists; the analysis (issue #203) opens from a button on the detail page.
 The stock tile counts the stock movements (issue #11).
 """
 
@@ -35,7 +35,9 @@ from app.permissions import Permission, requires
 from app.settings_form import format_decimal
 
 # Order of the tiles on the detail page. The counts are 0 until M2 to M4 bring the data.
-SECTIONS = ("calculations", "productions", "stock", "sales", "analysis")
+SECTIONS = ("calculations", "productions", "stock", "sales")
+# The analysis has no tile (a button on the detail page opens it, issue #203)
+PAGES = (*SECTIONS, "analysis")
 
 
 SORT_KEYS = ("number", "name", "price", "stock", "status")
@@ -535,7 +537,7 @@ def add_article_routes(
         sort: str | None = None,
         direction: str | None = Query(None, alias="dir"),
     ) -> HTMLResponse:
-        if section not in SECTIONS:
+        if section not in PAGES:
             raise HTTPException(status_code=404)
         if section == "stock":
             article = load(article_id)

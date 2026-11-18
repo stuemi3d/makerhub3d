@@ -27,7 +27,8 @@ from tests.auth import (
 APP_DIR = Path(__file__).resolve().parent.parent / "app"
 DE = json.loads((APP_DIR / "locales" / "de.json").read_text(encoding="utf-8"))
 EN = json.loads((APP_DIR / "locales" / "en.json").read_text(encoding="utf-8"))
-SECTIONS = ["calculations", "productions", "stock", "sales", "analysis"]
+TILES = ["calculations", "productions", "stock", "sales"]
+SECTIONS = [*TILES, "analysis"]
 
 
 def db() -> Session:
@@ -284,7 +285,7 @@ def test_articles_cannot_be_deleted(client: AppClient) -> None:
 # --- Test cases 6 and 7: detail page with tiles ------------------------------------------
 
 
-def test_detail_shows_fields_and_five_tiles_with_count(client: AppClient) -> None:
+def test_detail_shows_fields_and_four_tiles_with_count(client: AppClient) -> None:
     create(client, selling_price="12,9", min_stock="5")
     article_id = articles()[0].id
 
@@ -293,13 +294,11 @@ def test_detail_shows_fields_and_five_tiles_with_count(client: AppClient) -> Non
     assert "3D-0001" in html
     assert "Kabelhalter" in html
     assert "12,90" in html
-    for section in SECTIONS:
+    for section in TILES:
         tile = re.search(rf'<a href="/articles/{article_id}/{section}"[^>]*>(.*?)</a>', html, re.S)
         assert tile, section
         assert DE[f"article.tile.{section}"] in tile.group(1)
-        # The analysis tile has no count (there is only one analysis per article, issue #203)
-        shown = DE["article.tile.analysis_open"] if section == "analysis" else "0"
-        assert re.search(rf">\s*{shown}\s*<", tile.group(1)), section
+        assert re.search(r">\s*0\s*<", tile.group(1)), section
 
 
 def test_detail_shows_dash_for_empty_optional_fields(client: AppClient) -> None:

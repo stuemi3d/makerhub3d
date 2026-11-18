@@ -5,7 +5,7 @@ from playwright.sync_api import Page, expect
 from tests.browser.conftest import open_menu, t
 from tests.browser.test_pages import fits_screen_width
 
-SECTIONS = ["calculations", "productions", "stock", "sales", "analysis"]
+SECTIONS = ["calculations", "productions", "stock", "sales"]
 
 
 def test_article_list_form_and_detail_work_on_every_screen(

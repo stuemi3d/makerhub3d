@@ -271,10 +271,22 @@ def test_failed_pieces_are_counted(client: AppClient) -> None:
     assert figure(page(client, article_id), "analysis.failed") == "3"
 
 
-def test_the_tile_has_no_count_on_the_article(client: AppClient) -> None:
+def test_a_button_opens_the_analysis_and_there_is_no_tile(client: AppClient) -> None:
     article_id = add_article()
     detail = client.get(f"/articles/{article_id}").text
-    assert DE["article.tile.analysis_open"] in detail
+    assert f'href="/articles/{article_id}/analysis" role="button"' in detail
+    assert f'href="/articles/{article_id}/analysis" class="tile"' not in detail
+    add_user(READER_NAME, "read_only")
+    with client_as(READER_NAME) as reader:
+        assert DE["article.analysis.open"] in reader.get(f"/articles/{article_id}").text
+
+
+def test_the_figures_come_in_four_groups_in_this_order(client: AppClient) -> None:
+    html = page(client, add_article())
+    keys = ["amounts", "costs", "profit", "quality"]
+    positions = [html.index(DE[f"analysis.group.{k}"]) for k in keys]
+    assert positions == sorted(positions)
+    assert html.index(DE["analysis.cost_planned"]) < html.index(DE["analysis.cost_actual"])
 
 
 def test_money_is_shown_with_two_decimals(client: AppClient) -> None:

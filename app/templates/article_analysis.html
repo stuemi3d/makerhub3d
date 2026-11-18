@@ -12,8 +12,16 @@
 </nav>
 <h1>{{ title }}</h1>
 <p>{{ article.number }} · {{ article.name }}</p>
+{% set groups = (
+  ('amounts', ('produced', 'sold', 'stock')),
+  ('costs', ('cost_planned', 'cost_actual', 'deviation')),
+  ('profit', ('price_average', 'profit', 'profit_percent')),
+  ('quality', ('hourly_wage', 'failed', 'failed_share')),
+) %}
+{% for group, keys in groups %}
+<h2 class="stat-group">{{ t('analysis.group.' ~ group) }}</h2>
 <div class="stats">
-  {% for key in ('cost_actual', 'cost_planned', 'deviation', 'price_average', 'profit', 'profit_percent', 'hourly_wage', 'produced', 'sold', 'stock', 'failed', 'failed_share') %}
+  {% for key in keys %}
   <article class="stat">
     <p class="stat-label">{{ t('analysis.' ~ key) }}</p>
     <p class="stat-value">{{ shown[key] }}</p>
@@ -21,5 +29,6 @@
   </article>
   {% endfor %}
 </div>
+{% endfor %}
 <p>{{ t('analysis.note') }}</p>
 {% endblock %}
