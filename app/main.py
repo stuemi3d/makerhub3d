@@ -44,6 +44,7 @@ from app.models import AppSettings, Rounding, User, UserRole
 from app.permissions import Permission, PermissionDenied, has_permission, requires
 from app.printer_model_pages import add_printer_model_routes
 from app.production_pages import add_production_routes
+from app.sales_pages import add_sales_routes
 from app.settings_form import FIELD_NAMES, form_values, validate
 from app.stock_pages import add_stock_routes
 from app.template_pages import add_template_routes
@@ -66,6 +67,7 @@ NAV_ITEMS = (
     {"key": "nav.calculation", "href": "/calculation", "permission": Permission.VIEW},
     {"key": "nav.production", "href": "/production", "permission": Permission.VIEW},
     {"key": "nav.stock", "href": "/stock", "permission": Permission.VIEW},
+    {"key": "nav.sales", "href": "/sales", "permission": Permission.VIEW},
     {"key": "nav.analysis", "href": None, "permission": Permission.VIEW},
     # Open to everyone (issue #73): others only reach the appearance page, not the admin pages.
     {
@@ -604,6 +606,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     add_variant_routes(app, new_session, render, read_form, language)
     add_variant_bulk_routes(app, new_session, render, read_form)
     add_stock_routes(app, new_session, render, read_form, language)
+    add_sales_routes(app, new_session, render, read_form, language)
     add_production_routes(app, new_session, bambuddy_cipher, render, read_form, language)
     add_calculation_routes(app, new_session, bambuddy_cipher, render, language, file_store)
     add_device_routes(app, new_session, bambuddy_cipher, render, read_form, language)

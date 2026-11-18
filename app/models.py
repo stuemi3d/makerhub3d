@@ -238,6 +238,33 @@ class ProductionResult(Base):
     movement_id: Mapped[int] = mapped_column(ForeignKey("stock_movements.id"))
 
 
+class Sale(Base):
+    """A sale of an article (issue #201). Never deleted, only cancelled (the one exception is
+    deleting an article for good). The price is stored as a value when booking."""
+
+    __tablename__ = "sales"
+    __table_args__ = (
+        CheckConstraint("quantity > 0", name="ck_sales_quantity"),
+        CheckConstraint("source IN ('hand', 'rechnungsfee', 'haben')", name="ck_sales_source"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    article_id: Mapped[int] = mapped_column(ForeignKey("articles.id"), index=True)
+    booked_on: Mapped[date] = mapped_column(Date)
+    # UTC without time zone
+    created_at: Mapped[datetime] = mapped_column(DateTime)
+    quantity: Mapped[int] = mapped_column(Integer)
+    # Euro per piece
+    unit_price: Mapped[Decimal] = mapped_column(DecimalText)
+    note: Mapped[str] = mapped_column(String(200), server_default="")
+    # hand now; the invoice software comes with M5
+    source: Mapped[str] = mapped_column(String(20), server_default="hand")
+    # The stock movement this sale booked
+    movement_id: Mapped[int] = mapped_column(ForeignKey("stock_movements.id"))
+    cancelled: Mapped[bool] = mapped_column(Boolean, server_default=false())
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+
+
 class Calculation(Base):
     """A saved calculation of an article or variant (issue #161), all values as they were
     calculated: later changes of prices, rates or spools never change it."""

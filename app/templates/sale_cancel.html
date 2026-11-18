@@ -1,0 +1,11 @@
+{% extends "_confirm_layout.html" %}
+{% set title_key = 'sales.cancel.title' %}
+{% set button_key = 'sales.cancel.submit' %}
+{% set action = '/sales/' ~ item.id ~ '/cancel' %}
+{% set cancel_url = '/sales' %}
+{% set subject = item.number ~ ' · ' ~ item.name %}
+{% if error %}{% set error_key = error %}{% endif %}
+{% block details %}
+<p>{{ item.date }} · {{ item.quantity }} {{ t('sales.col.quantity') }} · {{ t('sales.col.total') }}: {{ item.total }}</p>
+<p>{{ t('sales.cancel.confirm') }}</p>
+{% endblock %}

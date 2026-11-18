@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% from "_form_macros.html" import popup_attrs %}
+{% from "_data_table.html" import head, actions_head, chip, icon_link with context %}
+{% block title %}{{ t('sales.title') }} – {{ app_name }}{% endblock %}
+{% block content %}
+{% set by_article = articles | selectattr('id', 'equalto', selected) | first if selected else none %}
+{% if by_article %}
+<nav aria-label="breadcrumb">
+  <ul>
+    <li><a href="/articles">{{ t('articles.title') }}</a></li>
+    <li><a href="/articles/{{ by_article.id }}">{{ by_article.number }}</a></li>
+    <li>{{ t('sales.title') }}</li>
+  </ul>
+</nav>
+{% endif %}
+<div class="page-head">
+  <h1>{{ t('sales.title') }}</h1>
+  {% if can('edit') %}
+  <div class="page-actions"><a {{ popup_attrs('/sales/new' ~ ('?article=' ~ selected if selected else '')) }} role="button">{{ t('sales.new') }}</a></div>
+  {% endif %}
+</div>
+<form method="get" action="/sales">
+  <label for="article">{{ t('sales.col.article') }}</label>
+  <select id="article" name="article" onchange="this.form.submit()">
+    <option value="">{{ t('stock.filter.all') }}</option>
+    {% for a in articles %}
+    <option value="{{ a.id }}"{% if selected == a.id %} selected{% endif %}>{{ a.number }} · {{ a.name }}</option>
+    {% endfor %}
+  </select>
+  <noscript><button type="submit">{{ t('stock.filter') }}</button></noscript>
+</form>
+<div id="sales-list" data-popup-refresh>
+{% if rows %}
+<article class="data-card">
+<div class="data-scroll">
+<table class="data-table">
+  <thead>
+    <tr>
+      {{ head(t('sales.col.date'), sort_links.date) }}
+      {{ head(t('sales.col.article'), sort_links.article) }}
+      {{ head(t('sales.col.quantity'), sort_links.quantity, numeric=true) }}
+      {{ head(t('sales.col.price'), numeric=true) }}
+      {{ head(t('sales.col.total'), sort_links.total, numeric=true) }}
+      {{ head(t('sales.col.note')) }}
+      {{ head(t('sales.col.state')) }}
+      {{ actions_head() }}
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in rows %}
+    <tr class="sale-row{% if r.cancelled %} row-cancelled{% endif %}" data-id="{{ r.id }}">
+      <td>{{ r.date }}</td>
+      <td class="cell-strong"><a href="/articles/{{ r.article_id }}">{{ r.article_number }}</a></td>
+      <td class="num">{{ r.quantity }}</td>
+      <td class="num">{{ r.price }}</td>
+      <td class="num">{{ r.total }}</td>
+      <td>{{ r.note }}</td>
+      <td>{{ chip(t('sales.state.cancelled') if r.cancelled else t('sales.state.active'), 'inactive' if r.cancelled else 'active') }}</td>
+      <td class="row-actions">
+        {% if can('edit') and not r.cancelled %}{{ icon_link('/sales/' ~ r.id ~ '/cancel', 'cancel', true, r.article_number) }}{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+</article>
+{% else %}
+<article class="empty-hint"><p>{{ t('sales.list.empty') }}</p></article>
+{% endif %}
+</div>
+{% endblock %}

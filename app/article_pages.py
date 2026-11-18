@@ -2,7 +2,7 @@
 
 Articles are only deactivated; the one way to delete one is the admin's "delete for good"
 (issue #47, app/article_purge.py). Calculations, productions and
-sales do not exist yet; their tiles show 0 and open empty pages that later milestones fill.
+sales have their own lists; the analysis tile is still empty (later milestone).
 The stock tile counts the stock movements (issue #11).
 """
 
@@ -18,7 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, object_session
 
-from app import article_productions, article_purge, audit, auth, calc_store, stock, variants
+from app import article_productions, article_purge, audit, auth, calc_store, sales, stock, variants
 from app.article_form import FIELD_NAMES, form_values, number_key, validate
 from app.models import Article
 from app.permissions import Permission, requires
@@ -270,6 +270,7 @@ def add_article_routes(
             counts["stock"] = stock.count_movements(db, article_id)
             counts["productions"] = article_productions.count(db, article_id)
             counts["calculations"] = calc_store.count(db, article_id)
+            counts["sales"] = sales.count(db, article_id)
             blocked = article_purge.blocking(db, article_id)
         return render(
             request,
@@ -547,6 +548,9 @@ def add_article_routes(
             load(article_id)
             # The calculations of an article are the list with a filter (issue #186)
             return RedirectResponse(f"/calculation?article={int(article_id)}", status_code=303)
+        if section == "sales":
+            load(article_id)
+            return RedirectResponse(f"/sales?article={int(article_id)}", status_code=303)
         if section == "productions":
             article = load(article_id)
             with new_session() as db:
