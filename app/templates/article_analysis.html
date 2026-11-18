@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% from "_data_table.html" import chip with context %}
+{% set title = t('article.tile.analysis') %}
+{% block title %}{{ title }} – {{ article.number }} – {{ app_name }}{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb">
+  <ul>
+    <li><a href="/articles">{{ t('articles.title') }}</a></li>
+    <li><a href="/articles/{{ article.id }}">{{ article.number }}</a></li>
+    <li>{{ title }}</li>
+  </ul>
+</nav>
+<h1>{{ title }}</h1>
+<p>{{ article.number }} · {{ article.name }}</p>
+<div class="stats">
+  {% for key in ('cost_actual', 'cost_planned', 'deviation', 'price_average', 'profit', 'profit_percent', 'hourly_wage', 'produced', 'sold', 'stock', 'failed_share') %}
+  <article class="stat">
+    <p class="stat-label">{{ t('analysis.' ~ key) }}</p>
+    <p class="stat-value">{{ shown[key] }}</p>
+    {% if key == 'deviation' and figures.warn %}<p>{{ chip(t('analysis.warning'), 'warn') }}</p>{% endif %}
+  </article>
+  {% endfor %}
+</div>
+<p>{{ t('analysis.note') }}</p>
+{% endblock %}

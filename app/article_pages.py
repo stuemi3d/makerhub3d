@@ -2,7 +2,7 @@
 
 Articles are only deactivated; the one way to delete one is the admin's "delete for good"
 (issue #47, app/article_purge.py). Calculations, productions and
-sales have their own lists; the analysis tile is still empty (later milestone).
+sales have their own lists; the analysis tile opens the key figures (issue #203).
 The stock tile counts the stock movements (issue #11).
 """
 
@@ -18,7 +18,17 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, object_session
 
-from app import article_productions, article_purge, audit, auth, calc_store, sales, stock, variants
+from app import (
+    analysis,
+    article_productions,
+    article_purge,
+    audit,
+    auth,
+    calc_store,
+    sales,
+    stock,
+    variants,
+)
 from app.article_form import FIELD_NAMES, form_values, number_key, validate
 from app.models import Article
 from app.permissions import Permission, requires
@@ -565,10 +575,14 @@ def add_article_routes(
                 totals=totals,
                 bambuddy_address=address,
             )
+        article = load(article_id)
+        with new_session() as db:
+            figures = analysis.compute(db, article_id)
         return render(
             request,
-            "article_section.html",
+            "article_analysis.html",
             "nav.articles",
-            article=load(article_id),
-            section=section,
+            article=article,
+            figures=figures,
+            shown=analysis.texts(figures, language),
         )

@@ -323,6 +323,7 @@ def test_every_tile_opens_a_page_for_this_article(client: AppClient, section: st
         "productions": "article.productions.empty",
         "calculations": "calc.list.empty",
         "sales": "sales.list.empty",
+        "analysis": "analysis.cost_actual",
     }
     empty = own.get(section, "article.section.empty")
     assert DE[empty] in response.text
@@ -448,7 +449,7 @@ def test_templates_do_not_switch_off_escaping() -> None:
         "articles.html",
         "article_detail.html",
         "article_form.html",
-        "article_section.html",
+        "article_analysis.html",
     ):
         source = (APP_DIR / "templates" / name).read_text(encoding="utf-8")
         assert "|safe" not in source.replace(" ", "")
