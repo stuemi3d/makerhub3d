@@ -281,7 +281,6 @@ def test_numbers_without_leading_zero_and_comments() -> None:
         "G92 E.0",
         f"G1 X3 E{mm:.5f}",
         "; stop printing object, unique label id: 7",
-        "G1 E.5",
     ]
     data = make_file(
         {
@@ -344,3 +343,53 @@ def test_one_object_without_markers_gives_no_result() -> None:
         }
     )
     assert parts_from_file(data) is None
+
+
+def test_retraction_after_the_stop_marker_is_netted_out() -> None:
+    # the retraction at the end of an object is printed outside of its markers; the total is
+    # the net filament of the plate (like the slicer's), not more
+    lines = [
+        f"; filament_diameter: {DIAMETER}",
+        f"; filament_density: {DENSITY}",
+        "M83",
+        "; start printing object, unique label id: 7",
+        f"G1 X1 E{mm_for_grams(10.0):.5f}",
+        "; stop printing object, unique label id: 7",
+        f"G1 E-{mm_for_grams(1.0):.5f}",
+    ]
+    data = make_file(
+        {
+            "Metadata/model_settings.config": model_settings([("2", "Bar", "7")]),
+            "Metadata/plate_1.gcode": ("\n".join(lines) + "\n").encode(),
+        }
+    )
+    result = parts_from_file(data)
+    assert result is not None
+    assert abs(result.total_grams - D("9")) < D("0.02")
+    assert abs(result.parts[0].grams_each - D("9")) < D("0.02")
+
+
+def test_the_used_filament_slot_is_taken_from_the_header_when_there_is_no_tool_change() -> None:
+    # two slots, only the second is used, and the G-code never switches to it
+    lines = [
+        f"; filament_diameter: {DIAMETER},{DIAMETER}",
+        "; filament_density: 1.00,2.50",
+        "; filament_colour = #111111;#222222",
+        "M83",
+        "; start printing object, unique label id: 7",
+        f"G1 X1 E{mm_for_grams(10.0) * 1.25 / 2.5 * 2:.5f}",  # 10 g at density 1.25 ...
+        "; stop printing object, unique label id: 7",
+        "; filament used [mm] = 0.00, 1234.5",
+    ]
+    data = make_file(
+        {
+            "Metadata/model_settings.config": model_settings([("2", "Bar", "7")]),
+            "Metadata/plate_1.gcode": ("\n".join(lines) + "\n").encode(),
+        }
+    )
+    result = parts_from_file(data)
+    assert result is not None
+    (part,) = result.parts
+    assert set(part.grams_by_color) == {"#222222"}
+    # ... is 20 g at density 2.5 (the density of the used slot, not of the first)
+    assert abs(part.grams_each - D("20")) < D("0.05")

@@ -71,6 +71,8 @@ class _Gcode:
     diameters: list[Decimal] = field(default_factory=list)
     densities: list[Decimal] = field(default_factory=list)
     colors: list[str] = field(default_factory=list)
+    # "filament used [mm]" of the slicer, by slot (written at the end of the file)
+    used_mm: list[float] = field(default_factory=list)
     # filament index -> mm of filament per object label; label None = outside of any object
     mm: dict[tuple[str | None, int], float] = field(default_factory=dict)
 
@@ -83,6 +85,14 @@ def _decimal_list(text: str, separator: str) -> list[Decimal]:
     if len(values) > MAX_FILAMENTS or any(not v.is_finite() or v <= 0 for v in values):
         raise _Unusable
     return values
+
+
+def _used_mm(line: bytes) -> list[float]:
+    try:
+        values = [float(p) for p in line.split(b"=", 1)[1].split(b",")[:MAX_FILAMENTS]]
+    except (ValueError, IndexError):
+        return []
+    return values if all(math.isfinite(v) and v >= 0 for v in values) else []
 
 
 def _header(info: _Gcode, line: bytes) -> None:
@@ -118,6 +128,8 @@ def _read_gcode(stream: io.BufferedIOBase) -> _Gcode:
                 label = None
             elif b"filament_" in line[:20]:
                 _header(info, line)
+            elif line.startswith(b"; filament used [mm]"):
+                info.used_mm = _used_mm(line)
             continue
         if line.startswith(b"M82"):
             absolute = True
@@ -265,13 +277,23 @@ def _compute(data: bytes) -> PlateParts:
     if len(labels) > MAX_PARTS:
         raise _Unusable
 
+    # Without tool changes in the G-code the slot is not tracked: when the slicer says that
+    # only one slot was used, everything belongs to it
+    in_use = [n for n, mm in enumerate(info.used_mm) if mm > 0]
+    if len(in_use) == 1:
+        remapped: dict[tuple[str | None, int], float] = {}
+        for (label, _), mm in info.mm.items():
+            key = (label, in_use[0])
+            remapped[key] = remapped.get(key, 0.0) + mm
+        info.mm = remapped
+
     # grams per object label and filament, and the shared rest
     own: dict[str, dict[int, Decimal]] = {}
     shared: dict[int, Decimal] = {}
     for (label, filament), mm in info.mm.items():
         grams = _grams(mm, _pick(info.diameters, filament), _pick(info.densities, filament))
         if label is None or label not in labels:
-            shared[filament] = max(shared.get(filament, ZERO) + grams, ZERO)
+            shared[filament] = shared.get(filament, ZERO) + grams  # retractions make it negative
         else:
             own.setdefault(label, {})[filament] = grams
     own_total = sum((g for per in own.values() for g in per.values()), ZERO)
