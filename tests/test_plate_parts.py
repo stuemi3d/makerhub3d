@@ -332,3 +332,31 @@ def test_names_from_slice_info_and_other_plate_number() -> None:
     assert [(p.name, p.quantity) for p in result.parts] == [("Lid", 2)]
     # the skipped object was printed outside of a known part: it is shared out
     assert abs(result.total_grams - D("15")) < D("0.05")
+
+
+def single_file(filaments: str, objects: list[tuple[str, str, bool]], markers: bool) -> bytes:
+    info = slice_info(1, objects).replace(b"</plate>", filaments.encode() + b"</plate>")
+    code = gcode([("7", 5.0, 0)]) if markers else b"; filament_density: 1.25\nG1 X1 E5\n"
+    return make_file({"Metadata/slice_info.config": info, "Metadata/plate_1.gcode": code})
+
+
+def test_one_object_without_markers_is_the_whole_plate() -> None:
+    filaments = (
+        '<filament id="1" color="#AA0000" used_g="6.50"/>'
+        '<filament id="2" color="#0000BB" used_g="3.50"/>'
+    )
+    result = parts_from_file(single_file(filaments, [("7", "Vase", False)], markers=False))
+    assert result is not None
+    (part,) = result.parts
+    assert (part.name, part.quantity, part.grams_each) == ("Vase", 1, D("10.00"))
+    assert part.grams_by_color == {"#AA0000": D("6.50"), "#0000BB": D("3.50")}
+    assert result.total_grams == D("10.00")
+
+
+def test_without_markers_several_objects_or_bad_figures_give_no_result() -> None:
+    filaments = '<filament id="1" color="#AA0000" used_g="6.50"/>'
+    two = [("7", "A", False), ("8", "B", False)]
+    assert parts_from_file(single_file(filaments, two, markers=False)) is None
+    one = [("7", "A", False)]
+    assert parts_from_file(single_file('<filament id="1" used_g="x"/>', one, markers=False)) is None
+    assert parts_from_file(single_file("", one, markers=False)) is None
