@@ -2,7 +2,9 @@
 are recorded and cleaned (invented names); the files are invented. Nothing talks to a real API.
 """
 
+import io
 import json
+import zipfile
 from decimal import Decimal
 from pathlib import Path
 
@@ -124,3 +126,29 @@ def test_entry_without_a_file_gives_no_result() -> None:
         "http://bambuddy.example.com", "k", transport=httpx2.MockTransport(handler)
     )
     assert archive_parts(missing, 277) is None
+
+
+def test_file_of_another_plate_is_not_used() -> None:
+    data = sliced([("Cube", 10.0, 0), ("Cylinder", 30.0, 0)], shared=4.0)
+    source = zipfile.ZipFile(io.BytesIO(data))
+    out = io.BytesIO()
+    with zipfile.ZipFile(out, "w") as target:
+        for item in source.infolist():
+            name = item.filename.replace("plate_1.gcode", "plate_2.gcode")
+            target.writestr(name, source.read(item.filename))
+    result = archive_parts(client("archive_plates_multi.json", out.getvalue()), 261)
+    assert result is not None and result.parts is None and result.object_count == 2
+
+
+def test_no_plates_gives_no_result_and_no_download() -> None:
+    requests: list = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        requests.append(request)
+        return httpx2.Response(200, json={"plates": []})
+
+    empty = BambuddyClient(
+        "http://bambuddy.example.com", "k", transport=httpx2.MockTransport(handler)
+    )
+    assert archive_parts(empty, 1) is None
+    assert len(requests) == 1

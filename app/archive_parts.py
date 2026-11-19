@@ -53,6 +53,8 @@ def archive_parts(client: BambuddyClient, archive_id: int) -> ArchiveParts | Non
         if error.code == "not_found":  # Bambuddy keeps no file for this entry
             return None
         raise
+    if not plates:
+        return None
     if len(plates) == 1 and plates[0].object_count == 1 and plates[0].objects:
         total = _total(plates[0])
         return _single(plates[0], total) if total > 0 else None
@@ -62,8 +64,12 @@ def archive_parts(client: BambuddyClient, archive_id: int) -> ArchiveParts | Non
         found = parts_from_file(client.archive_file(archive_id))
     except BambuddyError:
         found = None
+    if found is not None and not any(p.index == found.plate_index for p in plates):
+        found = None  # the file is another plate than the ones Bambuddy lists
     if found is not None and plate is None:
-        plate = next((p for p in plates if p.index == found.plate_index), None)
+        plate = next(p for p in plates if p.index == found.plate_index)
+    if found is not None and plate is not None and plate.index != found.plate_index:
+        found = None
     if plate is None or plate.object_count < 1 or not plate.objects:
         return None
     total = _total(plate)
