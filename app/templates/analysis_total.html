@@ -76,6 +76,10 @@
   <article class="stat">
     <p class="stat-label">{{ t('analysis_total.' ~ key) }}</p>
     <p class="stat-value">{{ shown[key] }}</p>
+    {% if key == 'failed_cost' %}
+    <p class="stat-note"><small>{{ t('analysis_total.failed_share') }}: <strong>{{ shown.failed_share }}</strong></small></p>
+    <p class="stat-note"><small>{{ t('analysis_total.failed_note') }}</small></p>
+    {% endif %}
   </article>
   {% endfor %}
 </div>

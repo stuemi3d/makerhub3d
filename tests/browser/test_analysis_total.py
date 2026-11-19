@@ -35,7 +35,11 @@ def test_analysis_opens_from_the_menu_shows_figures_and_fits_the_screen(
             None,
             date(2026, 3, 1),
             "",
-            [PrintInput(archive_id, Decimal("50.00"), Decimal(0), Decimal(0))],
+            [
+                PrintInput(
+                    archive_id, Decimal("50.00"), Decimal(0), Decimal(0), waste_share=Decimal("0.5")
+                )
+            ],
             ResultInput(article.id, 10),
         )
         assert not errors
@@ -61,6 +65,14 @@ def test_analysis_opens_from_the_menu_shows_figures_and_fits_the_screen(
     expect(admin_page.locator(".stat")).to_have_count(5)
     expect(admin_page.locator("#top")).to_contain_text(f"3D-GE-{viewport_name}")
     expect(admin_page.locator("#top")).to_contain_text("16,00")
+    assert fits_screen_width(admin_page)
+
+    # The failed cost (here: waste of 25 EUR) with its share of the production cost and the
+    # note on what is counted (issue 216, case 8)
+    failed = admin_page.locator(".stat").filter(has_text=t("analysis_total.failed_cost"))
+    expect(failed).to_contain_text(t("analysis_total.failed_share"))
+    expect(failed).to_contain_text("%")
+    expect(failed).to_contain_text(t("analysis_total.failed_note"))
     assert fits_screen_width(admin_page)
 
     # The table scrolls inside its card, never the page

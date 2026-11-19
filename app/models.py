@@ -208,6 +208,10 @@ class ProductionPrint(Base):
     # Only filled in productions booked before issue #135; new ones store 0
     wear_cost: Mapped[Decimal] = mapped_column(DecimalText)
     machine_cost: Mapped[Decimal] = mapped_column(DecimalText, server_default="0")
+    # Waste of the print (issue #216): its share in percent and the amount in euro (share x the
+    # cost of material, electricity and machine), stored when booking; older ones count 0
+    waste_share: Mapped[Decimal] = mapped_column(DecimalText, server_default="0")
+    waste_cost: Mapped[Decimal] = mapped_column(DecimalText, server_default="0")
     status: Mapped[PrintStatus] = mapped_column(String(10))
     # Amounts of the print as values when booking (issue #148); empty = Bambuddy did not know
     print_seconds: Mapped[int | None] = mapped_column(Integer)

@@ -80,10 +80,22 @@ class PrintInput:
     kwh: Decimal | None = None
     filament_type: str | None = None
     filament_color: str | None = None
+    # Share of the print that is waste (issue #216), a fraction from 0 to 1; a failed print as
+    # a whole counts 1 whatever is given
+    waste_share: Decimal = Decimal(0)
 
     @property
     def cost(self) -> Decimal:
         return self.material_cost + self.electricity_cost + self.machine_cost
+
+    @property
+    def share(self) -> Decimal:
+        return Decimal(1) if self.failed else self.waste_share
+
+    @property
+    def waste_cost(self) -> Decimal:
+        """Share x cost of the print (material, electricity, machine), to the cent."""
+        return (self.cost * self.share).quantize(CENT, rounding=ROUND_HALF_UP)
 
 
 @dataclass(frozen=True)
@@ -130,6 +142,11 @@ def costs(prints: list[PrintInput], labor: LaborInput | None) -> tuple[Decimal, 
     printed = sum((item.cost for item in prints), Decimal(0))
     total = (printed + labor_cost).quantize(CENT, rounding=ROUND_HALF_UP)
     return total - labor_cost, labor_cost, total
+
+
+def waste_total(prints: list[PrintInput]) -> Decimal:
+    """The waste amount of all prints of a production."""
+    return sum((item.waste_cost for item in prints), Decimal(0))
 
 
 def assigned_archive_ids(db: Session) -> set[int]:
@@ -210,6 +227,8 @@ def _check(
         for p in prints
     ):
         errors["prints"] = "production.error.cost"
+    elif any(not p.waste_share.is_finite() or not 0 <= p.waste_share <= 1 for p in prints):
+        errors["prints"] = "production.error.waste_share"
 
     article = db.get(Article, result.article_id)
     if article is None or not article.active:
@@ -241,7 +260,9 @@ def book(
 
     The total (prints plus labour) is rounded to the cent and all of it goes to the one result
     article. Minutes, rate and labour cost are stored as values, and so are the time, grams,
-    kWh and filament of every print and the number of failed pieces (information only)."""
+    kWh and filament of every print and the number of failed pieces (information only). The
+    waste of every print (share in percent and amount) is stored as a value too; it does not
+    change the cost per piece (all costs go to the good pieces)."""
     errors, article = _check(db, prints, result, note.strip(), labor, failed_pieces)
     if errors:
         return None, errors
@@ -269,6 +290,8 @@ def book(
                 electricity_cost=print_.electricity_cost,
                 wear_cost=Decimal(0),
                 machine_cost=print_.machine_cost,
+                waste_share=(print_.share * 100).quantize(CENT, rounding=ROUND_HALF_UP),
+                waste_cost=print_.waste_cost,
                 status=PrintStatus.FAILED if print_.failed else PrintStatus.SUCCESS,
                 print_seconds=print_.seconds if print_.seconds and print_.seconds > 0 else None,
                 filament_grams=_amount(print_.grams),

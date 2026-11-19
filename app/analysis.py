@@ -179,6 +179,11 @@ def money(value: Decimal | None, language: str) -> str:
     return f"{money_text(value.quantize(CENT, rounding=ROUND_HALF_UP), language)} €"
 
 
+def percent(value: Decimal | None, language: str) -> str:
+    """A percentage as shown (one decimal at most); a dash when there is none."""
+    return _percent(value, language)
+
+
 def _percent(value: Decimal | None, language: str) -> str:
     """One decimal at most: 44,4 % but 10 % (not 10,0 %)."""
     if value is None:
