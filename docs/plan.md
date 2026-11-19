@@ -324,7 +324,7 @@ Der Maintainer hat die frühere Bedingung („erst nach Alltagsnutzung von M1“
 **M4a – Teile und Ausschuss**
 
 - [x] Plan: Teile, Ausschuss und Fehldrucke neu beschreiben (#213)
-- [ ] Teile einer Platte aus der Bambuddy-Datei berechnen (Menge und Gewicht) (#214)
+- [x] Teile einer Platte aus der Bambuddy-Datei berechnen (Menge und Gewicht) (#214)
 - [ ] Produktion: Teile-Maske mit Gut und Ausschuss pro Teil (#215)
 - [ ] Ausschussbetrag speichern und in die Fehldruckkosten einrechnen (#216)
 - [ ] Später, eigene Entscheidung: normaler und außergewöhnlicher Ausschuss in den Stückkosten
@@ -337,7 +337,7 @@ Der Maintainer hat die frühere Bedingung („erst nach Alltagsnutzung von M1“
 ## 11. Offene Punkte
 
 - ~~Reicht beim Bambuddy-Key das Recht „Status lesen“ für Archiv und Spulen?~~ Ja: Archiv, Spulen, Drucker und Einstellungen sind mit einem nur lesenden Key abrufbar (geprüft in #117).
-- **Archiv-Dateien aus Bambuddy** (M4a): Lassen sich die gespeicherte 3MF-Datei und der G-Code eines Archiv-Eintrags mit dem nur lesenden Key abrufen? Prüfung zu Beginn von #214; Ergebnis hier eintragen.
+- **Archiv-Dateien aus Bambuddy** (M4a): Lassen sich die gespeicherte 3MF-Datei und der G-Code eines Archiv-Eintrags mit dem nur lesenden Key abrufen? In #214 ist der Abruf (`/api/v1/archives/{id}/download`, nur lesend) gebaut und mit nachgestellten Antworten getestet; **ob der echte Bambuddy-Pfad stimmt und der nur lesende Key reicht, ist noch nicht gegen die Test-API geprüft** (wartet auf die Freigabe des Maintainers); Ergebnis dann hier eintragen. Auch die Toleranz für „gleiches Gewicht“ (derzeit 3 %) ist noch an echten Dateien zu prüfen.
 - Liefern die APIs der Rechnungs-Software den Bezahlt-Status? (Prüfung zu Beginn von M5)
 - Risiko: Bambuddy entwickelt sich sehr schnell → Anbindung in einem einzigen Baustein, Tests mit aufgezeichneten Antworten, Verbindungstest in den Einstellungen.
 - ~~**Umfang der tatsächlichen Kosten** (M2/M4)~~ Entschieden (Maintainer): Eine Produktion erfasst Material-, Strom- und **Maschinenkosten** (Druckstunden × Druckerstundensatz; der Verschleiß aus Bambuddy entfällt, weil er schon im Druckerstundensatz steckt, #135) sowie **Arbeitskosten** (Arbeitszeit × Stundensatz, #134). **Zusatzteile** gibt es in MakerHub 3D nicht (Entscheidung des Maintainers, #159); weder Kalkulation noch Produktion berücksichtigen sie.

@@ -30,6 +30,9 @@ PRINTERS_PATH = "/api/v1/printers/"
 ARCHIVES_PATH = "/api/v1/archives/"
 SPOOLS_PATH = "/api/v1/inventory/spools"
 SETTINGS_PATH = "/api/v1/settings/"
+# The stored .gcode.3mf of one archive entry (to be checked against the real API, see #214)
+ARCHIVE_FILE_PATH = "/api/v1/archives/{id}/download"
+MAX_FILE_BYTES = 50 * 1024 * 1024
 
 
 class BambuddyError(Exception):
@@ -250,6 +253,36 @@ class BambuddyClient:
         except (ValueError, InvalidOperation):
             raise BambuddyError("bad_response", path) from None
 
+    def _get_file(self, path: str, max_bytes: int) -> bytes:
+        """The raw bytes of a file, never more than `max_bytes` (stops reading at the limit)."""
+        try:
+            with (
+                httpx2.Client(
+                    transport=self._transport, timeout=self._timeout, follow_redirects=False
+                ) as http,
+                http.stream(
+                    "GET", self._base_url + path, headers={"X-API-Key": self._api_key}
+                ) as response,
+            ):
+                if response.status_code == 401:
+                    raise BambuddyError("rejected", path)
+                if response.status_code == 403:
+                    raise BambuddyError("forbidden", path)
+                if response.status_code >= 500:
+                    raise BambuddyError("server_error", path)
+                if response.status_code != 200:
+                    raise BambuddyError("bad_response", path)
+                data = bytearray()
+                for chunk in response.iter_bytes():
+                    data.extend(chunk)
+                    if len(data) > max_bytes:
+                        raise BambuddyError("bad_response", path)
+        except httpx2.TimeoutException:
+            raise BambuddyError("timeout", path) from None
+        except httpx2.HTTPError:
+            raise BambuddyError("unreachable", path) from None
+        return bytes(data)
+
     def _list(self, path: str, params: dict[str, int] | None = None) -> list:
         data = self._get(path, params)
         if not isinstance(data, list):
@@ -285,6 +318,10 @@ class BambuddyClient:
 
     def archive(self, archive_id: int) -> Archive:
         return _archive(self._get(f"{ARCHIVES_PATH}{int(archive_id)}"))
+
+    def archive_file(self, archive_id: int, max_bytes: int = MAX_FILE_BYTES) -> bytes:
+        """The stored .gcode.3mf of an archive entry (read only). The caller checks the content."""
+        return self._get_file(ARCHIVE_FILE_PATH.format(id=int(archive_id)), max_bytes)
 
     def spools(self) -> list[Spool]:
         return [_spool(i) for i in self._list(SPOOLS_PATH)]
