@@ -1067,3 +1067,23 @@ main .detail-card:not(.auth-box) > form [type="submit"] {
   margin: 0.25rem 0 0;
   color: var(--mh-text-muted);
 }
+
+/* Dashboard (issue 207): period choice with a gap above its button; "to do" without bullets */
+.period-form button {
+  margin-top: 0.75rem;
+}
+
+.todo-list {
+  list-style: none;
+  margin: 0;
+  padding: 0.4rem 1rem;
+}
+
+.todo-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.6rem;
+  margin: 0;
+  padding: 0.35rem 0;
+}
