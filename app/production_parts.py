@@ -146,9 +146,10 @@ def totals(plates: list[list[PartLine]]) -> tuple[int, int]:
 def finished_articles(plates: list[list[PartLine]]) -> int:
     """The good pieces of the scarcest part over all plates (equal names count together)."""
     good: dict[str, int] = {}
-    for plate in plates:
-        for x in plate:
-            key = x.name.casefold()
+    for number, plate in enumerate(plates):
+        for index, x in enumerate(plate):
+            # Parts without a name cannot be told apart: each one counts for itself
+            key = x.name.casefold() or f"\0{number}:{index}"
             good[key] = good.get(key, 0) + x.good
     return min(good.values()) if good else 0
 

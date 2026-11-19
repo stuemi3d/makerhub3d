@@ -143,3 +143,10 @@ def test_detected_roundtrip_is_validated() -> None:
         assert parse_detected(bad) == []
     big = stored_detected([line(f"N{n}", 1, None) for n in range(300)])
     assert parse_detected(big) == []
+
+
+def test_parts_without_a_name_are_not_added_together() -> None:
+    # two different unnamed parts: each counts for itself (1 good of each: 1 article)
+    assert finished_articles([[line("", 1, "3"), line("", 1, "4")]]) == 1
+    two = [PartLine("", 2, D("3"), 1), PartLine("", 1, D("4"), 0)]
+    assert finished_articles([two]) == 1

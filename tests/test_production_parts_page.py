@@ -323,3 +323,24 @@ def test_the_new_names_are_used(client: AppClient) -> None:
     assert DE["production.col.quantity"] == "Gutteile"
     assert DE["production.field.failed_pieces"] == "Ausschuss"
     assert DE["production.detail.failed_pieces"] == "Ausschuss"
+
+
+def test_an_empty_line_does_not_block_and_waste_survives_a_mode_change(client: AppClient) -> None:
+    article_id = prepare(client, {}, {})
+    # the mode is chosen, but only the fields below are used: the empty line is ignored
+    data = {"prints": ["6"], "parts_mode": "same", "parts_do": "mode", "quantity": ""}
+    html = send(client, data).text
+    assert lines_of(html, 6) == [("", "", "", "")]
+    data = mask_fields(html, 6, quantity="4", article=str(article_id), action="book")
+    assert send(client, data).status_code == 303
+    assert productions()[0].results[0].quantity == 4
+
+    # waste typed on a part survives going from "same" back to "different"
+    serve_parts(client, {7: TWO}, {7: FILE})
+    html = client.get("/production/new?prints=7").text
+    data = mask_fields(html, 7, pwaste_7_0="1", parts_do="mode")
+    html = send(client, data).text
+    same = send(client, mask_fields(html, 7, parts_mode="same", parts_do="mode")).text
+    assert lines_of(same, 7)[0][3] == "1"
+    back = send(client, mask_fields(same, 7, parts_mode="different", parts_do="mode")).text
+    assert [x[3] for x in lines_of(back, 7)] == ["1", "0"]

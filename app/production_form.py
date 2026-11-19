@@ -6,7 +6,7 @@ or a dot, at most 4 decimals.
 """
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
 
@@ -143,6 +143,15 @@ def raw_line(line: PartLine, language: str) -> RawLine:
     return RawLine(line.name, str(line.qty), input_text(line.grams, language), str(line.waste))
 
 
+def is_blank(raw: RawLine) -> bool:
+    return not (raw.name or raw.qty or raw.grams or raw.waste)
+
+
+def used_lines(raws: list[RawLine]) -> list[PartLine] | None:
+    """The lines that were filled in (empty ones do not count), or None when one is invalid."""
+    return parsed_lines([r for r in raws if not is_blank(r)])
+
+
 def parsed_lines(raws: list[RawLine]) -> list[PartLine] | None:
     """The lines of a plate, or None when one of them is not valid."""
     try:
@@ -228,6 +237,20 @@ def _do_ids(do: str) -> tuple[str, list[int]]:
     return kind, [int(v) for v in rest if _WHOLE.fullmatch(v)]
 
 
+def _carry_waste(old: list[PartLine], new: list[PartLine]) -> list[PartLine]:
+    """The waste of the old lines, given to the first new line of the same name (at most its
+    quantity)."""
+    result = list(new)
+    for line in old:
+        left = line.waste
+        for k, target in enumerate(result):
+            if left and target.name.casefold() == line.name.casefold() and target.waste == 0:
+                taken = min(left, target.qty)
+                result[k] = replace(target, waste=taken)
+                left -= taken
+    return result
+
+
 def apply_parts_action(draft: Draft, language: str) -> None:
     """Carries out what the form asked for in the mask: another mode, merging picked lines,
     splitting or dropping a line, adding an empty one. Lines that are not valid stay as typed."""
@@ -238,13 +261,15 @@ def apply_parts_action(draft: Draft, language: str) -> None:
         if draft.parts_mode == draft.parts_mode_was:
             return  # "Apply" without another mode keeps what was typed
         for archive_id in draft.ids:
-            raws = draft.parts.get(archive_id, [])
-            lines = parsed_lines(raws)
+            lines = used_lines(draft.parts.get(archive_id, []))
             if draft.parts_mode == "same":
                 new = same_article(lines) if lines else None
             else:
-                # Back to the parts found in the file, if there are any
+                # Back to the parts found in the file, if there are any; waste typed for a
+                # part of the same name is kept
                 new = parse_detected(draft.detected.get(archive_id, "")) or lines
+                if new is not None and lines:
+                    new = _carry_waste(lines, new)
             if new is not None:
                 draft.parts[archive_id] = [raw_line(x, language) for x in new]
     elif kind in ("merge", "split", "drop", "add") and numbers and numbers[0] in draft.ids:
@@ -276,9 +301,9 @@ def refresh_auto(draft: Draft, force: bool = False) -> None:
     "quantity" and "failed pieces", unless the user changed them since."""
     if draft.parts_mode not in PARTS_MODES:
         return
-    plates = [parsed_lines(draft.parts.get(i, [])) for i in draft.ids]
-    if any(plate is None for plate in plates):
-        return
+    plates = [used_lines(draft.parts.get(i, [])) for i in draft.ids]
+    if any(plate is None for plate in plates) or not any(plates):
+        return  # nothing valid to work out from
     good, waste = totals(plates)
     articles = good if draft.parts_mode == "same" else finished_articles(plates)
     new_quantity, new_failed = str(articles), str(waste) if waste else ""
@@ -302,7 +327,7 @@ def parts_view(draft: Draft, language: str, errors: dict[str, str]) -> dict[int,
     shown: dict[int, dict] = {}
     for archive_id in draft.ids:
         raws = draft.parts.get(archive_id, [])
-        lines = parsed_lines(raws)
+        lines = used_lines(raws)
         found = quote(lines) if lines else None
         shown[archive_id] = {
             "lines": [
@@ -442,6 +467,8 @@ def check(db: Session, draft: Draft, found: dict[int, PrintRow], today: date) ->
     if draft.parts_mode in PARTS_MODES:
         for archive_id in draft.ids:
             for k, raw in enumerate(draft.parts.get(archive_id, [])):
+                if is_blank(raw):
+                    continue  # an empty line is not used
                 try:
                     read_line(raw.name, raw.qty, raw.grams, raw.waste)
                 except PartsError as error:

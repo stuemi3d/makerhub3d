@@ -658,7 +658,6 @@
   "production.parts.qty": "Quantity",
   "production.parts.grams": "Grams per piece",
   "production.parts.waste": "Scrap (pieces)",
-  "production.parts.good": "Good parts",
   "production.parts.pick": "Mark to merge",
   "production.parts.pick_short": "Mark",
   "production.parts.merge": "Merge marked",
