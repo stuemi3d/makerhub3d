@@ -41,7 +41,13 @@ def test_too_large_file_is_refused() -> None:
 
 @pytest.mark.parametrize(
     ("status", "code"),
-    [(401, "rejected"), (403, "forbidden"), (404, "bad_response"), (500, "server_error")],
+    [
+        (401, "rejected"),
+        (403, "forbidden"),
+        (404, "not_found"),
+        (418, "bad_response"),
+        (500, "server_error"),
+    ],
 )
 def test_errors_carry_only_a_code(status: int, code: str) -> None:
     def handler(request: httpx2.Request) -> httpx2.Response:

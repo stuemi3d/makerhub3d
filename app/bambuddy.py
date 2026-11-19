@@ -36,7 +36,7 @@ MAX_FILE_BYTES = 50 * 1024 * 1024
 
 
 class BambuddyError(Exception):
-    """Codes: unreachable, timeout, rejected, forbidden, server_error, bad_response."""
+    """Codes: unreachable, timeout, rejected, forbidden, not_found, server_error, bad_response."""
 
     def __init__(self, code: str, path: str = "") -> None:
         super().__init__(code)
@@ -86,6 +86,24 @@ class Spool:
     label_weight: Decimal | None
     weight_used: Decimal | None
     category: str | None
+
+
+@dataclass(frozen=True)
+class PlateFilament:
+    color: str
+    grams: Decimal
+
+
+@dataclass(frozen=True)
+class ArchivePlate:
+    """One sliced plate of an archive entry, as Bambuddy reports it: the names of the objects
+    on it and the filament by colour (Bambuddy does not give the weight per object)."""
+
+    index: int
+    objects: list[str]
+    object_count: int
+    filament_grams: Decimal | None
+    filaments: list[PlateFilament]
 
 
 @dataclass(frozen=True)
@@ -202,6 +220,30 @@ def _spool(raw: Any) -> Spool:
     )
 
 
+def _plate_filament(raw: Any) -> PlateFilament:
+    item = _entry(raw)
+    return PlateFilament(
+        color=_optional_text(item, "color") or "", grams=_decimal(item, "used_grams", required=True)
+    )
+
+
+def _plate(raw: Any) -> ArchivePlate:
+    item = _entry(raw)
+    objects = item.get("objects")
+    filaments = item.get("filaments")
+    if not isinstance(objects, list) or not all(isinstance(n, str) for n in objects):
+        raise _bad()
+    if not isinstance(filaments, list):
+        raise _bad()
+    return ArchivePlate(
+        index=_int(item, "index", required=True),
+        objects=objects,
+        object_count=_int(item, "object_count", required=True),
+        filament_grams=_decimal(item, "filament_used_grams"),
+        filaments=[_plate_filament(f) for f in filaments],
+    )
+
+
 def _printer(raw: Any) -> Printer:
     item = _entry(raw)
     return Printer(
@@ -243,6 +285,8 @@ class BambuddyClient:
             raise BambuddyError("rejected", path)
         if response.status_code == 403:
             raise BambuddyError("forbidden", path)
+        if response.status_code == 404:
+            raise BambuddyError("not_found", path)
         if response.status_code >= 500:
             raise BambuddyError("server_error", path)
         if response.status_code != 200:
@@ -268,6 +312,8 @@ class BambuddyClient:
                     raise BambuddyError("rejected", path)
                 if response.status_code == 403:
                     raise BambuddyError("forbidden", path)
+                if response.status_code == 404:
+                    raise BambuddyError("not_found", path)
                 if response.status_code >= 500:
                     raise BambuddyError("server_error", path)
                 if response.status_code != 200:
@@ -318,6 +364,18 @@ class BambuddyClient:
 
     def archive(self, archive_id: int) -> Archive:
         return _archive(self._get(f"{ARCHIVES_PATH}{int(archive_id)}"))
+
+    def archive_plates(self, archive_id: int) -> list[ArchivePlate]:
+        """The sliced plates of an archive entry with object names and filament by colour."""
+        path = f"{ARCHIVES_PATH}{int(archive_id)}/plates"
+        item = _entry(self._get(path))
+        plates = item.get("plates")
+        if not isinstance(plates, list):
+            raise BambuddyError("bad_response", path)
+        try:
+            return [_plate(p) for p in plates]
+        except BambuddyError as error:
+            raise BambuddyError(error.code, path) from None
 
     def archive_file(self, archive_id: int, max_bytes: int = MAX_FILE_BYTES) -> bytes:
         """The stored .gcode.3mf of an archive entry (read only). The caller checks the content."""

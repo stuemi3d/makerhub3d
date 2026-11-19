@@ -1,0 +1,35 @@
+{
+  "archive_id": 261,
+  "filename": "Beispiel_Set.gcode.3mf",
+  "plates": [
+    {
+      "index": 1,
+      "name": "Cube",
+      "objects": [
+        "Cube",
+        "Cylinder"
+      ],
+      "object_count": 2,
+      "has_thumbnail": true,
+      "thumbnail_url": "/api/v1/archives/260/plate-thumbnail/1",
+      "print_time_seconds": 766,
+      "filament_used_grams": 44,
+      "filaments": [
+        {
+          "slot_id": 1,
+          "type": "PLA",
+          "color": "#AA0000",
+          "tray_info_idx": "GFA00",
+          "used_grams": 44,
+          "used_meters": 14.2
+        }
+      ],
+      "bed_type": null
+    }
+  ],
+  "is_multi_plate": false,
+  "has_gcode": true,
+  "embedded_printer": "Beispiel Drucker 0.4 nozzle",
+  "embedded_process": "0.20mm Standard",
+  "design_overrides": []
+}

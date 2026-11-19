@@ -1,0 +1,42 @@
+{
+  "archive_id": 260,
+  "filename": "Beispiel_Vase.gcode.3mf",
+  "plates": [
+    {
+      "index": 1,
+      "name": "Vase",
+      "objects": [
+        "Vase"
+      ],
+      "object_count": 1,
+      "has_thumbnail": true,
+      "thumbnail_url": "/api/v1/archives/260/plate-thumbnail/1",
+      "print_time_seconds": 766,
+      "filament_used_grams": 10.0,
+      "filaments": [
+        {
+          "slot_id": 1,
+          "type": "PLA",
+          "color": "#AA0000",
+          "tray_info_idx": "GFA00",
+          "used_grams": 6.5,
+          "used_meters": 2.1
+        },
+        {
+          "slot_id": 2,
+          "type": "PLA",
+          "color": "#0000BB",
+          "tray_info_idx": "GFA00",
+          "used_grams": 3.5,
+          "used_meters": 1.1
+        }
+      ],
+      "bed_type": null
+    }
+  ],
+  "is_multi_plate": false,
+  "has_gcode": true,
+  "embedded_printer": "Beispiel Drucker 0.4 nozzle",
+  "embedded_process": "0.20mm Standard",
+  "design_overrides": []
+}

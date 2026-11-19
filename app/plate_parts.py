@@ -63,6 +63,7 @@ class PlatePart:
 class PlateParts:
     parts: list[PlatePart]
     total_grams: Decimal  # everything extruded on the plate
+    plate_index: int = 0
 
 
 @dataclass
@@ -244,32 +245,6 @@ def _pick(values: list[Decimal], index: int) -> Decimal:
     return values[index] if index < len(values) else values[0]
 
 
-def _single_object(archive: zipfile.ZipFile, plate_index: int, name: str) -> PlateParts:
-    """One part with the weight of the whole plate, by colour, from the filaments of the plate
-    in slice_info.config (the slicer's own figures)."""
-    root = _read_xml(archive, "Metadata/slice_info.config")
-    if root is None:
-        raise _Unusable
-    plates = root.findall("plate")
-    plate = next((p for p in plates if _meta(p).get("index") == str(plate_index)), None)
-    if plate is None:
-        raise _Unusable
-    by_color: dict[str, Decimal] = {}
-    for item in plate.findall("filament")[:MAX_FILAMENTS]:
-        try:
-            grams = Decimal((item.get("used_g") or "").strip())
-        except InvalidOperation:
-            raise _Unusable from None
-        if not grams.is_finite() or grams < 0:
-            raise _Unusable
-        color = _CONTROL.sub("", item.get("color") or "")[:20]
-        by_color[color] = by_color.get(color, ZERO) + grams
-    total = sum(by_color.values(), ZERO)
-    if total <= 0:
-        raise _Unusable
-    return PlateParts([PlatePart(name, 1, total, by_color)], total)
-
-
 def _compute(data: bytes) -> PlateParts:
     try:
         archive = zipfile.ZipFile(io.BytesIO(data))
@@ -285,9 +260,6 @@ def _compute(data: bytes) -> PlateParts:
     labels = _names_by_label(archive, plate_index)
     info = _open_gcode(archive, f"Metadata/plate_{plate_index}.gcode")
     used = {label for (label, _), mm in info.mm.items() if label is not None and mm > 0}
-    if len(labels) == 1 and not used & labels.keys():
-        # one object and no markers (Bambu Studio writes none then): the object is the plate
-        return _single_object(archive, plate_index, next(iter(labels.values())))
     if not labels or not used & labels.keys():
         raise _Unusable
     if len(labels) > MAX_PARTS:
@@ -317,7 +289,7 @@ def _compute(data: bytes) -> PlateParts:
             color = info.colors[filament] if filament < len(info.colors) else ""
             by_color[color] = by_color.get(color, ZERO) + part
         instances.append((labels[label], sum(by_color.values(), ZERO), by_color))
-    return PlateParts(_group(instances), total)
+    return PlateParts(_group(instances), total, plate_index)
 
 
 def _group(instances: list[tuple[str, Decimal, dict[str, Decimal]]]) -> list[PlatePart]:
