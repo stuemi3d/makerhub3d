@@ -446,6 +446,8 @@ if (window.htmx) {
       select.classList.add("combo-native");
       select.tabIndex = -1;
       select.setAttribute("aria-hidden", "true");
+      // A pop-up focuses its first or invalid field before this runs; that was the select
+      const hadFocus = document.activeElement === select;
       const label = document.querySelector(`label[for="${CSS.escape(select.id)}"]`);
       if (label) label.htmlFor = input.id;
 
@@ -556,6 +558,7 @@ if (window.htmx) {
       for (const type of ["input", "change", "keyup"]) {
         input.addEventListener(type, (event) => event.stopPropagation());
       }
+      if (hadFocus) input.focus();
     }
   };
   setUp(document);

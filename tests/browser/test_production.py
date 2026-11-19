@@ -12,7 +12,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 import pytest
 from playwright.sync_api import Locator, Page, expect
 
-from tests.browser.conftest import HOST, t
+from tests.browser.conftest import HOST, pick_article, t
 from tests.browser.test_pages import fits_screen_width
 
 PRINTS = [
@@ -165,7 +165,7 @@ def test_booking_and_cancelling_work_on_every_screen(
     choose_printer(admin_page, admin_page.locator("#popup"))
     assert fits_screen_width(admin_page)
 
-    admin_page.select_option("#article", label=f"{number} · Halter")
+    pick_article(admin_page, "article", f"{number} · Halter")
     admin_page.fill("#quantity", "4")
     admin_page.get_by_role("button", name=t("production.preview"), exact=True).click()
     expect(admin_page.locator(".preview-total")).to_be_visible()
@@ -243,18 +243,18 @@ def test_the_form_has_no_sideways_scrolling_and_a_wide_article_choice(
     expect(admin_page.locator("#popup")).to_be_visible()
     choose_printer(admin_page, admin_page.locator("#popup"))
 
-    before = admin_page.locator("#article").bounding_box()["width"]
+    before = admin_page.locator("#article-combo").bounding_box()["width"]
     assert admin_page.evaluate(SCROLLERS) == 0
     assert fits_screen_width(admin_page)
     # Wide enough for a number and a name: at least about 12 characters of the text size.
     assert before >= min(width - 60, 170)
 
-    admin_page.select_option("#article", label=f"{number} · Halter mit langem Namen")
+    pick_article(admin_page, "article", f"{number} · Halter mit langem Namen")
     admin_page.fill("#quantity", "2")
     admin_page.get_by_role("button", name=t("production.preview"), exact=True).click()
     expect(admin_page.locator(".preview-total")).to_be_visible()
 
-    after = admin_page.locator("#article").bounding_box()["width"]
+    after = admin_page.locator("#article-combo").bounding_box()["width"]
     assert admin_page.evaluate(SCROLLERS) == 0
     assert fits_screen_width(admin_page)
     assert abs(after - before) <= 2
@@ -311,7 +311,7 @@ def test_the_preview_keeps_working_after_a_mistake_and_changes_the_cost_per_piec
     expect(popup.locator("[name^=weight]")).to_have_count(0)
     expect(popup.locator("button[value=add_row]")).to_have_count(0)
 
-    popup.locator("#article").select_option(label=f"{number} · Halter")
+    pick_article(popup, "article", f"{number} · Halter")
     popup.locator("#quantity").fill("2")
     click_and_wait(admin_page, preview)
     expect(total).to_be_visible()
@@ -355,7 +355,7 @@ def test_the_labour_fields_fit_and_the_preview_adds_labour_costs(
     assert admin_page.evaluate(SCROLLERS) == 0
     assert fits_screen_width(admin_page)
 
-    popup.locator("#article").select_option(label=f"{number} · Halter")
+    pick_article(popup, "article", f"{number} · Halter")
     popup.locator("#quantity").fill("2")
     popup.locator("#labor_minutes").fill("60")
     popup.locator("#labor_rate").fill("30")
@@ -424,7 +424,7 @@ def test_hints_do_not_overlap_the_fields_and_the_buttons_stay_visible(
         box.check()
     admin_page.get_by_role("button", name=t("production.create"), exact=True).click()
     popup = admin_page.locator("#popup")
-    expect(popup.locator("#article")).to_be_visible()
+    expect(popup.locator("#article-combo")).to_be_visible()
 
     field = popup.locator("#cost_machine_3")
     hint = popup.locator("small", has_text=t("production.machine_missing.device")).first

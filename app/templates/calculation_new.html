@@ -44,7 +44,7 @@
         <input type="hidden" name="article" value="{{ article.id }}">
         {% else %}
         <label for="article">{{ t('calc.field.article') }}</label>
-        <select name="article" id="article"{% if errors.get('article') %} aria-invalid="true" aria-describedby="article-error"{% endif %}>
+        <select name="article" id="article" data-search="{{ t('article.search') }}" data-search-empty="{{ t('article.search_none') }}"{% if errors.get('article') %} aria-invalid="true" aria-describedby="article-error"{% endif %}>
           <option value="">{{ t('calc.choose_article') }}</option>
           {% for a in article_choices %}
           <option value="{{ a.id }}"{% if article and article.id == a.id %} selected{% endif %}>{{ a.label }}</option>

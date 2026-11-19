@@ -21,7 +21,7 @@
 </div>
 <form method="get" action="/sales">
   <label for="article">{{ t('sales.col.article') }}</label>
-  <select id="article" name="article" onchange="this.form.submit()">
+  <select id="article" name="article" data-search="{{ t('article.search') }}" data-search-empty="{{ t('article.search_none') }}" onchange="this.form.submit()">
     <option value="">{{ t('stock.filter.all') }}</option>
     {% for a in articles %}
     <option value="{{ a.id }}"{% if selected == a.id %} selected{% endif %}>{{ a.number }} · {{ a.name }}</option>

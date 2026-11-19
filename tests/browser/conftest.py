@@ -53,6 +53,13 @@ def t(key: str) -> str:
     return json.loads(LOCALE_FILE.read_text(encoding="utf-8"))[key]
 
 
+def pick_article(scope, field_id: str, label: str) -> None:
+    """Choose an article in its searchable field (issue #222): type the text, click the entry."""
+    scope.locator(f"#{field_id}-combo").click()
+    scope.locator(f"#{field_id}-combo").fill(label)
+    scope.locator(f"#{field_id}-list li[data-value]", has_text=label).click()
+
+
 @dataclass(frozen=True)
 class LiveServer:
     url: str
