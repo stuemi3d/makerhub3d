@@ -1,11 +1,11 @@
 """Parts of a plate from a sliced .gcode.3mf (issue #214): which parts are on the plate, how many
 of each, and how heavy one piece is.
 
-Names come from the 3MF (Metadata/model_settings.config), the filament per part from the
-object markers in the G-code ("start/stop printing object, unique label id"). Every move with
-extrusion counts (G0 to G3, so arcs too); the length of filament is turned into grams with the
-diameter and density written in the file. Filament printed outside of any object marker (flush,
-wipe tower) is shared out in proportion to the weight of the parts.
+Names come from the 3MF (slice_info.config, else model_settings.config), the filament per part
+from the object markers in the G-code ("start/stop printing object, unique label id"). Every
+move with extrusion counts (G0 to G3, so arcs too); the length of filament is turned into grams
+with the diameter and density written in the file. Filament printed outside of any object
+marker (flush, wipe tower) is shared out in proportion to the weight of the parts.
 
 Pure reading, no page and no database: the caller passes the bytes, nothing is written to disk
 and no name inside the archive is ever used as a path. The result is an attempt: whatever is
@@ -167,7 +167,21 @@ def _clean_name(text: str) -> str:
     return _CONTROL.sub(" ", text).strip()[:MAX_NAME] or "?"
 
 
-def _names_by_label(root: ElementTree.Element, plate_index: int) -> dict[str, str]:
+def _names_from_slice_info(root: ElementTree.Element, plate_index: int) -> dict[str, str]:
+    """Label id -> name, from the objects of the plate in Metadata/slice_info.config (this is
+    where Bambu Studio writes them; skipped objects are left out)."""
+    plates = root.findall("plate")
+    chosen = [p for p in plates if _meta(p).get("index") == str(plate_index)]
+    names: dict[str, str] = {}
+    for plate in chosen or plates[:1]:
+        for item in plate.findall("object"):
+            label = item.get("identify_id")
+            if label and item.get("skipped") != "true":
+                names[label] = _clean_name(item.get("name") or "")
+    return names
+
+
+def _names_from_model_settings(root: ElementTree.Element, plate_index: int) -> dict[str, str]:
     """Label id (identify_id) -> name of the object, for the objects on the plate."""
     objects = {
         element.get("id") or "": _clean_name(_meta(element).get("name", ""))
@@ -184,6 +198,27 @@ def _names_by_label(root: ElementTree.Element, plate_index: int) -> dict[str, st
             if label and name:
                 names[label] = name
     return names
+
+
+def _read_xml(archive: zipfile.ZipFile, name: str) -> ElementTree.Element | None:
+    if name not in archive.namelist():
+        return None
+    if archive.getinfo(name).file_size > MAX_XML:
+        raise _Unusable
+    with archive.open(name) as stream:
+        raw = stream.read(MAX_XML + 1)
+    if len(raw) > MAX_XML:
+        raise _Unusable
+    return _clean_xml(raw)
+
+
+def _names_by_label(archive: zipfile.ZipFile, plate_index: int) -> dict[str, str]:
+    root = _read_xml(archive, "Metadata/slice_info.config")
+    names = _names_from_slice_info(root, plate_index) if root is not None else {}
+    if names:
+        return names
+    root = _read_xml(archive, "Metadata/model_settings.config")
+    return _names_from_model_settings(root, plate_index) if root is not None else {}
 
 
 def _open_gcode(archive: zipfile.ZipFile, name: str) -> _Gcode:
@@ -218,17 +253,10 @@ def _compute(data: bytes) -> PlateParts:
     if len(names) > MAX_ENTRIES:
         raise _Unusable
     plates = sorted(int(m.group(1)) for n in names if (m := _GCODE_NAME.fullmatch(n)))
-    if not plates or "Metadata/model_settings.config" not in names:
+    if not plates:
         raise _Unusable
     plate_index = plates[0]
-    info_entry = archive.getinfo("Metadata/model_settings.config")
-    if info_entry.file_size > MAX_XML:
-        raise _Unusable
-    with archive.open(info_entry) as stream:
-        raw = stream.read(MAX_XML + 1)
-    if len(raw) > MAX_XML:
-        raise _Unusable
-    labels = _names_by_label(_clean_xml(raw), plate_index)
+    labels = _names_by_label(archive, plate_index)
     info = _open_gcode(archive, f"Metadata/plate_{plate_index}.gcode")
     used = {label for (label, _), mm in info.mm.items() if label is not None and mm > 0}
     if not labels or not used & labels.keys():

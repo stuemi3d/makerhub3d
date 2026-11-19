@@ -304,3 +304,31 @@ def test_too_many_labels_give_no_result() -> None:
         }
     )
     assert parts_from_file(data) is None
+
+
+def slice_info(index: int, objects: list[tuple[str, str, bool]]) -> bytes:
+    """The form real files from Bambu Studio 2.x use: objects with label id and name."""
+    items = "".join(
+        f'<object identify_id="{label}" name="{name}" skipped="{str(skipped).lower()}" />'
+        for label, name, skipped in objects
+    )
+    return (
+        f'<config><plate><metadata key="index" value="{index}"/>{items}</plate></config>'
+    ).encode()
+
+
+def test_names_from_slice_info_and_other_plate_number() -> None:
+    # real files keep the objects in slice_info.config and may have plate_2.gcode only
+    data = make_file(
+        {
+            "Metadata/slice_info.config": slice_info(
+                2, [("7", "Lid", False), ("8", "Lid", False), ("9", "Skipped", True)]
+            ),
+            "Metadata/plate_2.gcode": gcode([("7", 6.0, 0), ("8", 6.0, 0), ("9", 3.0, 0)]),
+        }
+    )
+    result = parts_from_file(data)
+    assert result is not None
+    assert [(p.name, p.quantity) for p in result.parts] == [("Lid", 2)]
+    # the skipped object was printed outside of a known part: it is shared out
+    assert abs(result.total_grams - D("15")) < D("0.05")
