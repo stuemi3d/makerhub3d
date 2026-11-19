@@ -17,11 +17,11 @@
     </div>
     <div>
       <label for="from">{{ t('analysis_total.from') }}</label>
-      <input type="date" id="from" name="from" value="{{ start_text if period_choice.key == 'custom' else '' }}">
+      <input type="date" id="from" name="from" value="{{ start_text if period_choice.key == 'custom' else '' }}" {{ 'disabled' if period_choice.key != 'custom' }}>
     </div>
     <div>
       <label for="to">{{ t('analysis_total.to') }}</label>
-      <input type="date" id="to" name="to" value="{{ end_text if period_choice.key == 'custom' else '' }}">
+      <input type="date" id="to" name="to" value="{{ end_text if period_choice.key == 'custom' else '' }}" {{ 'disabled' if period_choice.key != 'custom' }}>
     </div>
   </div>
   <button type="submit">{{ t('analysis_total.show') }}</button>

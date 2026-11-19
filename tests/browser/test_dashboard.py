@@ -54,17 +54,21 @@ def test_dashboard_areas_and_chart_fit_every_screen(admin_page: Page) -> None:
     assert box["x"] + box["width"] <= admin_page.viewport_size["width"]
 
 
-def test_typing_a_date_switches_the_period_to_free_choice(admin_page: Page) -> None:
-    """Dates only count for the free period, so typing one must select it (issue #207)."""
+def test_dates_are_greyed_out_until_the_free_period_is_chosen(admin_page: Page) -> None:
+    """Dates only count for the free period, so they are disabled before (issue #207)."""
     admin_page.goto("/?period=last_month")
+    expect(admin_page.locator("#from")).to_be_disabled()
+    expect(admin_page.locator("#to")).to_be_disabled()
 
+    admin_page.select_option("#period", "custom")
+    expect(admin_page.locator("#from")).to_be_enabled()
     admin_page.fill("#from", "2026-01-05")
     admin_page.fill("#to", "2026-01-06")
-    expect(admin_page.locator("#period")).to_have_value("custom")
     admin_page.locator(".period-form button[type=submit]").click()
 
     expect(admin_page.locator("#period")).to_have_value("custom")
     expect(admin_page.locator("#from")).to_have_value("2026-01-05")
     expect(admin_page.locator("#to")).to_have_value("2026-01-06")
     admin_page.select_option("#period", "month")
+    expect(admin_page.locator("#from")).to_be_disabled()
     expect(admin_page.locator("#from")).to_have_value("")
