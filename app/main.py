@@ -7,6 +7,7 @@ import threading
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 from urllib.parse import urlencode, urlsplit
 
@@ -20,12 +21,14 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app import (
     APP_NAME,
+    analysis_total,
     audit,
     auth,
     backup,
     calc_store,
     calculation_files,
     dashboard,
+    dashboard_page,
     print_list,
     two_factor,
 )
@@ -477,11 +480,37 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.get("/", response_class=HTMLResponse, dependencies=[requires(Permission.VIEW)])
     def index(
-        request: Request, sort: str | None = None, direction: str | None = Query(None, alias="dir")
+        request: Request,
+        sort: str | None = None,
+        direction: str | None = Query(None, alias="dir"),
+        period: str | None = None,
+        start: str = Query("", alias="from"),
+        end: str = Query("", alias="to"),
     ) -> HTMLResponse:
         chosen = dashboard.chosen_sort(sort, direction)
+        today = date.today()
+        selection = analysis_total.choose(period, start, end, today)
+        keep = {"period": selection.key}
+        if selection.key == "custom":
+            keep.update({"from": start[:10], "to": end[:10]})
+        context: dict[str, object] = {
+            "periods": analysis_total.PERIODS,
+            "period_choice": selection,
+            "start_text": start[:10],
+            "end_text": end[:10],
+            "overview": None,
+        }
         with new_session() as session:
             data = dashboard.build(session)
+            # Slow sellers, warnings, stock value and the chart do not depend on the period, so
+            # they stay when the period is invalid (the period figures are hidden then)
+            context["overview"] = dashboard_page.overview(
+                session,
+                selection.start or date(today.year, 1, 1),
+                selection.end or date(today.year, 12, 31),
+                today,
+                language,
+            )
         rows = dashboard.sort_rows(data.low_stock, *(chosen or dashboard.DEFAULT_SORT))
         # Bambuddy being slow or away must not hold the dashboard up (short wait, no error page)
         open_prints = print_list.open_summary(app.state.read_prints(print_list.DASHBOARD_TIMEOUT))
@@ -492,7 +521,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             data=data,
             low_rows=rows,
             open_prints=open_prints,
-            sort_links=dashboard.sort_links(chosen),
+            sort_links=dashboard.sort_links(chosen, keep),
+            **context,
         )
 
     # Login is checked by the middleware above, the role by the dependency of each route.

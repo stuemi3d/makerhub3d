@@ -318,7 +318,7 @@ Der Maintainer hat die frühere Bedingung („erst nach Alltagsnutzung von M1“
 **M4 – Verkauf und Auswertung**
 
 - [x] Verkauf von Hand (#201)
-- [ ] Auswertung pro Artikel, gesamt; Dashboard vollständig
+- [x] Auswertung pro Artikel, gesamt; Dashboard vollständig (#207)
 - [ ] CSV-Export
 
 **M4a – Teile und Ausschuss**

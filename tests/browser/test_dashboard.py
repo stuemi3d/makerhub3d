@@ -20,9 +20,35 @@ def test_dashboard_shows_tiles_and_low_stock_on_every_screen(
     admin_page.goto("/")
 
     expect(admin_page.locator("h1")).to_have_text(t("nav.dashboard"))
-    expect(admin_page.locator(".stat")).to_have_count(3)
+    expect(admin_page.locator(".stat")).to_have_count(14)
     expect(admin_page.locator(".stat").first).to_be_visible()
     low = admin_page.locator("#low-stock")
     expect(low).to_be_visible()
     expect(low.locator("tr", has_text=number)).to_be_visible()
     assert fits_screen_width(admin_page)
+
+
+def test_dashboard_areas_and_chart_fit_every_screen(admin_page: Page) -> None:
+    """Issue #207, test case 8: all areas, the period choice and the drawn chart fit the width."""
+    admin_page.goto("/")
+
+    for key in ("group.sales", "group.production", "group.quality", "group.stock", "todo.title"):
+        expect(admin_page.locator("h2", has_text=t(f"dashboard.{key}"))).to_be_visible()
+    expect(admin_page.locator("#todo")).to_be_visible()
+    canvas = admin_page.locator("#month-chart canvas[data-chart]")
+    canvas.scroll_into_view_if_needed()
+    expect(canvas).to_be_visible()
+    admin_page.wait_for_function(
+        """() => {
+          const c = document.querySelector("canvas[data-chart]");
+          const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
+          let n = 0;
+          for (let i = 3; i < d.length; i += 4) if (d[i] > 0) n += 1;
+          return n > 200;
+        }"""
+    )
+    assert fits_screen_width(admin_page)
+    box = canvas.bounding_box()
+    assert box is not None
+    assert box["x"] >= 0
+    assert box["x"] + box["width"] <= admin_page.viewport_size["width"]

@@ -242,6 +242,46 @@ def compute(db: Session, start: date, end: date, today: date) -> Totals:
     )
 
 
+@dataclass(frozen=True)
+class MonthPoint:
+    """Revenue and cost of the sold pieces of one month (first day of the month)."""
+
+    month: date
+    revenue: Decimal
+    cost: Decimal
+
+
+MONTHS = 12
+
+
+def _months_back(day: date, count: int) -> date:
+    """The first day of the month `count` months before the month of `day`."""
+    index = day.year * 12 + day.month - 1 - count
+    return date(index // 12, index % 12 + 1, 1)
+
+
+def monthly(db: Session, today: date) -> list[MonthPoint]:
+    """Revenue and cost of the sold pieces per month for the last 12 months up to and including
+    the month of `today`, oldest first (issue #207). Cost is valued like in `compute`; months
+    without sales are 0."""
+    first = _months_back(today, MONTHS - 1)
+    made = _productions(db)
+    revenue: dict[date, Decimal] = {}
+    cost: dict[date, Decimal] = {}
+    for sale in db.scalars(
+        select(Sale).where(
+            Sale.cancelled.is_(False), Sale.booked_on >= first, Sale.booked_on <= _month_end(today)
+        )
+    ):
+        month = _month_start(sale.booked_on)
+        revenue[month] = revenue.get(month, ZERO) + sale.quantity * sale.unit_price
+        cost[month] = cost.get(month, ZERO) + sale.quantity * _average_until(
+            made.get(sale.article_id, []), sale.booked_on
+        )
+    months = (_months_back(today, MONTHS - 1 - index) for index in range(MONTHS))
+    return [MonthPoint(m, revenue.get(m, ZERO), cost.get(m, ZERO)) for m in months]
+
+
 def texts(totals: Totals, language: str) -> dict[str, str]:
     """The five key figures as shown on the page."""
     return {
