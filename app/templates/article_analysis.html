@@ -38,7 +38,7 @@
 </div>
 {% endfor %}
 <article class="data-card">
-  <header class="card-head"><h2>{{ t('analysis.chart.title') }}</h2></header>
+  <div class="card-head"><h2>{{ t('analysis.chart.title') }}</h2></div>
   {% if point_rows %}
   <div class="chart-box">
     {# The data sits in an attribute, escaped by tojson and the template; no inline script. #}

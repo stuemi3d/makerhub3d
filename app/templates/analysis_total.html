@@ -3,7 +3,7 @@
 {% block title %}{{ t('analysis_total.title') }} – {{ app_name }}{% endblock %}
 {% macro line_table(id, lines, title_key, empty_key) %}
 <article class="data-card" id="{{ id }}">
-  <header class="card-head"><h2>{{ t(title_key) }}</h2></header>
+  <div class="card-head"><h2>{{ t(title_key) }}</h2></div>
   {% if lines %}
   <div class="data-scroll">
     <table class="data-table">
@@ -87,7 +87,7 @@
 {{ line_table('top', totals.top, 'analysis_total.top', 'analysis_total.empty.top') }}
 {{ line_table('flop', totals.flop, 'analysis_total.flop', 'analysis_total.empty.flop') }}
 <article class="data-card" id="slow">
-  <header class="card-head"><h2>{{ t('analysis_total.slow') }}</h2></header>
+  <div class="card-head"><h2>{{ t('analysis_total.slow') }}</h2></div>
   {% if totals.slow %}
   <div class="data-scroll">
     <table class="data-table">

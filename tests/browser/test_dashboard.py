@@ -72,3 +72,14 @@ def test_dates_are_greyed_out_until_the_free_period_is_chosen(admin_page: Page) 
     admin_page.select_option("#period", "month")
     expect(admin_page.locator("#from")).to_be_disabled()
     expect(admin_page.locator("#from")).to_have_value("")
+
+
+def test_card_headings_stay_inside_their_cards(admin_page: Page) -> None:
+    """The heading bar of a card must not stick out of it (a header element does, see Pico)."""
+    for path, card in (("/analysis", "#top"), ("/", "#month-chart")):
+        admin_page.goto(path)
+        box = admin_page.locator(card).bounding_box()
+        head = admin_page.locator(f"{card} .card-head").bounding_box()
+        assert box is not None and head is not None
+        assert head["x"] >= box["x"]
+        assert head["x"] + head["width"] <= box["x"] + box["width"] + 0.5

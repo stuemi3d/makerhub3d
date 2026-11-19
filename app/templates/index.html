@@ -99,7 +99,7 @@
 <script src="/static/chart.min.js" defer></script>
 <script src="/static/dashboard_chart.js" defer></script>
 <article class="data-card" id="month-chart">
-  <header class="card-head"><h2>{{ t('dashboard.chart.title') }}</h2></header>
+  <div class="card-head"><h2>{{ t('dashboard.chart.title') }}</h2></div>
   <div class="chart-box">
     <canvas data-chart="{{ overview.chart|tojson|forceescape }}" data-revenue="{{ t('dashboard.chart.revenue') }}" data-cost="{{ t('dashboard.chart.cost') }}" role="img" aria-label="{{ t('dashboard.chart.summary') }}"></canvas>
   </div>
