@@ -1061,3 +1061,9 @@ main .detail-card:not(.auth-box) > form [type="submit"] {
 .parts-mode-block fieldset {
   margin-bottom: 0.5rem;
 }
+
+/* Note under a key figure (issue 216) */
+.stat-note {
+  margin: 0.25rem 0 0;
+  color: var(--mh-text-muted);
+}

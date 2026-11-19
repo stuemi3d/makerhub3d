@@ -18,7 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import stock
-from app.analysis import money
+from app.analysis import money, percent
 from app.models import (
     Article,
     PrintStatus,
@@ -80,6 +80,9 @@ class Totals:
     gross_profit: Decimal
     stock_value: Decimal
     failed_cost: Decimal
+    # Share of the failed cost in the production cost of the period, in percent; None without
+    # any production
+    failed_share: Decimal | None
     top: list[Line]
     flop: list[Line]
     slow: list[SlowRow]
@@ -180,21 +183,31 @@ def compute(db: Session, start: date, end: date, today: date) -> Totals:
     flop = sorted(ranked[TOP_SIZE:], key=lambda line: (line.profit, line.number.casefold()))
     flop = flop[:TOP_SIZE]
 
-    failed_query = (
-        select(ProductionPrint)
-        .join(Production, Production.id == ProductionPrint.production_id)
-        .where(
-            Production.cancelled.is_(False),
-            Production.booked_on >= start,
-            Production.booked_on <= end,
-            ProductionPrint.status == PrintStatus.FAILED,
-        )
+    # Failed prints count with their whole cost, the others with their waste amount (issue
+    # #216); labour is not part of a print. The production cost of the period is the total of
+    # the productions (labour included).
+    in_period = (
+        Production.cancelled.is_(False),
+        Production.booked_on >= start,
+        Production.booked_on <= end,
     )
     failed_cost = ZERO
-    for print_ in db.scalars(failed_query):
-        failed_cost += (
-            print_.material_cost + print_.electricity_cost + print_.wear_cost + print_.machine_cost
-        )
+    for print_ in db.scalars(
+        select(ProductionPrint)
+        .join(Production, Production.id == ProductionPrint.production_id)
+        .where(*in_period)
+    ):
+        if print_.status == PrintStatus.FAILED:
+            failed_cost += (
+                print_.material_cost
+                + print_.electricity_cost
+                + print_.wear_cost
+                + print_.machine_cost
+            )
+        else:
+            failed_cost += print_.waste_cost
+    production_cost = sum(db.scalars(select(Production.total_cost).where(*in_period)), ZERO)
+    failed_share = failed_cost * 100 / production_cost if production_cost > 0 else None
 
     levels = stock.stock_levels(db, list(articles))
     last_sale: dict[int, date] = {}
@@ -222,6 +235,7 @@ def compute(db: Session, start: date, end: date, today: date) -> Totals:
         gross_profit=revenue - cost_of_sold,
         stock_value=stock_value,
         failed_cost=failed_cost,
+        failed_share=failed_share,
         top=top,
         flop=flop,
         slow=slow,
@@ -236,4 +250,5 @@ def texts(totals: Totals, language: str) -> dict[str, str]:
         "gross_profit": money(totals.gross_profit, language),
         "stock_value": money(totals.stock_value, language),
         "failed_cost": money(totals.failed_cost, language),
+        "failed_share": percent(totals.failed_share, language),
     }

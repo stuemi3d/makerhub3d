@@ -106,7 +106,7 @@ Der Artikel ist der Knotenpunkt; alles andere hängt über die Artikelnummer an 
 - Die Teile gehören zu **einer** Produktion mit **einem** Ergebnis-Artikel; Sets und Stücklisten bleiben außerhalb des Umfangs.
 - **Stückkosten:** Zunächst bleibt es bei der Regel „alle Kosten auf die guten Stück“. Ob der Ausschussbetrag daraus herausgenommen wird (in der Praxis: normaler Ausschuss bleibt drin, außergewöhnlicher wird als eigene Kostenzeile ausgewiesen, mit einer Einstellung für die Normalquote), wird bewusst später und getrennt entschieden.
 
-**Fehldrucke:** Fehlgeschlagene Drucke (ganze Platte) werden rot angezeigt und können der Produktion zugeordnet werden, für die sie gedacht waren (erhöhen dann deren Stückkosten), oder ignoriert werden; sie zählen als Ausschuss mit 100 %. Die Auswertung weist den Fehldruck-Anteil pro Artikel aus; die **Fehldruckkosten** der Gesamt-Auswertung sind die Summe aus ganzen Fehldrucken und den Ausschussbeträgen, ohne Arbeitszeit (die Arbeitszeit gehört zur Produktion, nicht zum einzelnen Druck), dazu ihr Anteil an den gesamten Produktionskosten des Zeitraums.
+**Fehldrucke:** Fehlgeschlagene Drucke (ganze Platte) werden rot angezeigt und können der Produktion zugeordnet werden, für die sie gedacht waren (erhöhen dann deren Stückkosten), oder ignoriert werden; sie zählen als Ausschuss mit 100 %. Die Auswertung weist den Fehldruck-Anteil pro Artikel aus; die **Fehldruckkosten** der Gesamt-Auswertung sind die Summe aus ganzen Fehldrucken und den Ausschussbeträgen, ohne Arbeitszeit (die Arbeitszeit gehört zur Produktion, nicht zum einzelnen Druck), dazu ihr Anteil an den gesamten Produktionskosten des Zeitraums (Summe der Produktionen, mit Arbeitszeit; ohne Produktion steht „–“). Ein ganzer Fehldruck zählt mit 100 %; ein Druck mit Ausschuss zählt mit seinem gespeicherten Ausschussbetrag; beides nie doppelt.
 
 **Mehrere Kalkulationen:** pro Artikel (auch Variante) beliebig viele, mit Datum; neue als Kopie einer alten. Eine ist „maßgeblich“ und dient der Auswertung als Soll-Wert. Kalkulationen dürfen frei bearbeitet und gelöscht werden; beim Löschen wird auch die gespeicherte Datei gelöscht.
 
@@ -326,7 +326,7 @@ Der Maintainer hat die frühere Bedingung („erst nach Alltagsnutzung von M1“
 - [x] Plan: Teile, Ausschuss und Fehldrucke neu beschreiben (#213)
 - [x] Teile einer Platte aus der Bambuddy-Datei berechnen (Menge und Gewicht) (#214)
 - [x] Produktion: Teile-Maske mit Gut und Ausschuss pro Teil (#215)
-- [ ] Ausschussbetrag speichern und in die Fehldruckkosten einrechnen (#216)
+- [x] Ausschussbetrag speichern und in die Fehldruckkosten einrechnen (#216)
 - [ ] Später, eigene Entscheidung: normaler und außergewöhnlicher Ausschuss in den Stückkosten
 
 **M5 – Anbindung Rechnungs-Software (später)**

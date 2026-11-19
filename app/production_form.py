@@ -413,6 +413,16 @@ def _cost(
     return value
 
 
+def _waste_share(draft: Draft, row: PrintRow) -> Decimal:
+    """The share of the print that is waste, from the lines of the mask (0 without the mask or
+    with lines that are not valid; those are reported by `check` anyway)."""
+    if draft.parts_mode not in PARTS_MODES:
+        return Decimal(0)
+    lines = used_lines(draft.parts.get(row.archive_id, []))
+    found = quote(lines) if lines else None
+    return found[0] if found else Decimal(0)
+
+
 def check(db: Session, draft: Draft, found: dict[int, PrintRow], today: date) -> Checked:
     """Checks what the form can say by itself. `found` are the prints Bambuddy knows."""
     checked = Checked()
@@ -437,6 +447,7 @@ def check(db: Session, draft: Draft, found: dict[int, PrintRow], today: date) ->
         electricity = _cost(draft, row, "electricity", cost_errors, rate)
         machine = _cost(draft, row, "machine", cost_errors, rate)
         errors.update(cost_errors)
+        waste_share = _waste_share(draft, row)
         checked.prints.append(
             PrintInput(
                 archive_id,
@@ -449,6 +460,7 @@ def check(db: Session, draft: Draft, found: dict[int, PrintRow], today: date) ->
                 kwh=row.kwh,
                 filament_type=row.filament_type,
                 filament_color=row.filament_color,
+                waste_share=waste_share,
             )
         )
 

@@ -344,3 +344,59 @@ def test_an_empty_line_does_not_block_and_waste_survives_a_mode_change(client: A
     assert lines_of(same, 7)[0][3] == "1"
     back = send(client, mask_fields(same, 7, parts_mode="different", parts_do="mode")).text
     assert [x[3] for x in lines_of(back, 7)] == ["1", "0"]
+
+
+def stored_waste() -> list[tuple[int, str, str]]:
+    from sqlalchemy import select
+
+    from app.models import ProductionPrint
+    from tests.test_stock import db
+
+    with db() as session:
+        return [
+            (p.archive_id, str(p.waste_share), str(p.waste_cost))
+            for p in session.scalars(select(ProductionPrint).order_by(ProductionPrint.archive_id))
+        ]
+
+
+def test_216_booking_from_the_mask_stores_waste_share_and_amount(client: AppClient) -> None:
+    # print 6 costs 3.00 + 0.50 + 1.00 (1000 s at 3.60 EUR/h) = 4.50 EUR
+    article_id = prepare(
+        client, {6: plates_answer(["Clip"] * 50, 100)}, {6: sliced([("Clip", 2.0, 0)] * 50)}
+    )
+    html = client.get("/production/new?prints=6").text
+    data = mask_fields(html, 6, pwaste_6_0="40", article=str(article_id), action="book")
+    response = send(client, data)
+    assert response.status_code == 303
+    assert stored_waste() == [(6, "80.00", "3.60")]  # 40 of 50 = 80 % of 4.50
+
+
+def test_216_a_failed_print_is_stored_with_100_percent(client: AppClient) -> None:
+    # print 8 failed: it counts as a whole, whatever the mask says
+    article_id = prepare(client, {}, {})
+    data = {
+        "prints": ["6", "8"],
+        "parts_mode": "same",
+        "parts_mode_was": "same",
+        "pname_6_0": "Clip",
+        "pqty_6_0": "10",
+        "pwaste_6_0": "5",
+        "pname_8_0": "Clip",
+        "pqty_8_0": "10",
+        "pwaste_8_0": "0",
+        "quantity": "5",
+        "article": str(article_id),
+        "action": "book",
+    }
+    response = send(client, data)
+    assert response.status_code == 303, response.text[:300]
+    by_id = {row[0]: row for row in stored_waste()}
+    assert by_id[6][1] == "50.00" and by_id[6][2] == "2.25"  # half of 4.50 EUR
+    assert by_id[8][1] == "100.00" and by_id[8][2] == "1.30"  # 1.00 + 0.10 + 0.20
+
+
+def test_216_without_the_mask_the_waste_is_zero(client: AppClient) -> None:
+    article_id = prepare(client, {}, {})
+    response = send(client, form([6], (article_id, "3"), failed_pieces="2"))
+    assert response.status_code == 303
+    assert stored_waste() == [(6, "0.00", "0.00")]
