@@ -12,9 +12,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import print_list, production, production_form, production_view, stock
+from app.archive_parts import archive_parts
 from app.article_pages import confirmed, varied, wants_popup
-from app.models import AppSettings, Article
+from app.bambuddy import BambuddyClient, BambuddyError
+from app.models import AppSettings, Article, BambuddyConnection
 from app.permissions import Permission, requires
+from app.production_parts import detect, same_article, stored_detected
 from app.two_factor import Cipher
 
 _PRINT_ID = re.compile(r"[1-9][0-9]{0,8}")
@@ -38,6 +41,45 @@ def add_production_routes(
         return print_list.load(new_session, cipher, transport, language, timeout)
 
     app.state.read_prints = read_prints
+
+    def parts_client() -> BambuddyClient | None:
+        """The client for the parts of the plates; None when Bambuddy is not set up."""
+        transport: httpx2.BaseTransport | None = getattr(app.state, "bambuddy_transport", None)
+        with new_session() as db:
+            row = db.get(BambuddyConnection, 1)
+            url, token = row.url, row.api_key_encrypted
+        api_key = cipher.decrypt(token) if cipher is not None and token else None
+        if not url or api_key is None:
+            return None
+        return BambuddyClient(url, api_key, transport=transport)
+
+    def detect_parts(draft: production_form.Draft) -> None:
+        """Fills the parts mask from what Bambuddy and the file say (a first visit). Whatever
+        goes wrong, the mask stays empty and the user picks the mode and types by hand."""
+        client = parts_client()
+        if client is None:
+            return
+        found: dict[int, list] = {}
+        modes: list[str] = []
+        for archive_id in draft.ids:
+            try:
+                lines, mode = detect(archive_parts(client, archive_id))
+            except BambuddyError:
+                continue
+            if lines:
+                found[archive_id] = lines
+                modes.append(mode)
+                draft.detected[archive_id] = stored_detected(lines)
+        if not modes:
+            return
+        draft.parts_mode = "different" if "different" in modes else "same"
+        for archive_id in draft.ids:
+            lines = found.get(archive_id, [])
+            if draft.parts_mode == "same":
+                lines = same_article(lines)
+            raws = [production_form.raw_line(x, language) for x in lines]
+            draft.parts[archive_id] = raws or [production_form.RawLine()]
+        production_form.refresh_auto(draft, force=True)
 
     def production_page(
         request: Request,
@@ -166,6 +208,8 @@ def add_production_routes(
             shown_prints=shown,
             printers=printers.choices,
             articles=articles,
+            parts_modes=production_form.PARTS_MODES,
+            parts=production_form.parts_view(draft, language, errors),
             errors=errors,
             preview=preview,
             labor_minutes=draft.labor_minutes or "",
@@ -202,6 +246,7 @@ def add_production_routes(
             problem = _prints_problem(draft, found)
             if problem:
                 return form_page(request, draft, prints, 422, {"prints": problem})
+            detect_parts(draft)
             return form_page(request, draft, prints)
 
         return await run_in_threadpool(work)
@@ -221,8 +266,9 @@ def add_production_routes(
         failed_page, checked, prints = open_form(request, draft)
         if failed_page is not None:
             return failed_page
-        if draft.action == "device":
-            # Another printer was chosen: draw the form again, without checking the rest
+        if draft.action in ("device", "parts"):
+            # Another printer or a change of the parts: draw the form again, without checking
+            # the rest
             return form_page(request, draft, prints)
         if checked.errors:
             return form_page(request, draft, prints, 422, checked.errors)
@@ -263,7 +309,7 @@ def add_production_routes(
 
     @app.post("/production/new", response_class=HTMLResponse, dependencies=edit_right)
     async def create_production(request: Request) -> Response:
-        draft = production_form.read(await request.form())
+        draft = production_form.read(await request.form(), language=language)
         return await run_in_threadpool(handle_form, request, draft)
 
     # --- Productions: list, detail, cancelling ------------------------------------------------

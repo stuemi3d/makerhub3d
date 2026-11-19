@@ -18,6 +18,8 @@
 {% if errors and not errors.get('prints') %}<p role="alert"><mark>{{ t('production.has_errors') }}</mark></p>{% endif %}
 <form id="production-form" method="post" action="/production/new" novalidate{% if popup %} hx-post="/production/new" hx-target="#popup-body" hx-swap="innerHTML"{% endif %}>
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  {# Enter in a field presses the first button of the form: that must be the harmless preview #}
+  <button type="submit" name="action" value="preview" class="visually-hidden" tabindex="-1" aria-hidden="true"></button>
   {% for archive_id in draft.ids %}<input type="hidden" name="prints" value="{{ archive_id }}">{% endfor %}
   <h2>{{ t('production.detail.prints') }}</h2>
   {% for p in shown_prints %}
@@ -51,6 +53,8 @@
     {% if p.missing %}<p role="status"><small>{{ t('production.cost_missing') }}</small></p>{% endif %}
   </div>
   {% endfor %}
+
+  {% include "_production_parts.html" %}
 
   <h2>{{ t('production.detail.labor') }}</h2>
   <div class="form-block labor-block">

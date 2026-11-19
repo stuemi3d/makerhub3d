@@ -69,7 +69,7 @@ Der Artikel ist der Knotenpunkt; alles andere hängt über die Artikelnummer an 
 | Artikelvorlage | Vorlagennummer, Name, Beschreibung, Merkmale (z. B. Farbe, Größe; jeder Merkmalswert mit Kürzel), Standardwerte für Preis und Mindestbestand, aktiv | nur Vorlage: kein Bestand, kein Verkauf |
 | Artikel | Artikelnummer, Bezeichnung, optional Vorlage + Merkmalswerte (= Variante), Soll-Verkaufspreis, Mindestbestand, aktiv | Artikelnummer = Schlüssel zur Rechnungs-Software |
 | Kalkulation (optional) | Artikel (auch eine Variante, nie eine Vorlage), Datum, „maßgeblich“-Kennzeichen, Art (mit Datei / von Hand), optional die gespeicherte `.gcode.3mf`-Datei, Materialzeilen (Material, Gramm; je Zeile eine oder mehrere Bambuddy-Spulen mit Gramm und Preis/kg als Wert), Druckzeit, Teile pro Platte, Drucker, Ausschussquote %, Rüstzeit pro Platte (Min.), Nacharbeit pro Stück (Min.), Gewinnaufschlag %, Ergebnis pro Stück (Selbstkosten ohne/mit Arbeitszeit, Verkaufspreis-Vorschlag) | Spule aus Bambuddy (nur gelesen) |
-| Produktion | Datum, Notiz, Gesamtkosten, Arbeitszeit (Minuten), Stundensatz und Arbeitskosten als Wert, Fehldruck-Stücke (bis zur Umsetzung von #214 bis #216 nur zur Information; danach je Druck Ausschussanteil in % und Ausschussbetrag als Wert, siehe „Teile einer Platte und Ausschuss“ unten in diesem Abschnitt), storniert | – |
+| Produktion | Datum, Notiz, Gesamtkosten, Arbeitszeit (Minuten), Stundensatz und Arbeitskosten als Wert, Ausschuss in Stück (früher „Fehldruck-Stücke“; ab #215 aus der Teile-Maske vorbelegt und nur zur Information, bis #216 umgesetzt ist; danach je Druck Ausschussanteil in % und Ausschussbetrag als Wert, siehe „Teile einer Platte und Ausschuss“ unten in diesem Abschnitt), storniert | – |
 | Produktion – Drucke | Produktion, Material-, Strom-, Maschinenkosten als Wert (Maschinenkosten = Druckstunden × Maschinensatz des gewählten Druckers, Satz siehe Abschnitt 6; der Verschleiß steckt im Satz und wird nicht aus Bambuddy übernommen), Druckzeit, Filament in Gramm und Strom in kWh als Wert (leer, wenn Bambuddy sie nicht kennt), Filament (Material als Text, Farben als Farbcodes), Status (erfolgreich/fehlgeschlagen) | Bambuddy-Archiv-ID |
 | Produktion – Ergebnis | Produktion, Artikel (genau einer), gute Stück, Kosten (alle Kosten der Produktion) | – |
 | Lagerbewegung | Artikel, Datum, Menge (+/−), Art (Produktion, Verkauf, Korrektur, Storno), Bezug | Produktion oder Verkauf |
@@ -117,7 +117,7 @@ Der Artikel ist der Knotenpunkt; alles andere hängt über die Artikelnummer an 
 | Dashboard (Startseite) | Kennzahlen des Zeitraums, Mindestbestand, nicht zugeordnete Drucke, Warnungen |
 | Artikel | Vorlagen und Artikel anlegen; Variante aus Vorlage erzeugen. Artikel-Detail mit Kacheln **Kalkulationen · Produktionen · Lager · Verkäufe** (jeweils mit Anzahl); Klick öffnet die Tabelle mit Links zur Produktion und zum Bambuddy-Druck. Oben auf der Seite steht die Schaltfläche „Auswertung ansehen“ (für alle Rollen) |
 | Kalkulation | Eigene Liste aller Kalkulationen wie bei der Produktion (Artikel, Datum, Drucker, Selbstkosten, Verkaufspreis-Vorschlag, „maßgeblich“, Symbol-Buttons rechts); oben rechts „Neue Kalkulation“. Neu, Bearbeiten, Kopieren und Ansehen sind Pop-ups; im Formular: Artikel (oder Variante), „mit Datei“ oder „von Hand“, Drucker, Werte (aus der `.gcode.3mf` oder eingetippt), Spulen, Arbeit; Live-Berechnung; Speichern nur mit gewähltem Artikel oder gewählter Variante (ohne bleibt es eine Schnellkalkulation), die Datei wird mitgespeichert. Die Kachel „Kalkulationen“ am Artikel öffnet dieselbe Liste, gefiltert auf diesen Artikel |
-| Produktion | Liste erfolgreicher und fehlgeschlagener Bambuddy-Drucke; einen oder mehrere auswählen → Produktion mit einem Ergebnis-Artikel und den guten Stück; Kosten pro Stück in der Vorschau prüfen; oder „Ignorieren“; ab #215 mit Teile-Maske (Auswahl „mehrere gleiche Artikel“ oder „verschiedene Einzelteile eines Artikels“, Menge, Gut und Ausschuss je Teil, siehe Abschnitt 4) |
+| Produktion | Liste erfolgreicher und fehlgeschlagener Bambuddy-Drucke; einen oder mehrere auswählen → Produktion mit einem Ergebnis-Artikel und den Gutteilen; Kosten pro Stück in der Vorschau prüfen; oder „Ignorieren“; ab #215 mit Teile-Maske (Auswahl „mehrere gleiche Artikel“ oder „verschiedene Einzelteile eines Artikels“, Menge, Gut und Ausschuss je Teil, siehe Abschnitt 4) |
 | Verkäufe | Liste aller Verkäufe (Datum, Artikel, Menge, Preis pro Stück, Summe, Notiz, Status), filterbar nach Artikel; „Verkauf erfassen“ und Stornieren als Pop-ups; der Preis ist mit dem Soll-Verkaufspreis vorbelegt. Die Kachel „Verkäufe“ am Artikel öffnet dieselbe Liste, gefiltert |
 | Lager | Bestand je Artikel, Abgang/Korrektur von Hand, Bewegungsliste |
 | Auswertung | pro Artikel und gesamt |
@@ -325,7 +325,7 @@ Der Maintainer hat die frühere Bedingung („erst nach Alltagsnutzung von M1“
 
 - [x] Plan: Teile, Ausschuss und Fehldrucke neu beschreiben (#213)
 - [x] Teile einer Platte aus der Bambuddy-Datei berechnen (Menge und Gewicht) (#214)
-- [ ] Produktion: Teile-Maske mit Gut und Ausschuss pro Teil (#215)
+- [x] Produktion: Teile-Maske mit Gut und Ausschuss pro Teil (#215)
 - [ ] Ausschussbetrag speichern und in die Fehldruckkosten einrechnen (#216)
 - [ ] Später, eigene Entscheidung: normaler und außergewöhnlicher Ausschuss in den Stückkosten
 

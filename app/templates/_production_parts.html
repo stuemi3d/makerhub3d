@@ -1,0 +1,72 @@
+{# The parts mask of a production form (issue 215): the mode, and per print its parts with
+   quantity, weight and scrap. All changes (mode, merge, split, add, remove) are buttons that
+   send the form again with "parts_do"; nothing is stored before the booking. #}
+{% from "_data_table.html" import icon_svg %}
+<h2>{{ t('production.parts.title') }}</h2>
+<input type="hidden" name="parts_mode_was" value="{{ draft.parts_mode }}">
+<div class="form-block parts-mode-block">
+  <p><small>{{ t('production.parts.intro') }}</small></p>
+  <fieldset>
+    <legend>{{ t('production.parts.mode_label') }}</legend>
+    {% for mode in parts_modes %}
+    <label>
+      <input type="radio" name="parts_mode" value="{{ mode }}"{% if draft.parts_mode == mode %} checked{% endif %}{% if popup %} hx-post="/production/new" hx-trigger="change" hx-include="closest form" hx-vals='{"parts_do": "mode"}' hx-target="#production-form" hx-select="#production-form" hx-swap="outerHTML"{% endif %}>
+      {{ t('production.parts.mode.' ~ mode) }}
+    </label>
+    {% endfor %}
+  </fieldset>
+  {% if not draft.parts_mode %}<p><small>{{ t('production.parts.mode_none') }}</small></p>{% endif %}
+  <button type="submit" name="parts_do" value="mode" class="secondary">{{ t('production.parts.apply') }}</button>
+</div>
+{% if draft.parts_mode %}
+<input type="hidden" name="quantity_auto" value="{{ draft.quantity_auto }}">
+<input type="hidden" name="failed_auto" value="{{ draft.failed_auto }}">
+{% for p in shown_prints %}
+{% set id = p.row.archive_id %}
+{% set block = parts[id] %}
+<div class="form-block parts-block" id="parts-{{ id }}">
+  <input type="hidden" name="detected_{{ id }}" value="{{ draft.detected.get(id, '') }}">
+  <div class="form-block-head">
+    <strong>{{ p.row.name }}</strong>
+    {% if block.quote %}<span>{{ t('production.parts.quote') }}: <strong>{{ block.quote }}</strong></span>{% endif %}
+  </div>
+  {% if block.by_pieces %}<p role="status"><small>{{ t('production.parts.by_pieces') }}</small></p>{% endif %}
+  {% for line in block['lines'] %}
+  {% set k = line.k %}
+  {% set raw = line.raw %}
+  <div class="field-grid part-line">
+    <div class="field-wide">
+      <label for="pname_{{ id }}_{{ k }}">{{ t('production.parts.name') }}</label>
+      <input type="text" maxlength="80" autocomplete="off" name="pname_{{ id }}_{{ k }}" id="pname_{{ id }}_{{ k }}" value="{{ raw.name }}">
+    </div>
+    <div>
+      <label for="pqty_{{ id }}_{{ k }}">{{ t('production.parts.qty') }}</label>
+      <input type="text" inputmode="numeric" autocomplete="off" name="pqty_{{ id }}_{{ k }}" id="pqty_{{ id }}_{{ k }}" value="{{ raw.qty }}"{% if line.error %} aria-invalid="true" aria-describedby="parts_{{ id }}_{{ k }}-error"{% endif %}>
+    </div>
+    <div>
+      <label for="pgrams_{{ id }}_{{ k }}">{{ t('production.parts.grams') }}</label>
+      <input type="text" inputmode="decimal" autocomplete="off" name="pgrams_{{ id }}_{{ k }}" id="pgrams_{{ id }}_{{ k }}" value="{{ raw.grams }}">
+    </div>
+    <div>
+      <label for="pwaste_{{ id }}_{{ k }}">{{ t('production.parts.waste') }}</label>
+      <input type="text" inputmode="numeric" autocomplete="off" name="pwaste_{{ id }}_{{ k }}" id="pwaste_{{ id }}_{{ k }}" value="{{ raw.waste }}">
+    </div>
+    <div class="part-actions">
+      <label class="part-pick" title="{{ t('production.parts.pick') }}"><input type="checkbox" name="ppick_{{ id }}_{{ k }}" value="1"{% if raw.picked %} checked{% endif %}><span title="{{ t('production.parts.pick') }}">{{ t('production.parts.pick_short') }}</span></label>
+      {% if raw.qty.isdigit() and raw.qty|int > 1 %}
+      <button type="submit" name="parts_do" value="split:{{ id }}:{{ k }}" class="icon-btn" title="{{ t('production.parts.split') }}">{{ icon_svg('split') }}<span class="visually-hidden">{{ t('production.parts.split') }}</span></button>
+      {% endif %}
+      {% if block['lines']|length > 1 %}
+      <button type="submit" name="parts_do" value="drop:{{ id }}:{{ k }}" class="icon-btn" title="{{ t('production.parts.drop') }}">{{ icon_svg('delete') }}<span class="visually-hidden">{{ t('production.parts.drop') }}</span></button>
+      {% endif %}
+    </div>
+    {% if line.error %}<small id="parts_{{ id }}_{{ k }}-error" class="field-error field-wide">{{ t(line.error) }}</small>{% endif %}
+  </div>
+  {% endfor %}
+  <div class="form-actions">
+    <button type="submit" name="parts_do" value="add:{{ id }}" class="secondary outline">{{ t('production.parts.add') }}</button>
+    {% if block['lines']|length > 1 %}<button type="submit" name="parts_do" value="merge:{{ id }}" class="secondary outline">{{ t('production.parts.merge') }}</button>{% endif %}
+  </div>
+</div>
+{% endfor %}
+{% endif %}

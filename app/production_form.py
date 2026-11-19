@@ -18,8 +18,22 @@ from app import devices
 from app.models import AppSettings, Article, Device
 from app.print_list import PrintRow
 from app.production import MAX_PIECES, LaborInput, PrintInput, ResultInput
+from app.production_parts import (
+    MAX_LINES,
+    PartLine,
+    PartsError,
+    finished_articles,
+    merge,
+    parse_detected,
+    quote,
+    read_line,
+    same_article,
+    split,
+    totals,
+)
 
 MAX_PRINTS = 100
+PARTS_MODES = ("same", "different")
 MAX_NOTE = 500
 COST_PARTS = ("material", "electricity", "machine")
 _DECIMAL = re.compile(r"\d{1,9}(?:[.,]\d{1,4})?")
@@ -115,6 +129,29 @@ def machine_hint(row: PrintRow, device: int | None) -> str | None:
 
 
 @dataclass
+class RawLine:
+    """One line of the parts mask as the form sent it (text)."""
+
+    name: str = ""
+    qty: str = ""
+    grams: str = ""
+    waste: str = ""
+    picked: bool = False
+
+
+def raw_line(line: PartLine, language: str) -> RawLine:
+    return RawLine(line.name, str(line.qty), input_text(line.grams, language), str(line.waste))
+
+
+def parsed_lines(raws: list[RawLine]) -> list[PartLine] | None:
+    """The lines of a plate, or None when one of them is not valid."""
+    try:
+        return [read_line(r.name, r.qty, r.grams, r.waste) for r in raws]
+    except PartsError:
+        return None
+
+
+@dataclass
 class Draft:
     """What the form sent, as text."""
 
@@ -137,6 +174,17 @@ class Draft:
     # Failed pieces (issue #148); empty = none
     failed_pieces: str = ""
     action: str = "preview"
+    # The parts mask (issue #215): "" = not used, else one of PARTS_MODES; the lines per print;
+    # the lines found in the file (as text, to bring them back); what to do with the lines
+    # ("mode", "merge:ID", "split:ID:K", "add:ID", "drop:ID:K"); the values the quantity and
+    # the waste had when last worked out from the lines (a field the user changed stays).
+    parts_mode: str = ""
+    parts_mode_was: str = ""  # the mode before this request (the lines follow a changed mode)
+    parts: dict[int, list[RawLine]] = field(default_factory=dict)
+    detected: dict[int, str] = field(default_factory=dict)
+    parts_do: str = ""
+    quantity_auto: str = ""
+    failed_auto: str = ""
 
 
 def _ids(values: list[str]) -> list[int]:
@@ -147,12 +195,133 @@ def _ids(values: list[str]) -> list[int]:
     return found
 
 
-def read(form: FormData | None, ids: list[str] | None = None) -> Draft:
+def _read_parts(form: FormData, draft: Draft) -> None:
+    mode = form.get("parts_mode")
+    draft.parts_mode = mode if isinstance(mode, str) and mode in PARTS_MODES else ""
+    was = form.get("parts_mode_was")
+    draft.parts_mode_was = was if isinstance(was, str) else ""
+    for archive_id in draft.ids:
+        raws: list[RawLine] = []
+        for k in range(MAX_LINES):
+            names = [f"p{part}_{archive_id}_{k}" for part in ("name", "qty", "grams", "waste")]
+            if not any(name in form for name in names):
+                break
+            values = [form.get(name) for name in names]
+            raws.append(
+                RawLine(
+                    *[(v if isinstance(v, str) else "").strip() for v in values],
+                    picked=f"ppick_{archive_id}_{k}" in form,
+                )
+            )
+        draft.parts[archive_id] = raws
+        found = form.get(f"detected_{archive_id}")
+        draft.detected[archive_id] = found if isinstance(found, str) else ""
+    do = form.get("parts_do")
+    draft.parts_do = do if isinstance(do, str) else ""
+    for name in ("quantity_auto", "failed_auto"):
+        value = form.get(name)
+        setattr(draft, name, value.strip() if isinstance(value, str) else "")
+
+
+def _do_ids(do: str) -> tuple[str, list[int]]:
+    kind, *rest = do.split(":")
+    return kind, [int(v) for v in rest if _WHOLE.fullmatch(v)]
+
+
+def apply_parts_action(draft: Draft, language: str) -> None:
+    """Carries out what the form asked for in the mask: another mode, merging picked lines,
+    splitting or dropping a line, adding an empty one. Lines that are not valid stay as typed."""
+    kind, numbers = _do_ids(draft.parts_do)
+    if draft.parts_mode not in PARTS_MODES:
+        return
+    if kind == "mode":
+        if draft.parts_mode == draft.parts_mode_was:
+            return  # "Apply" without another mode keeps what was typed
+        for archive_id in draft.ids:
+            raws = draft.parts.get(archive_id, [])
+            lines = parsed_lines(raws)
+            if draft.parts_mode == "same":
+                new = same_article(lines) if lines else None
+            else:
+                # Back to the parts found in the file, if there are any
+                new = parse_detected(draft.detected.get(archive_id, "")) or lines
+            if new is not None:
+                draft.parts[archive_id] = [raw_line(x, language) for x in new]
+    elif kind in ("merge", "split", "drop", "add") and numbers and numbers[0] in draft.ids:
+        archive_id = numbers[0]
+        raws = draft.parts.get(archive_id, [])
+        if kind == "add":
+            if len(raws) < MAX_LINES:
+                raws.append(RawLine())
+            draft.parts[archive_id] = raws
+            return
+        if kind == "drop" and len(numbers) > 1 and 0 <= numbers[1] < len(raws):
+            del raws[numbers[1]]
+            return
+        lines = parsed_lines(raws)
+        if lines is None:
+            return
+        if kind == "merge":
+            picks = [k for k, raw in enumerate(raws) if raw.picked]
+            new = merge(lines, picks)
+        elif len(numbers) > 1:
+            new = split(lines, numbers[1])
+        else:
+            return
+        draft.parts[archive_id] = [raw_line(x, language) for x in new]
+
+
+def refresh_auto(draft: Draft, force: bool = False) -> None:
+    """Works out the good parts and the waste from the lines and puts them into the fields
+    "quantity" and "failed pieces", unless the user changed them since."""
+    if draft.parts_mode not in PARTS_MODES:
+        return
+    plates = [parsed_lines(draft.parts.get(i, [])) for i in draft.ids]
+    if any(plate is None for plate in plates):
+        return
+    good, waste = totals(plates)
+    articles = good if draft.parts_mode == "same" else finished_articles(plates)
+    new_quantity, new_failed = str(articles), str(waste) if waste else ""
+    if force or not draft.quantity or draft.quantity == draft.quantity_auto:
+        draft.quantity = new_quantity
+    if force or not draft.failed_pieces or draft.failed_pieces == draft.failed_auto:
+        draft.failed_pieces = new_failed
+    draft.quantity_auto, draft.failed_auto = new_quantity, new_failed
+
+
+def percent_text(fraction: Decimal, language: str) -> str:
+    """A fraction as a percentage with at most one decimal ("80 %", "25,6 %")."""
+    text = format((fraction * 100).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP), "f")
+    text = text[:-2] if text.endswith(".0") else text
+    return (text.replace(".", ",") if language == "de" else text) + " %"
+
+
+def parts_view(draft: Draft, language: str, errors: dict[str, str]) -> dict[int, dict]:
+    """What the template shows of the mask per print: the lines (with their errors) and the
+    waste quote of the plate."""
+    shown: dict[int, dict] = {}
+    for archive_id in draft.ids:
+        raws = draft.parts.get(archive_id, [])
+        lines = parsed_lines(raws)
+        found = quote(lines) if lines else None
+        shown[archive_id] = {
+            "lines": [
+                {"raw": raw, "k": k, "error": errors.get(f"parts_{archive_id}_{k}")}
+                for k, raw in enumerate(raws)
+            ],
+            "quote": percent_text(found[0], language) if found else None,
+            "by_pieces": bool(found and found[1]),
+        }
+    return shown
+
+
+def read(form: FormData | None, ids: list[str] | None = None, language: str = "de") -> Draft:
     """The draft from a POST form (or from the chosen ids only, for the first visit)."""
     if form is None:
         # First visit: only the chosen prints are known
         return Draft(ids=_ids(ids or []))
     draft = Draft(ids=_ids([str(v) for v in form.getlist("prints")]))
+    _read_parts(form, draft)
 
     def text(name: str) -> str | None:
         value = form.get(name)
@@ -170,11 +339,21 @@ def read(form: FormData | None, ids: list[str] | None = None) -> Draft:
     draft.labor_minutes = (text("labor_minutes") or "").strip() if "labor_minutes" in form else None
     draft.labor_rate = (text("labor_rate") or "").strip() if "labor_rate" in form else None
     draft.action = action if action in ("preview", "book", "device") else "preview"
+    if form.get("parts_do") and draft.action == "preview":
+        draft.action = "parts"
     changed = (text("changed") or "").strip()
     if draft.action == "device" and _WHOLE.fullmatch(changed) and int(changed) in draft.ids:
         draft.changed = int(changed)
         # Another printer, another proposal: forget the machine costs that were shown
         draft.costs[draft.changed]["machine"] = None
+    if draft.parts_do:
+        draft.action = "parts"
+        apply_parts_action(draft, language)
+    if draft.parts_mode in PARTS_MODES:
+        for archive_id in draft.ids:
+            if not draft.parts.get(archive_id):
+                draft.parts[archive_id] = [RawLine()]  # a plate always has a line to type into
+    refresh_auto(draft)
     return draft
 
 
@@ -260,6 +439,13 @@ def check(db: Session, draft: Draft, found: dict[int, PrintRow], today: date) ->
         checked.failed_pieces = int(draft.failed_pieces)
     else:
         errors["failed_pieces"] = "production.error.failed_pieces"
+    if draft.parts_mode in PARTS_MODES:
+        for archive_id in draft.ids:
+            for k, raw in enumerate(draft.parts.get(archive_id, [])):
+                try:
+                    read_line(raw.name, raw.qty, raw.grams, raw.waste)
+                except PartsError as error:
+                    errors[f"parts_{archive_id}_{k}"] = error.code
     if article is not None and "article" not in errors and "quantity" not in errors:
         checked.result = ResultInput(article.id, quantity)
 
