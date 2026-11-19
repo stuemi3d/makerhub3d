@@ -531,6 +531,7 @@
   "bambuddy.error.rejected": "Schlüssel abgelehnt. Bitte den Schlüssel in Bambuddy prüfen.",
   "bambuddy.error.forbidden": "Dem Schlüssel fehlt ein Recht für diese Abfrage:",
   "bambuddy.error.server_error": "Bambuddy meldet einen Fehler.",
+  "bambuddy.error.not_found": "Bambuddy hat dazu keine Daten oder Datei.",
   "bambuddy.error.bad_response": "Bambuddy hat unerwartete Daten geliefert. Ist die Adresse richtig und die Version aktuell?",
   "log.action.bambuddy.changed": "Bambuddy-Verbindung geändert",
   "bambuddy.status.ready": "Eingerichtet",

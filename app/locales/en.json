@@ -531,6 +531,7 @@
   "bambuddy.error.rejected": "Key rejected. Please check the key in Bambuddy.",
   "bambuddy.error.forbidden": "The key lacks a right for this request:",
   "bambuddy.error.server_error": "Bambuddy reports an error.",
+  "bambuddy.error.not_found": "Bambuddy has no data or file for this.",
   "bambuddy.error.bad_response": "Bambuddy returned unexpected data. Is the address right and the version current?",
   "log.action.bambuddy.changed": "Bambuddy connection changed",
   "bambuddy.status.ready": "Set up",
