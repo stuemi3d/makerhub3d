@@ -610,7 +610,13 @@ def test_insecure_cookies_are_explained_in_env_example() -> None:
 def test_forms_carry_the_session_token(client: AppClient, path: str) -> None:
     html = client.get(path).text
 
-    forms = re.findall(r"<form\b.*?</form>", html, re.DOTALL)
+    # A form that only reads (method get, like the choice of a period) changes nothing and
+    # needs no token; it would only put the token into the address.
+    forms = [
+        form
+        for form in re.findall(r"<form\b.*?</form>", html, re.DOTALL)
+        if 'method="get"' not in form.split(">", 1)[0]
+    ]
     assert forms
     for form in forms:
         assert f'name="csrf_token" value="{client.csrf_token}"' in form

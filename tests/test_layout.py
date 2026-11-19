@@ -86,7 +86,8 @@ def test_page_is_mobile_ready_and_dark(client: TestClient) -> None:
 def test_pico_css_is_served_from_the_project_not_from_a_foreign_server(
     client: TestClient,
 ) -> None:
-    html = client.get("/").text
+    # The dashboard adds the chart scripts (issue #207), so a page without a chart is looked at
+    html = client.get("/settings").text
     links = re.findall(r'<link\b[^>]*href="([^"]+)"', html)
 
     assert "/static/pico.min.css" in links

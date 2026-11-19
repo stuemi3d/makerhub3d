@@ -72,16 +72,18 @@ def sort_rows(rows: list[LowStockRow], key: str, direction: str) -> list[LowStoc
     return sorted(by_number, key=column, reverse=direction == "desc")
 
 
-def sort_links(chosen: tuple[str, str] | None) -> dict[str, dict[str, str]]:
+def sort_links(
+    chosen: tuple[str, str] | None, keep: dict[str, str] | None = None
+) -> dict[str, dict[str, str]]:
     """Per column: where a click leads and the aria-sort state. A click on the sorted column
-    reverses it."""
+    reverses it. `keep` (the chosen period) stays in the address."""
     current = chosen or DEFAULT_SORT
     links = {}
     for key in SORT_KEYS:
         active = key == current[0]
         next_dir = "desc" if active and current[1] == "asc" else "asc"
         links[key] = {
-            "href": "/?" + urlencode({"sort": key, "dir": next_dir}),
+            "href": "/?" + urlencode({**(keep or {}), "sort": key, "dir": next_dir}),
             "aria": ("ascending" if current[1] == "asc" else "descending") if active else "none",
         }
     return links

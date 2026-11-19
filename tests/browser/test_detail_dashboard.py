@@ -69,12 +69,14 @@ def test_dashboard_table_sorts_and_fits_every_screen(admin_page: Page, viewport_
     low = admin_page.locator("#low-stock")
     rows = low.locator("table.data-table tbody tr")
     expect(rows.filter(has_text=short)).to_be_visible()
-    expect(admin_page.locator(".stat")).to_have_count(3)
+    expect(admin_page.locator(".stat")).to_have_count(14)
     assert fits_screen_width(admin_page)
     assert admin_page.evaluate("document.documentElement.scrollWidth <= document.body.clientWidth")
 
     low.get_by_role("link", name=t("article.field.number")).click()
-    expect(admin_page).to_have_url(f"{admin_page.url.split('?')[0]}?sort=number&dir=asc")
+    expect(admin_page).to_have_url(
+        f"{admin_page.url.split('?')[0]}?period=year&sort=number&dir=asc"
+    )
     texts = rows.all_inner_texts()
     assert texts.index(next(x for x in texts if short in x)) < texts.index(
         next(x for x in texts if long in x)

@@ -151,8 +151,8 @@ def test_dashboard_figures_use_the_card_style(client: AppClient) -> None:
 
     html = client.get("/").text
 
-    assert html.count('<article class="stat">') == 3
-    assert html.count('class="stat-value"') == 3
+    # Every figure is one card with a value (the areas of issue #207 add more of them)
+    assert html.count('<article class="stat">') == html.count('class="stat-value"') >= 3
 
 
 def test_low_stock_table_uses_the_table_block(client: AppClient) -> None:
@@ -221,8 +221,9 @@ def test_sort_links_mark_the_sorted_column_and_reverse_it(client: AppClient) -> 
     by_name = client.get("/?sort=name&dir=asc").text
 
     assert 'aria-sort="descending"' in default  # shortfall, as shown
-    assert 'href="/?sort=shortfall&amp;dir=asc"' in default
-    assert 'href="/?sort=name&amp;dir=desc"' in by_name
+    # The chosen period stays in the links (issue #207)
+    assert 'href="/?period=year&amp;sort=shortfall&amp;dir=asc"' in default
+    assert 'href="/?period=year&amp;sort=name&amp;dir=desc"' in by_name
     assert by_name.count('aria-sort="ascending"') == 1
 
 

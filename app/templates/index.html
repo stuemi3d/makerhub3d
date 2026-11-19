@@ -4,20 +4,108 @@
 {% from "_form_macros.html" import popup_attrs %}
 {% block content %}
 <h1>{{ t('nav.dashboard') }}</h1>
+<form method="get" action="/" class="period-form">
+<script src="/static/period_form.js" defer></script>
+  <div class="field-grid field-grid-3">
+    <div>
+      <label for="period">{{ t('analysis_total.period') }}</label>
+      <select id="period" name="period">
+        {% for key in periods %}
+        <option value="{{ key }}" {{ 'selected' if period_choice.key == key }}>{{ t('analysis_total.period.' ~ key) }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label for="from">{{ t('analysis_total.from') }}</label>
+      <input type="date" id="from" name="from" value="{{ start_text if period_choice.key == 'custom' else '' }}" {{ 'disabled' if period_choice.key != 'custom' }}>
+    </div>
+    <div>
+      <label for="to">{{ t('analysis_total.to') }}</label>
+      <input type="date" id="to" name="to" value="{{ end_text if period_choice.key == 'custom' else '' }}" {{ 'disabled' if period_choice.key != 'custom' }}>
+    </div>
+  </div>
+  <button type="submit">{{ t('analysis_total.show') }}</button>
+</form>
+{% macro tile(key, value) %}
+  <article class="stat">
+    <p class="stat-label">{{ t('dashboard.tile.' ~ key) }}</p>
+    <p class="stat-value">{{ value }}</p>
+  </article>
+{% endmacro %}
+<section id="todo">
+  <h2 class="stat-group">{{ t('dashboard.todo.title') }}</h2>
+  {% set open_count = open_prints.count if open_prints.state == 'ok' else 0 %}
+  {% set warnings = overview.warnings if overview else [] %}
+  {% set slow_count = overview.slow_count if overview else 0 %}
+  <article class="data-card">
+    <ul class="todo-list">
+      {% if open_prints.state == 'ok' %}
+      {% if open_count %}
+      <li><span class="chip chip-inactive">{{ open_count }}</span> <a href="/production?view=open">{{ t('dashboard.todo.open') }}</a></li>
+      {% endif %}
+      {% else %}
+      <li>{{ t('dashboard.open.' ~ open_prints.state) }}</li>
+      {% endif %}
+      {% if warnings %}
+      <li><span class="chip chip-warn">{{ warnings | length }}</span> {{ t('dashboard.todo.warnings') }}:
+        {% for a in warnings %}<a href="/articles/{{ a.id }}/analysis">{{ a.number }}</a>{{ ', ' if not loop.last }}{% endfor %}</li>
+      {% endif %}
+      {% if slow_count %}
+      <li><span class="chip chip-inactive">{{ slow_count }}</span> <a href="/analysis#slow">{{ t('dashboard.todo.slow') }}</a></li>
+      {% endif %}
+      {% if not open_count and not warnings and not slow_count %}
+      <li>{{ t('dashboard.todo.nothing') }}</li>
+      {% endif %}
+    </ul>
+  </article>
+</section>
+{% if period_choice.error %}
+<p role="alert"><mark>{{ t(period_choice.error) }}</mark></p>
+{% else %}
+<h2 class="stat-group">{{ t('dashboard.group.sales') }}</h2>
 <div class="stats">
+  {{ tile('revenue', overview.tiles.revenue) }}
+  {{ tile('profit', overview.tiles.profit) }}
+  {{ tile('margin', overview.tiles.margin) }}
+</div>
+<h2 class="stat-group">{{ t('dashboard.group.production') }}</h2>
+<div class="stats">
+  {{ tile('pieces', overview.tiles.pieces) }}
+  {{ tile('cost', overview.tiles.cost) }}
+  {{ tile('hours', overview.tiles.hours) }}
+  {{ tile('kilograms', overview.tiles.kilograms) }}
+  {{ tile('kwh', overview.tiles.kwh) }}
+</div>
+<h2 class="stat-group">{{ t('dashboard.group.quality') }}</h2>
+<div class="stats">
+  {{ tile('failed_rate', overview.tiles.failed_rate) }}
   <article class="stat">
-    <p class="stat-label">{{ t('dashboard.tile.articles') }}</p>
-    <p class="stat-value">{{ data.active_articles }}</p>
-  </article>
-  <article class="stat">
-    <p class="stat-label">{{ t('dashboard.tile.stock') }}</p>
-    <p class="stat-value">{{ data.total_stock }}</p>
-  </article>
-  <article class="stat">
-    <p class="stat-label">{{ t('dashboard.tile.low') }}</p>
-    <p class="stat-value">{{ data.low_stock | length }}</p>
+    <p class="stat-label">{{ t('dashboard.tile.failed_cost') }}</p>
+    <p class="stat-value">{{ overview.tiles.failed_cost }}</p>
+    <p class="stat-note"><small>{{ t('analysis_total.failed_share') }}: <strong>{{ overview.failed_share }}</strong></small></p>
+    <p class="stat-note"><small>{{ t('analysis_total.failed_note') }}</small></p>
   </article>
 </div>
+{% endif %}
+<h2 class="stat-group">{{ t('dashboard.group.stock') }}</h2>
+<div class="stats">
+  {{ tile('articles', data.active_articles) }}
+  {{ tile('stock', data.total_stock) }}
+  {{ tile('low', data.low_stock | length) }}
+  {% if overview %}{{ tile('stock_value', overview.tiles.stock_value) }}{% endif %}
+</div>
+{% if overview %}
+{# Chart.js is delivered with the app, never loaded from a foreign server. #}
+<script src="/static/chart.min.js" defer></script>
+<script src="/static/dashboard_chart.js" defer></script>
+<article class="data-card" id="month-chart">
+  <div class="card-head"><h2>{{ t('dashboard.chart.title') }}</h2></div>
+  <div class="chart-box">
+    <canvas data-chart="{{ overview.chart|tojson|forceescape }}" data-revenue="{{ t('dashboard.chart.revenue') }}" data-cost="{{ t('dashboard.chart.cost') }}" role="img" aria-label="{{ t('dashboard.chart.summary') }}"></canvas>
+  </div>
+  <p class="chart-empty">{{ t('dashboard.chart.note') }}</p>
+</article>
+{% endif %}
 <section id="open-prints">
   {% if open_prints.state == 'ok' and open_prints.count > 0 %}
   <article class="data-card">
