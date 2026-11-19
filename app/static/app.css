@@ -223,7 +223,7 @@
 
 .tiles {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 14rem));
   gap: 1rem;
   margin-bottom: 1.5rem;
 }
@@ -398,8 +398,9 @@
 }
 
 @media (min-width: 768px) {
+  /* Issue 225: tiles keep a sensible width and sit left, not over the whole screen. */
   .stats {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 18rem));
   }
 }
 
@@ -1071,6 +1072,17 @@ main .detail-card:not(.auth-box) > form [type="submit"] {
 /* Dashboard (issue 207): period choice with a gap above its button; "to do" without bullets */
 .period-form button {
   margin-top: 0.75rem;
+}
+
+/* Issue 225: on a wide screen the period choice does not stretch; the phone stays as before */
+@media (min-width: 768px) {
+  .period-form {
+    max-width: 50rem;
+  }
+
+  .period-form button {
+    width: auto;
+  }
 }
 
 .todo-list {
