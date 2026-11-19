@@ -167,13 +167,13 @@ def point_rows(points: list[Point], language: str) -> list[dict[str, str]]:
         {
             "date": stock.format_date(p.day, language),
             "quantity": str(p.quantity),
-            "cost": _money(p.cost_per_piece, language),
+            "cost": money(p.cost_per_piece, language),
         }
         for p in points[-TABLE_LIMIT:]
     ]
 
 
-def _money(value: Decimal | None, language: str) -> str:
+def money(value: Decimal | None, language: str) -> str:
     if value is None:
         return NONE_TEXT
     return f"{money_text(value.quantize(CENT, rounding=ROUND_HALF_UP), language)} €"
@@ -192,13 +192,13 @@ def _percent(value: Decimal | None, language: str) -> str:
 def texts(figures: Figures, language: str) -> dict[str, str]:
     """The figures as shown on the page, by tile; a dash where there is no value."""
     return {
-        "cost_actual": _money(figures.cost_per_piece, language),
-        "cost_planned": _money(figures.planned_cost, language),
+        "cost_actual": money(figures.cost_per_piece, language),
+        "cost_planned": money(figures.planned_cost, language),
         "deviation": _percent(figures.deviation, language),
-        "price_average": _money(figures.average_price, language),
-        "profit": _money(figures.profit, language),
+        "price_average": money(figures.average_price, language),
+        "profit": money(figures.profit, language),
         "profit_percent": _percent(figures.profit_percent, language),
-        "hourly_wage": _money(figures.hourly_wage, language),
+        "hourly_wage": money(figures.hourly_wage, language),
         "produced": str(figures.produced),
         "sold": str(figures.sold),
         "stock": str(figures.stock),

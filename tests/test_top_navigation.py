@@ -58,14 +58,14 @@ def test_articles_entry_is_current_on_list_and_detail_pages(client: AppClient) -
         assert current == [DE["nav.articles"]], path
 
 
-# --- Test case 3: unbuilt entries -------------------------------------------------------
+# --- Test case 3: no unbuilt entries any more (the analysis is built, issue #206) ------
 
 
-def test_unbuilt_entries_are_greyed_out_and_not_links(client: AppClient) -> None:
+def test_no_entry_is_greyed_out_any_more(client: AppClient) -> None:
     bar = header(client.get("/").text)
 
     disabled = re.findall(r'<a\b[^>]*aria-disabled="true"[^>]*>(.*?)</a>', bar)
-    assert disabled == [DE["nav.analysis"]]
+    assert disabled == []
     assert not re.search(r"<a\b[^>]*aria-disabled[^>]*href=", bar)
 
 
