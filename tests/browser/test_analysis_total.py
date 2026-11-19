@@ -18,7 +18,7 @@ from tests.browser.test_pages import fits_screen_width
 def test_analysis_opens_from_the_menu_shows_figures_and_fits_the_screen(
     admin_page: Page, live_server: LiveServer, viewport_name: str
 ) -> None:
-    archive_id = 800 if viewport_name == "desktop" else 801
+    archive_id = 1000 if viewport_name == "desktop" else 1001
     engine = make_engine(live_server.data_dir / DATABASE_FILE)
     with Session(engine) as db, db.begin():
         article = Article(
