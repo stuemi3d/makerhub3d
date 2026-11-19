@@ -127,12 +127,17 @@ def test_3_five_different_parts_and_one_copy() -> None:
 
 def test_4_tolerance_and_names() -> None:
     # different names, weights within the tolerance: same part
-    close = parts_from_file(sliced([("Leaf", 10.00, 0), ("Leaf copy", 10.15, 0)]))
+    close = parts_from_file(sliced([("Leaf", 10.00, 0), ("Leaf copy", 10.05, 0)]))
     assert close is not None
     assert [p.quantity for p in close.parts] == [2]
     # same name: same part, even when imported with a small difference
     same_name = parts_from_file(sliced([("Leaf", 10.0, 0), ("Leaf", 10.1, 0)]))
     assert same_name is not None and [p.quantity for p in same_name.parts] == [2]
+    # two different parts of one article that weigh nearly the same (2 % apart, as in a real
+    # archive entry with two bodies) are NOT merged
+    similar = parts_from_file(sliced([("Body1", 7.69, 0), ("Body3", 7.53, 0)]))
+    assert similar is not None
+    assert [p.quantity for p in similar.parts] == [1, 1]
     # different names and clearly different weight: two parts
     apart = parts_from_file(sliced([("Leaf", 10.0, 0), ("Stem", 14.0, 0)]))
     assert apart is not None

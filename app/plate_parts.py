@@ -29,8 +29,9 @@ from app.slice_reader import (
 )
 
 # Parts with different names count as the same part when their weights differ by at most this
-# share (3 %). Set from invented test files; to be checked with real files.
-WEIGHT_TOLERANCE = Decimal("0.03")
+# share (1 %). Real copies differ by well under 1 %; two different parts of one article that
+# were 2 % apart in a real archive entry must stay apart.
+WEIGHT_TOLERANCE = Decimal("0.01")
 MAX_NAME = 80
 MAX_PARTS = 500
 MAX_FILAMENTS = 32
