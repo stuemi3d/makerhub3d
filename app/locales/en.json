@@ -781,6 +781,8 @@
   "calc.field.spool": "Spool from Bambuddy",
   "calc.choose_spool": "Choose spool",
   "calc.add_position": "Add material",
+  "article.search": "Search article",
+  "article.search_none": "No article found",
   "calc.search.spool": "Search spool",
   "calc.search.spool_none": "No spool found",
   "calc.search.material": "Search material",

@@ -2,7 +2,7 @@
 
 from playwright.sync_api import Page, expect
 
-from tests.browser.conftest import t
+from tests.browser.conftest import pick_article, t
 from tests.browser.test_pages import fits_screen_width
 
 
@@ -19,7 +19,7 @@ def test_admin_deletes_an_article_with_stock_on_every_screen(
     expect(admin_page.get_by_text(t("article.purge.button"), exact=True)).to_have_count(0)
 
     admin_page.goto("/stock/new")
-    admin_page.select_option("#article_id", label=f"{number} · Kabelhalter")
+    pick_article(admin_page, "article_id", f"{number} · Kabelhalter")
     admin_page.select_option("#type", "correction")
     admin_page.fill("#quantity", "5")
     admin_page.fill("#reason", "Inventur")

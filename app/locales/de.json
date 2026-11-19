@@ -781,6 +781,8 @@
   "calc.field.spool": "Spule aus Bambuddy",
   "calc.choose_spool": "Spule wählen",
   "calc.add_position": "Material hinzufügen",
+  "article.search": "Artikel suchen",
+  "article.search_none": "Kein Artikel gefunden",
   "calc.search.spool": "Spule suchen",
   "calc.search.spool_none": "Keine Spule gefunden",
   "calc.search.material": "Material suchen",
