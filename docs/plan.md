@@ -69,7 +69,7 @@ Der Artikel ist der Knotenpunkt; alles andere hängt über die Artikelnummer an 
 | Artikelvorlage | Vorlagennummer, Name, Beschreibung, Merkmale (z. B. Farbe, Größe; jeder Merkmalswert mit Kürzel), Standardwerte für Preis und Mindestbestand, aktiv | nur Vorlage: kein Bestand, kein Verkauf |
 | Artikel | Artikelnummer, Bezeichnung, optional Vorlage + Merkmalswerte (= Variante), Soll-Verkaufspreis, Mindestbestand, aktiv | Artikelnummer = Schlüssel zur Rechnungs-Software |
 | Kalkulation (optional) | Artikel (auch eine Variante, nie eine Vorlage), Datum, „maßgeblich“-Kennzeichen, Art (mit Datei / von Hand), optional die gespeicherte `.gcode.3mf`-Datei, Materialzeilen (Material, Gramm; je Zeile eine oder mehrere Bambuddy-Spulen mit Gramm und Preis/kg als Wert), Druckzeit, Teile pro Platte, Drucker, Ausschussquote %, Rüstzeit pro Platte (Min.), Nacharbeit pro Stück (Min.), Gewinnaufschlag %, Ergebnis pro Stück (Selbstkosten ohne/mit Arbeitszeit, Verkaufspreis-Vorschlag) | Spule aus Bambuddy (nur gelesen) |
-| Produktion | Datum, Notiz, Gesamtkosten, Arbeitszeit (Minuten), Stundensatz und Arbeitskosten als Wert, Fehldruck-Stücke (nur zur Information, ändern weder Bestand noch Kosten), storniert | – |
+| Produktion | Datum, Notiz, Gesamtkosten, Arbeitszeit (Minuten), Stundensatz und Arbeitskosten als Wert, Fehldruck-Stücke (bis zur Umsetzung von #214 bis #216 nur zur Information; danach je Druck Ausschussanteil in % und Ausschussbetrag als Wert, siehe „Teile einer Platte und Ausschuss“ unten in diesem Abschnitt), storniert | – |
 | Produktion – Drucke | Produktion, Material-, Strom-, Maschinenkosten als Wert (Maschinenkosten = Druckstunden × Maschinensatz des gewählten Druckers, Satz siehe Abschnitt 6; der Verschleiß steckt im Satz und wird nicht aus Bambuddy übernommen), Druckzeit, Filament in Gramm und Strom in kWh als Wert (leer, wenn Bambuddy sie nicht kennt), Filament (Material als Text, Farben als Farbcodes), Status (erfolgreich/fehlgeschlagen) | Bambuddy-Archiv-ID |
 | Produktion – Ergebnis | Produktion, Artikel (genau einer), gute Stück, Kosten (alle Kosten der Produktion) | – |
 | Lagerbewegung | Artikel, Datum, Menge (+/−), Art (Produktion, Verkauf, Korrektur, Storno), Bezug | Produktion oder Verkauf |
@@ -93,11 +93,20 @@ Der Artikel ist der Knotenpunkt; alles andere hängt über die Artikelnummer an 
 
 **Vorlagen** haben nie Bestand, Produktion oder Verkauf; für sie gelten deshalb nur die Stufen 1 und 2 plus Deaktivieren. Eine Vorlage lässt sich erst löschen, wenn alle ihre Varianten gelöscht sind. Eine deaktivierte Vorlage kann nicht mehr für neue Varianten genutzt werden; vorhandene Varianten bleiben unberührt.
 
-**Produktion:** fasst beliebig viele Drucke (Platten) und **genau einen Ergebnis-Artikel** zusammen. Dieser Artikel bekommt alle Kosten, ohne Schätzung und ohne Aufteilung. Erlaubt sind: ein Artikel auf einer Platte, derselbe Artikel mehrfach auf einer Platte, ein Artikel über mehrere Platten (z. B. Laterne aus 5 Platten) und derselbe Artikel mehrfach über mehrere Platten; die Kosten pro Stück sind alle Kosten geteilt durch die guten Stück. Vorschau vor dem Buchen. Wer mehrere Artikel druckt, legt je Artikel eine eigene Produktion mit eigenen Platten an. Gemischte Platten mit mehreren Artikeln sind bewusst nicht vorgesehen: Bambuddy liefert nur Kosten pro Druck, und eine Aufteilung nach Stückzahl oder von Hand eingetragener Gewichtung ist zu ungenau. Möglicher späterer Ausbau (nur bei Bedarf): Aufteilung nach dem Filamentgewicht pro Objekt, das sich aus den Objekt-Markierungen im G-Code der Platte berechnen lässt.
+**Produktion:** fasst beliebig viele Drucke (Platten) und **genau einen Ergebnis-Artikel** zusammen. Dieser Artikel bekommt alle Kosten, ohne Schätzung und ohne Aufteilung. Erlaubt sind: ein Artikel auf einer Platte, derselbe Artikel mehrfach auf einer Platte, ein Artikel über mehrere Platten (z. B. Laterne aus 5 Platten) und derselbe Artikel mehrfach über mehrere Platten; die Kosten pro Stück sind alle Kosten geteilt durch die guten Stück. Vorschau vor dem Buchen. Wer mehrere Artikel druckt, legt je Artikel eine eigene Produktion mit eigenen Platten an. Gemischte Platten mit mehreren Artikeln sind bewusst nicht vorgesehen: Bambuddy liefert nur Kosten pro Druck, und eine Aufteilung nach Stückzahl oder von Hand eingetragener Gewichtung ist zu ungenau. Das Filamentgewicht pro Objekt, das sich aus den Objekt-Markierungen im G-Code der Platte berechnen lässt, wird nicht zur Aufteilung auf mehrere Artikel genutzt, sondern für die Teile und den Ausschuss einer Platte (siehe „Teile einer Platte und Ausschuss“ weiter unten in diesem Abschnitt).
 
 **Drucker einer Produktion (#162):** Jeder Druck einer Produktion hat einen Drucker (ein aktives Gerät vom Typ Drucker). Er wird vorgewählt, wenn der Bambuddy-Drucker des Archiv-Eintrags einem Gerät zugeordnet ist; sonst wählt der Nutzer ihn von Hand (Pflichtfeld, nur aktive Drucker). Die Maschinenkosten werden vorgeschlagen als Druckstunden × Maschinensatz (Stundensatz des Druckers + Trocknungsaufschlag, siehe Abschnitt 6), sind überschreibbar und werden als Wert gespeichert. Es gibt keinen Ersatzwert: Ist kein Drucker angelegt, steht ein Hinweis da und es lässt sich nicht buchen.
 
-**Ausschuss und Fehldrucke:** Ausschuss auf einer durchgelaufenen Platte wird über weniger gute Stück eingepreist. Fehlgeschlagene Drucke werden rot angezeigt und können der Produktion zugeordnet werden, für die sie gedacht waren (erhöhen dann deren Stückkosten), oder ignoriert werden. Die Auswertung weist den Fehldruck-Anteil pro Artikel aus.
+**Teile einer Platte und Ausschuss:** Laut der Bambuddy-API-Beschreibung lassen sich die Dateien eines Archiv-Eintrags abrufen (3MF-Projekt bis G-Code); ob das mit dem nur lesenden Key geht, wird zu Beginn von #214 geprüft (siehe Abschnitt 11). Aus der Datei werden die **Teile der Platte mit Menge und Gewicht** ermittelt: Namen aus der 3MF-Datei, Filament je Teil aus den Objekt-Markierungen im G-Code (alle Fahrbefehle mit Förderung, auch Kreisbögen), umgerechnet in Gramm mit der Dichte aus der Datei. Das Filament wird auf die Teile verteilt angezeigt; der Spül- und Turmanteil wird anteilig nach Teilegewicht verteilt.
+
+- **Gleiche Teile** erkennt das Programm zuerst am Namen, dann am Gewicht mit Toleranz (der Wert wird nach Tests an echten Dateien festgelegt). Sie erscheinen als **eine Zeile mit Menge**; die Menge ist als „gut“ vorbelegt, der Ausschuss (Stück) wird dazu eingetragen. Ausschussquote = Ausschuss ÷ (gut + Ausschuss).
+- **Verschiedene Teile eines Artikels** (z. B. Laterne aus 5 Teilen) stehen jeweils als eigene Zeile mit Menge; pro Teil wird der Ausschuss eingetragen. Die Ausschussquote der Platte wird nach dem Gewicht der Teile berechnet.
+- **Die automatische Bestimmung ist ein Versuch.** Sie kann falsch liegen (zwei gleiche Teile als verschieden erkannt oder umgekehrt). Der Nutzer kann jede Gruppe von Hand zusammenfassen oder trennen. **Rückfall, wenn die Erkennung nicht funktioniert oder keine Datei da ist:** Der Nutzer gibt am Anfang der Produktion an, ob es sich um **mehrere gleiche Artikel** oder um **verschiedene Einzelteile eines kompletten Artikels** handelt; danach läuft die Eingabe wie oben, mit von Hand eingetragenen Mengen und Ausschuss.
+- Pro Druck werden der **Ausschussanteil in %** und der **Ausschussbetrag in €** (Anteil × Druckkosten aus Material, Strom und Maschine) beim Buchen **als Wert** gespeichert. Alte Produktionen ohne diese Werte gelten als 0 %.
+- Die Teile gehören zu **einer** Produktion mit **einem** Ergebnis-Artikel; Sets und Stücklisten bleiben außerhalb des Umfangs.
+- **Stückkosten:** Zunächst bleibt es bei der Regel „alle Kosten auf die guten Stück“. Ob der Ausschussbetrag daraus herausgenommen wird (in der Praxis: normaler Ausschuss bleibt drin, außergewöhnlicher wird als eigene Kostenzeile ausgewiesen, mit einer Einstellung für die Normalquote), wird bewusst später und getrennt entschieden.
+
+**Fehldrucke:** Fehlgeschlagene Drucke (ganze Platte) werden rot angezeigt und können der Produktion zugeordnet werden, für die sie gedacht waren (erhöhen dann deren Stückkosten), oder ignoriert werden; sie zählen als Ausschuss mit 100 %. Die Auswertung weist den Fehldruck-Anteil pro Artikel aus; die **Fehldruckkosten** der Gesamt-Auswertung sind die Summe aus ganzen Fehldrucken und den Ausschussbeträgen, ohne Arbeitszeit (die Arbeitszeit gehört zur Produktion, nicht zum einzelnen Druck), dazu ihr Anteil an den gesamten Produktionskosten des Zeitraums.
 
 **Mehrere Kalkulationen:** pro Artikel (auch Variante) beliebig viele, mit Datum; neue als Kopie einer alten. Eine ist „maßgeblich“ und dient der Auswertung als Soll-Wert. Kalkulationen dürfen frei bearbeitet und gelöscht werden; beim Löschen wird auch die gespeicherte Datei gelöscht.
 
@@ -108,7 +117,7 @@ Der Artikel ist der Knotenpunkt; alles andere hängt über die Artikelnummer an 
 | Dashboard (Startseite) | Kennzahlen des Zeitraums, Mindestbestand, nicht zugeordnete Drucke, Warnungen |
 | Artikel | Vorlagen und Artikel anlegen; Variante aus Vorlage erzeugen. Artikel-Detail mit Kacheln **Kalkulationen · Produktionen · Lager · Verkäufe** (jeweils mit Anzahl); Klick öffnet die Tabelle mit Links zur Produktion und zum Bambuddy-Druck. Oben auf der Seite steht die Schaltfläche „Auswertung ansehen“ (für alle Rollen) |
 | Kalkulation | Eigene Liste aller Kalkulationen wie bei der Produktion (Artikel, Datum, Drucker, Selbstkosten, Verkaufspreis-Vorschlag, „maßgeblich“, Symbol-Buttons rechts); oben rechts „Neue Kalkulation“. Neu, Bearbeiten, Kopieren und Ansehen sind Pop-ups; im Formular: Artikel (oder Variante), „mit Datei“ oder „von Hand“, Drucker, Werte (aus der `.gcode.3mf` oder eingetippt), Spulen, Arbeit; Live-Berechnung; Speichern nur mit gewähltem Artikel oder gewählter Variante (ohne bleibt es eine Schnellkalkulation), die Datei wird mitgespeichert. Die Kachel „Kalkulationen“ am Artikel öffnet dieselbe Liste, gefiltert auf diesen Artikel |
-| Produktion | Liste erfolgreicher und fehlgeschlagener Bambuddy-Drucke; einen oder mehrere auswählen → Produktion mit einem Ergebnis-Artikel und den guten Stück; Kosten pro Stück in der Vorschau prüfen; oder „Ignorieren“ |
+| Produktion | Liste erfolgreicher und fehlgeschlagener Bambuddy-Drucke; einen oder mehrere auswählen → Produktion mit einem Ergebnis-Artikel und den guten Stück; Kosten pro Stück in der Vorschau prüfen; oder „Ignorieren“; ab #215 mit Teile-Maske (Auswahl „mehrere gleiche Artikel“ oder „verschiedene Einzelteile eines Artikels“, Menge, Gut und Ausschuss je Teil, siehe Abschnitt 4) |
 | Verkäufe | Liste aller Verkäufe (Datum, Artikel, Menge, Preis pro Stück, Summe, Notiz, Status), filterbar nach Artikel; „Verkauf erfassen“ und Stornieren als Pop-ups; der Preis ist mit dem Soll-Verkaufspreis vorbelegt. Die Kachel „Verkäufe“ am Artikel öffnet dieselbe Liste, gefiltert |
 | Lager | Bestand je Artikel, Abgang/Korrektur von Hand, Bewegungsliste |
 | Auswertung | pro Artikel und gesamt |
@@ -178,10 +187,10 @@ Gerechnet wird in dieser Reihenfolge. Standardwerte (Ausschussquote, Gewinnaufsc
 
 ## 7. Auswertung und Dashboard
 
-- **Pro Artikel:** kalkulierte vs. tatsächliche Kosten pro Stück, Ø Verkaufspreis, Gewinn pro Stück (€ und %) und effektiver Stundenlohn – berechnet wie in Abschnitt 6 (Schritte 8 und 9), aber mit tatsächlichen Werten: echter Verkaufspreis und tatsächliche Produktionskosten statt Kalkulation (für „ohne Arbeitszeit“ werden die Arbeitskosten der Produktion herausgerechnet); produziert / verkauft / Bestand, Fehldruck-Anteil; Diagramm „Kosten pro Stück über die Zeit“; Warnung bei Abweichung über X % (Standard 15 %).
-- **Gesamt (Zeitraum wählbar):** Umsatz, Kosten der verkauften Teile, Rohgewinn, Top/Flop, Lagerwert, Ladenhüter, Fehldruckkosten, CSV-Export.
+- **Pro Artikel:** kalkulierte vs. tatsächliche Kosten pro Stück, Ø Verkaufspreis, Gewinn pro Stück (€ und %) und effektiver Stundenlohn – berechnet wie in Abschnitt 6 (Schritte 8 und 9), aber mit tatsächlichen Werten: echter Verkaufspreis und tatsächliche Produktionskosten statt Kalkulation (für „ohne Arbeitszeit“ werden die Arbeitskosten der Produktion herausgerechnet); produziert / verkauft / Bestand, Fehldruck-Anteil (Ausschussbeträge plus ganze Fehldrucke im Verhältnis zu den Produktionskosten); Diagramm „Kosten pro Stück über die Zeit“; Warnung bei Abweichung über X % (Standard 15 %).
+- **Gesamt (Zeitraum wählbar):** Umsatz, Kosten der verkauften Teile, Rohgewinn, Top/Flop, Lagerwert, Ladenhüter, Fehldruckkosten (ganze Fehldrucke plus Ausschussbeträge, ohne Arbeitszeit, mit Anteil an den Produktionskosten; siehe Abschnitt 4), CSV-Export.
 - **Kosten verkaufter Teile:** gleitender Durchschnitt; FIFO später umschaltbar.
-- **Dashboard:** Verkauf (Umsatz, Rohgewinn, Ø Marge), Produktion (Stück, Kosten, Druckstunden, kg Filament, kWh), Qualität (Fehldruckquote/-kosten), Lager (Lagerwert, unter Mindestbestand), Zu erledigen (nicht zugeordnete Drucke, Warnungen, Ladenhüter); Diagramm „Umsatz und Kosten pro Monat“.
+- **Dashboard:** Verkauf (Umsatz, Rohgewinn, Ø Marge), Produktion (Stück, Kosten, Druckstunden, kg Filament, kWh), Qualität (Fehldruckquote/-kosten, wie in Abschnitt 4 beschrieben), Lager (Lagerwert, unter Mindestbestand), Zu erledigen (nicht zugeordnete Drucke, Warnungen, Ladenhüter); Diagramm „Umsatz und Kosten pro Monat“.
 - **Verkäufe aus der Rechnungs-Software (M5):** Übernahme beim Festschreiben einer Rechnung, Zuordnung über die Artikelnummer, Liste „nicht zuordenbar“, Stornos buchen zurück, jede Rechnung nur einmal; Umsatz wahlweise nach Rechnungs- oder Zahlungsdatum. Bis dahin Verkäufe von Hand.
 
 ## 8. Sicherheit (Anwendung)
@@ -214,6 +223,8 @@ Das Tool wird von Anfang an so gebaut, dass es als Open Source veröffentlicht *
 **Container:** läuft als normaler Benutzer, kein Docker-Socket, `cap_drop: ALL`, `no-new-privileges`, schreibgeschütztes Dateisystem außer `/data` und temporärem Ordner; die App lauscht im Container auf `0.0.0.0`, der Port wird auf dem Server nur auf `127.0.0.1` veröffentlicht und ist nur über den Reverse Proxy erreichbar. Uploads mit Größenlimit, nur Metadaten auslesen, Schutz gegen manipulierte ZIP-Dateien (3MF), Datei danach löschen.
 
 **Datei-Uploads:** Hochgeladene `.gcode.3mf`-Dateien (Kalkulation) haben ein Größenlimit und eine Typprüfung, werden nur in einem temporären Ordner ausgepackt und unter einem erzeugten Namen in `/data` abgelegt (nie unter dem Dateinamen des Nutzers). Die gespeicherten Dateien (`/data/calculation_files`) gehören zur Sicherung (Archiv mit Datenbank und Dateien).
+
+**Dateien aus Bambuddy (ab #214):** Eine aus Bambuddy geladene Archiv-Datei wird wie ein Upload behandelt: Größenlimit, Typprüfung, Auspacken nur in einem temporären Ordner, Pfade nie aus Namen in der Datei übernehmen, Datei danach löschen. Der Zugriff ist nur lesend und läuft ausschließlich über den einen Bambuddy-Baustein.
 
 **Datensicherung:** nächtliche Sicherung der Datenbank und der gespeicherten Kalkulations-Dateien (ein Archiv) nach `/data/backups` über die SQLite-Backup-Funktion; 14 Tages- und 12 Monatssicherungen; automatische Sicherung vor jeder Migration; „Sicherung herunterladen“ für Admins; getestete Wiederherstellung mit Anleitung.
 
@@ -310,6 +321,14 @@ Der Maintainer hat die frühere Bedingung („erst nach Alltagsnutzung von M1“
 - [ ] Auswertung pro Artikel, gesamt; Dashboard vollständig
 - [ ] CSV-Export
 
+**M4a – Teile und Ausschuss**
+
+- [x] Plan: Teile, Ausschuss und Fehldrucke neu beschreiben (#213)
+- [ ] Teile einer Platte aus der Bambuddy-Datei berechnen (Menge und Gewicht) (#214)
+- [ ] Produktion: Teile-Maske mit Gut und Ausschuss pro Teil (#215)
+- [ ] Ausschussbetrag speichern und in die Fehldruckkosten einrechnen (#216)
+- [ ] Später, eigene Entscheidung: normaler und außergewöhnlicher Ausschuss in den Stückkosten
+
 **M5 – Anbindung Rechnungs-Software (später)**
 
 - [ ] Austauschbarer Anbindungs-Baustein
@@ -318,6 +337,7 @@ Der Maintainer hat die frühere Bedingung („erst nach Alltagsnutzung von M1“
 ## 11. Offene Punkte
 
 - ~~Reicht beim Bambuddy-Key das Recht „Status lesen“ für Archiv und Spulen?~~ Ja: Archiv, Spulen, Drucker und Einstellungen sind mit einem nur lesenden Key abrufbar (geprüft in #117).
+- **Archiv-Dateien aus Bambuddy** (M4a): Lassen sich die gespeicherte 3MF-Datei und der G-Code eines Archiv-Eintrags mit dem nur lesenden Key abrufen? Prüfung zu Beginn von #214; Ergebnis hier eintragen.
 - Liefern die APIs der Rechnungs-Software den Bezahlt-Status? (Prüfung zu Beginn von M5)
 - Risiko: Bambuddy entwickelt sich sehr schnell → Anbindung in einem einzigen Baustein, Tests mit aufgezeichneten Antworten, Verbindungstest in den Einstellungen.
 - ~~**Umfang der tatsächlichen Kosten** (M2/M4)~~ Entschieden (Maintainer): Eine Produktion erfasst Material-, Strom- und **Maschinenkosten** (Druckstunden × Druckerstundensatz; der Verschleiß aus Bambuddy entfällt, weil er schon im Druckerstundensatz steckt, #135) sowie **Arbeitskosten** (Arbeitszeit × Stundensatz, #134). **Zusatzteile** gibt es in MakerHub 3D nicht (Entscheidung des Maintainers, #159); weder Kalkulation noch Produktion berücksichtigen sie.
