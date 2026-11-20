@@ -30,6 +30,8 @@ PRINTERS_PATH = "/api/v1/printers/"
 ARCHIVES_PATH = "/api/v1/archives/"
 SPOOLS_PATH = "/api/v1/inventory/spools"
 SETTINGS_PATH = "/api/v1/settings/"
+USAGE_PATH = "/api/v1/inventory/usage"
+USAGE_LIMIT = 1000
 # The stored .gcode.3mf of one archive entry (to be checked against the real API, see #214)
 ARCHIVE_FILE_PATH = "/api/v1/archives/{id}/download"
 MAX_FILE_BYTES = 50 * 1024 * 1024
@@ -86,6 +88,17 @@ class Spool:
     label_weight: Decimal | None
     weight_used: Decimal | None
     category: str | None
+
+
+@dataclass(frozen=True)
+class Usage:
+    """One line of Bambuddy's usage history: a spool used by a print (issue #228)."""
+
+    spool_id: int | None
+    grams: Decimal
+    cost: Decimal | None
+    printer_id: int | None
+    created_at: datetime | None
 
 
 @dataclass(frozen=True)
@@ -217,6 +230,17 @@ def _spool(raw: Any) -> Spool:
         label_weight=_decimal(item, "label_weight"),
         weight_used=_decimal(item, "weight_used"),
         category=_text(item, "category"),
+    )
+
+
+def _usage(raw: Any) -> Usage:
+    item = _entry(raw)
+    return Usage(
+        spool_id=_int(item, "spool_id"),
+        grams=_decimal(item, "weight_used", required=True),
+        cost=_decimal(item, "cost"),
+        printer_id=_int(item, "printer_id"),
+        created_at=_time(item, "created_at"),
     )
 
 
@@ -383,6 +407,14 @@ class BambuddyClient:
 
     def spools(self) -> list[Spool]:
         return [_spool(i) for i in self._list(SPOOLS_PATH)]
+
+    def usage(self, limit: int = USAGE_LIMIT) -> list[Usage]:
+        """The newest lines of the usage history (which spool a print used, with its cost)."""
+        return [_usage(i) for i in self._list(USAGE_PATH, {"limit": limit})]
+
+    def default_filament_cost(self) -> Decimal | None:
+        """The price per kg Bambuddy takes for spools without a price."""
+        return _decimal(_entry(self._get(SETTINGS_PATH)), "default_filament_cost")
 
     def printers(self) -> list[Printer]:
         return [_printer(i) for i in self._list(PRINTERS_PATH)]

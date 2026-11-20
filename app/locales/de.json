@@ -600,6 +600,7 @@
   "production.choose_print": "Druck auswählen",
   "production.new.title": "Neue Produktion",
   "production.new.intro": "Kosten der Drucke prüfen und den Ergebnis-Artikel mit den Gutteilen eintragen; er bekommt alle Kosten. Mit „Vorschau“ die Kosten ansehen, erst „Buchen“ ändert den Bestand.",
+  "production.default_price": "Bambuddy hat beim Material vermutlich den Standardpreis gerechnet, weil die Spule keinen Preis hat (Spule: {spools}). Bitte prüfen; war die Spule kostenlos, im Feld „Material“ 0 eintragen.",
   "production.cost_missing": "Bei diesem Druck fehlen Kosten in Bambuddy. Leere Felder zählen als 0; bitte prüfen.",
   "production.has_errors": "Bitte die markierten Felder prüfen.",
   "production.detail.title": "Produktion",
