@@ -50,6 +50,7 @@
       </div>
       {% endfor %}
     </div>
+    {% if p.default_price %}<p class="notice-warn" role="status">{{ p.default_price }}</p>{% endif %}
     {% if p.missing %}<p role="status"><small>{{ t('production.cost_missing') }}</small></p>{% endif %}
   </div>
   {% endfor %}
@@ -76,7 +77,7 @@
     <div class="field-grid">
       <div class="field-wide">
         <label for="article">{{ t('production.col.article') }}</label>
-        <select name="article" id="article">
+        <select name="article" id="article" data-search="{{ t('article.search') }}" data-search-empty="{{ t('article.search_none') }}">
           <option value="">{{ t('production.choose') }}</option>
           {% for a in articles %}
           <option value="{{ a.id }}"{% if draft.article == a.id|string %} selected{% endif %}>{{ a.label }}</option>

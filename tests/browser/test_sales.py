@@ -2,7 +2,7 @@
 
 from playwright.sync_api import Page, expect
 
-from tests.browser.conftest import t
+from tests.browser.conftest import pick_article, t
 from tests.browser.test_pages import fits_screen_width
 
 SELL = f"button[type=submit]:has-text('{t('sales.book')}')"
@@ -16,7 +16,7 @@ def article_with_stock(page: Page, number: str, name: str, price: str) -> None:
     page.locator(f"button[type=submit]:has-text('{t('article.create')}')").click()
     expect(page.locator("h1")).to_contain_text(name)
     page.goto("/stock/new")
-    page.locator("#article_id").select_option(label=f"{number} · {name}")
+    pick_article(page, "article_id", f"{number} · {name}")
     page.locator("#type").select_option("correction")
     page.fill("#quantity", "10")
     page.fill("#reason", "Start")
@@ -41,7 +41,7 @@ def test_selling_and_cancelling_in_popups_without_reload(
     expect(dialog).to_be_visible()
     assert fits_screen_width(admin_page)
     # Choosing the article offers its target price
-    dialog.locator("#article_id").select_option(label=f"{number} · Verkaufsprobe")
+    pick_article(dialog, "article_id", f"{number} · Verkaufsprobe")
     expect(dialog.locator("#price")).to_have_value("9,90")
     dialog.locator("#quantity").fill("20")
     dialog.locator(SELL).click()

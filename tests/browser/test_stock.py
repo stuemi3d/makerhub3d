@@ -2,7 +2,7 @@
 
 from playwright.sync_api import Page, expect
 
-from tests.browser.conftest import open_menu, t
+from tests.browser.conftest import open_menu, pick_article, t
 from tests.browser.test_pages import fits_screen_width
 
 
@@ -26,7 +26,7 @@ def test_book_withdrawal_and_cancel_it_on_every_screen(
     # First put pieces on stock with a correction, then take some away.
     admin_page.get_by_role("button", name=t("stock.new"), exact=True).click()
     assert fits_screen_width(admin_page)
-    admin_page.select_option("#article_id", label=f"{number} · Kabelhalter")
+    pick_article(admin_page, "article_id", f"{number} · Kabelhalter")
     admin_page.select_option("#type", "correction")
     admin_page.fill("#quantity", "10")
     admin_page.fill("#reason", "Inventur")
@@ -34,7 +34,7 @@ def test_book_withdrawal_and_cancel_it_on_every_screen(
     expect(admin_page.locator("tr", has_text=number)).to_contain_text("10")
 
     admin_page.get_by_role("button", name=t("stock.new"), exact=True).click()
-    admin_page.select_option("#article_id", label=f"{number} · Kabelhalter")
+    pick_article(admin_page, "article_id", f"{number} · Kabelhalter")
     admin_page.select_option("#type", "withdrawal")
     admin_page.fill("#quantity", "3")
     admin_page.fill("#reason", "Muster verschenkt")

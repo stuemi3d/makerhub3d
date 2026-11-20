@@ -2,7 +2,7 @@
 
 from playwright.sync_api import Page, expect
 
-from tests.browser.conftest import t
+from tests.browser.conftest import pick_article, t
 from tests.browser.test_pages import fits_screen_width
 
 BOOK = f"button[type=submit]:has-text('{t('stock.book')}')"
@@ -57,7 +57,7 @@ def test_errors_stay_in_the_popup_and_only_cancel_closes_it(
     admin_page.get_by_role("button", name=t("stock.new"), exact=True).click()
     dialog = admin_page.locator("dialog#popup")
     expect(dialog).to_be_visible()
-    dialog.locator("#article_id").select_option(label=f"{number} · Fehlerprobe")
+    pick_article(dialog, "article_id", f"{number} · Fehlerprobe")
     dialog.locator("#quantity").fill("5")
     dialog.locator("#reason").fill("Zu viel")
     dialog.locator(BOOK).click()

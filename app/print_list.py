@@ -53,6 +53,8 @@ class PrintRow:
     filament_color: str | None = None
     # The Bambuddy printer the print ran on (for the machine rate of a production, issue #162)
     printer_id: int | None = None
+    # When the print ended (to find its lines in Bambuddy's usage history, issue #228)
+    finished_at: datetime | None = None
 
 
 @dataclass(frozen=True)
@@ -110,6 +112,7 @@ def _row(archive: Archive, language: str, assigned: dict[int, int], ignored: set
         filament_type=archive.filament_type,
         filament_color=archive.filament_color,
         printer_id=archive.printer_id,
+        finished_at=archive.completed_at,
     )
 
 

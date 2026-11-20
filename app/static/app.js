@@ -149,8 +149,8 @@
   // pop-up earlier would let a quick Enter send the form as a normal page.
   document.body.addEventListener("htmx:afterSettle", (event) => {
     if (event.detail.target !== body) return;
-    // "Settled" arrives a few milliseconds after the swap. When the pop-up was closed in between
-    // (Cancel, which empties it), it stays closed instead of opening again without content.
+    // "Settled" can arrive after the swap. When the pop-up was closed in between (Cancel, which
+    // empties it), it stays closed instead of opening again without content.
     if (!body.firstElementChild) return;
     if (!dialog.open) {
       dialog.showModal();
@@ -204,6 +204,10 @@ if (window.htmx) {
     allowScriptTags: false,
     selfRequestsOnly: true,
     historyCacheSize: 0,
+    // New links and forms work at once. With HTMX's default of 20 ms a click in that moment was a
+    // normal link click or form submission, and the plain page opened instead of the pop-up
+    // (issue #103).
+    defaultSettleDelay: 0,
     includeIndicatorStyles: false,
   });
 }
@@ -446,6 +450,8 @@ if (window.htmx) {
       select.classList.add("combo-native");
       select.tabIndex = -1;
       select.setAttribute("aria-hidden", "true");
+      // A pop-up focuses its first or invalid field before this runs; that was the select
+      const hadFocus = document.activeElement === select;
       const label = document.querySelector(`label[for="${CSS.escape(select.id)}"]`);
       if (label) label.htmlFor = input.id;
 
@@ -556,6 +562,7 @@ if (window.htmx) {
       for (const type of ["input", "change", "keyup"]) {
         input.addEventListener(type, (event) => event.stopPropagation());
       }
+      if (hadFocus) input.focus();
     }
   };
   setUp(document);

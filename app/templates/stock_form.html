@@ -17,7 +17,7 @@
 <form method="post" action="/stock/new" novalidate{% if popup %} hx-post="/stock/new" hx-target="#popup-body" hx-swap="innerHTML"{% endif %}>
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <label for="article_id">{{ t('stock.field.article_id') }}</label>
-  <select {{ field_attrs('article_id', errors) }}{% if popup %} autofocus{% endif %}>
+  <select {{ field_attrs('article_id', errors) }} data-search="{{ t('article.search') }}" data-search-empty="{{ t('article.search_none') }}"{% if popup %} autofocus{% endif %}>
     <option value="">{{ t('stock.choose') }}</option>
     {% for a in articles %}
     <option value="{{ a.id }}"{% if values.get('article_id') == a.id|string %} selected{% endif %}>{{ a.number }} · {{ a.name }}</option>
