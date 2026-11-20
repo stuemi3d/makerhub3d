@@ -9,11 +9,11 @@ dependencies = [
     "alembic==1.20.1",
     "argon2-cffi==25.1.0",
     "cryptography==50.0.2",
-    "fastapi==0.162.5",
-    "httpx2==2.16.0",
+    "fastapi==0.163.1",
+    "httpx2==2.16.2",
     "jinja2==3.1.6",
-    "pyotp==2.10.0",
-    "python-multipart==0.0.33",
+    "pyotp==2.12.0",
+    "python-multipart==0.0.34",
     "segno==1.6.6",
     "sqlalchemy==2.1.8",
     "tzdata==2026.6",
@@ -24,7 +24,7 @@ dependencies = [
 dev = [
     "pytest==9.2.0",
     "pytest-playwright==0.10.0",
-    "ruff==0.17.4",
+    "ruff==0.17.5",
 ]
 
 [tool.uv]
