@@ -50,7 +50,7 @@
       </div>
       {% endfor %}
     </div>
-    {% if p.default_price %}<p role="status"><small>{{ p.default_price }}</small></p>{% endif %}
+    {% if p.default_price %}<p class="notice-warn" role="status">{{ p.default_price }}</p>{% endif %}
     {% if p.missing %}<p role="status"><small>{{ t('production.cost_missing') }}</small></p>{% endif %}
   </div>
   {% endfor %}
