@@ -100,6 +100,8 @@ def test_the_parts_mask_fits_and_works(admin_page: Page, fake_bambuddy: str) -> 
     expect(popup.locator("input[name=parts_mode][value=different]")).to_be_checked()
     assert fits_screen_width(admin_page)
     for line in popup.locator("#parts-3 .part-line").all():
+        # Wait until the line is drawn (the mask may still be settling), then measure it
+        expect(line).to_be_visible()
         box = line.bounding_box()
         assert box["x"] >= 0 and box["x"] + box["width"] <= admin_page.viewport_size["width"]
 
