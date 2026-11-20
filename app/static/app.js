@@ -149,8 +149,8 @@
   // pop-up earlier would let a quick Enter send the form as a normal page.
   document.body.addEventListener("htmx:afterSettle", (event) => {
     if (event.detail.target !== body) return;
-    // "Settled" arrives a few milliseconds after the swap. When the pop-up was closed in between
-    // (Cancel, which empties it), it stays closed instead of opening again without content.
+    // "Settled" can arrive after the swap. When the pop-up was closed in between (Cancel, which
+    // empties it), it stays closed instead of opening again without content.
     if (!body.firstElementChild) return;
     if (!dialog.open) {
       dialog.showModal();
@@ -204,6 +204,10 @@ if (window.htmx) {
     allowScriptTags: false,
     selfRequestsOnly: true,
     historyCacheSize: 0,
+    // New links and forms work at once. With HTMX's default of 20 ms a click in that moment was a
+    // normal link click or form submission, and the plain page opened instead of the pop-up
+    // (issue #103).
+    defaultSettleDelay: 0,
     includeIndicatorStyles: false,
   });
 }
