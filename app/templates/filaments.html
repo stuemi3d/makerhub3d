@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% from "_data_table.html" import head, actions_head, icon_link, icon_svg, chip with context %}
+{% from "_form_macros.html" import popup_attrs, swatch with context %}
+{% macro switch(f) %}
+{% set kind = 'deactivate' if f.active else 'activate' %}
+{% set label = t('table.action.' ~ kind) ~ ' ' ~ f.name %}
+<form class="icon-form" method="post" action="/filaments/{{ f.id }}/active">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <input type="hidden" name="active" value="{{ '0' if f.active else '1' }}">
+  <button type="submit" class="icon-btn" title="{{ label }}">{{ icon_svg(kind) }}<span class="visually-hidden">{{ label }}</span></button>
+</form>
+{% endmacro %}
+{% block title %}{{ t('filaments.title') }} – {{ app_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>{{ t('filaments.title') }}</h1>
+  {% if can('edit') %}
+  <div class="page-actions">
+    <a {{ popup_attrs('/filaments/new') }} role="button">{{ t('filaments.new') }}</a>
+  </div>
+  {% endif %}
+</div>
+<p>{{ t('filaments.intro') }}</p>
+{# Refreshed after the pop-up was saved (app.js). #}
+<div id="filaments-list" data-popup-refresh>
+{% if filaments %}
+<article class="data-card">
+<div class="data-scroll">
+<table class="data-table">
+  <thead>
+    <tr>
+      {{ head(t('filament.col.name'), sort_links.name) }}
+      {{ head(t('filament.field.brand'), sort_links.brand) }}
+      {{ head(t('filament.field.material'), sort_links.material) }}
+      {{ head(t('filament.field.standard_price'), sort_links.price, numeric=true) }}
+      {{ head(t('filament.field.min_stock_kg'), numeric=true) }}
+      {{ head(t('article.col.status'), sort_links.status) }}
+      {% if can('edit') %}{{ actions_head() }}{% endif %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for f in filaments %}
+    <tr>
+      <td class="cell-strong">{{ swatch(f.color) }} {{ f.name }}</td>
+      <td>{{ f.brand if f.brand else t('table.empty_value') }}</td>
+      <td>{{ f.material }}</td>
+      <td class="num cell-price">{{ f.price if f.price is not none else t('table.empty_value') }}</td>
+      <td class="num">{{ f.min_stock if f.min_stock is not none else t('table.empty_value') }}</td>
+      <td class="cell-status">{{ chip(t('article.status.active' if f.active else 'article.status.inactive'), 'active' if f.active else 'inactive') }}</td>
+      {% if can('edit') %}
+      <td class="row-actions">{{ icon_link('/filaments/' ~ f.id ~ '/edit', 'edit', popup=true, subject=f.name) }} {{ switch(f) }} {{ icon_link('/filaments/' ~ f.id ~ '/delete', 'delete', popup=true, subject=f.name) }}</td>
+      {% endif %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+</article>
+{% else %}
+<article class="empty-hint">
+  <p>{{ t('filaments.empty') }}</p>
+  {% if can('edit') %}<a {{ popup_attrs('/filaments/new') }} role="button">{{ t('filaments.empty.create') }}</a>{% endif %}
+</article>
+{% endif %}
+</div>
+{% endblock %}

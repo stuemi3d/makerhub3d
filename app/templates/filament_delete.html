@@ -1,0 +1,7 @@
+{% extends "_confirm_layout.html" %}
+{% set title_key = 'filament.delete.title' %}
+{% set button_key = 'filament.delete.button' %}
+{% set action = '/filaments/' ~ filament_id ~ '/delete' %}
+{% set cancel_url = '/filaments' %}
+{% set subject = filament_name %}
+{% block details %}<p>{{ t('filament.delete.confirm') }}</p>{% endblock %}

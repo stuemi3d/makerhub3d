@@ -627,3 +627,30 @@ class LoginLogEntry(Base):
     # Empty for unknown user names; the typed name is not stored.
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     event: Mapped[str] = mapped_column(String(30))
+
+
+class Filament(Base):
+    """A filament as a parent object for Bambuddy spools (issue #235), e.g.
+    "Bambu Lab · PLA Matte · Ivory White". Bambuddy stays the master of the spools; the
+    assignment of spools follows in a later task. Empty text means "not given".
+    """
+
+    __tablename__ = "filaments"
+    __table_args__ = (Index("ux_filaments_identity_key", "identity_key", unique=True),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    brand: Mapped[str] = mapped_column(String(50), server_default="")
+    material: Mapped[str] = mapped_column(String(50))
+    subtype: Mapped[str] = mapped_column(String(50), server_default="")
+    color_name: Mapped[str] = mapped_column(String(50), server_default="")
+    # Colour code like #FFFFF0, empty if not given
+    color: Mapped[str] = mapped_column(String(7), server_default="")
+    # Euro per kg; empty (None) is something else than 0
+    standard_price: Mapped[Decimal | None] = mapped_column(DecimalText, nullable=True)
+    # Whole filament, all active spools together, in kg; empty (None) = no minimum
+    min_stock_kg: Mapped[Decimal | None] = mapped_column(DecimalText, nullable=True)
+    note: Mapped[str] = mapped_column(String(500), server_default="")
+    active: Mapped[bool] = mapped_column(Boolean, server_default=true())
+    # Brand, material, subtype and colour name without case and extra spaces: one filament each
+    identity_key: Mapped[str] = mapped_column(String(250))
+    created_at: Mapped[datetime] = mapped_column(DateTime)
