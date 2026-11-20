@@ -25,8 +25,19 @@ def make_zip(entries: dict[str, bytes]) -> bytes:
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
         for name, content in entries.items():
-            archive.writestr(name, content)
+            # A fixed time keeps the bytes equal however often the file is built (issue #241).
+            info = zipfile.ZipInfo(name, date_time=(2026, 1, 1, 0, 0, 0))
+            info.compress_type = zipfile.ZIP_DEFLATED
+            archive.writestr(info, content)
     return buffer.getvalue()
+
+
+def test_the_test_file_does_not_depend_on_the_clock(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Issue #241: the zip format stores a time; two builds must still be byte-equal."""
+    monkeypatch.setattr("time.localtime", lambda *a: (2026, 1, 1, 10, 0, 0, 3, 1, 0))
+    first = sliced_3mf()
+    monkeypatch.setattr("time.localtime", lambda *a: (2026, 1, 1, 10, 0, 4, 3, 1, 0))
+    assert sliced_3mf() == first
 
 
 def sliced_3mf(with_gcode: bool = True) -> bytes:
