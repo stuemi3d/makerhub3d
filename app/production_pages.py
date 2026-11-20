@@ -64,7 +64,7 @@ def add_production_routes(
             return {}
         try:
             usages = client.usage()
-            spools = {spool.id: spool for spool in client.spools()}
+            spools = {spool.id: spool for spool in client.spools(include_archived=True)}
             default_price = client.default_filament_cost()
         except BambuddyError:
             return {}

@@ -174,7 +174,11 @@ def bambuddy(
         if path == "/api/v1/inventory/usage":
             return httpx2.Response(usage_status, json=usages)
         if path == "/api/v1/inventory/spools":
-            return httpx2.Response(200, json=spools)
+            # Like Bambuddy: archived spools only come with the extra parameter (issue #233).
+            with_archived = request.url.params.get("include_archived") == "true"
+            return httpx2.Response(
+                200, json=[s for s in spools if with_archived or not s.get("archived_at")]
+            )
         if path == "/api/v1/settings/":
             return httpx2.Response(200, json={"default_filament_cost": 25.0, "currency": "EUR"})
         return httpx2.Response(404)
@@ -235,3 +239,81 @@ def test_a_spool_name_with_markup_is_escaped_in_the_notice(client: AppClient) ->
     page = client.get("/production/new?prints=6").text
     assert HINT in page and "<script>x</script>" not in page
     assert "&lt;script&gt;" in page
+
+
+# --- Issue #233: spools that were archived in Bambuddy meanwhile --------------------------------
+
+ARCHIVED_AT = "2026-11-16T08:00:00"
+
+
+def test_233_1_an_archived_spool_without_price_gives_the_notice_with_its_name(
+    client: AppClient,
+) -> None:
+    archived = [{**SPOOLS[0], "archived_at": ARCHIVED_AT}, SPOOLS[1]]
+    bambuddy(client, [USAGE], spools=archived)
+    page = client.get("/production/new?prints=6").text
+    assert HINT in page and "Weiß" in page
+
+
+def test_233_2_an_archived_spool_with_a_real_price_gives_no_notice(client: AppClient) -> None:
+    archived = [SPOOLS[0], {**SPOOLS[1], "archived_at": ARCHIVED_AT}]
+    bambuddy(client, [{**USAGE, "spool_id": 5, "cost": 4.72}], spools=archived)
+    assert HINT not in client.get("/production/new?prints=6").text
+
+
+def test_233_3_an_active_spool_behaves_as_before(client: AppClient) -> None:
+    bambuddy(client, [USAGE])
+    assert HINT in client.get("/production/new?prints=6").text
+
+
+def raw_spool(**more) -> dict:
+    return {"id": 26, "material": "PLA", "color_name": "Weiß", "cost_per_kg": None, **more}
+
+
+def spools_client(requests: list[httpx2.Request], items: list[dict]) -> BambuddyClient:
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        requests.append(request)
+        return httpx2.Response(200, json=items)
+
+    return client_with(handler)
+
+
+def test_233_4_the_spool_choice_never_offers_archived_spools() -> None:
+    requests: list[httpx2.Request] = []
+    items = [raw_spool(), raw_spool(id=27, archived_at=ARCHIVED_AT)]
+    assert [s.id for s in spools_client(requests, items).spools()] == [26]
+    assert "include_archived" not in requests[0].url.params
+
+
+def test_233_5_the_client_knows_an_archived_spool_by_archived_at() -> None:
+    requests: list[httpx2.Request] = []
+    items = [raw_spool(), raw_spool(id=27, archived_at=ARCHIVED_AT)]
+    result = spools_client(requests, items).spools(include_archived=True)
+    assert requests[0].url.params["include_archived"] == "true"
+    assert [(s.id, s.archived) for s in result] == [(26, False), (27, True)]
+
+
+def test_233_5_an_odd_archived_at_does_not_break_the_spool_list() -> None:
+    items = [raw_spool(archived_at=12345), raw_spool(id=27, archived_at=None)]
+    assert [s.id for s in spools_client([], items).spools()] == [26, 27]
+
+
+def test_233_6_a_failing_spool_request_does_not_stop_the_mask_or_the_booking(
+    client: AppClient,
+) -> None:
+    prepared(client, ARCHIVES)
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        path = request.url.path
+        if path == "/api/v1/archives/":
+            offset, limit = int(request.url.params["offset"]), int(request.url.params["limit"])
+            return httpx2.Response(200, json=ARCHIVES[offset : offset + limit])
+        if path == "/api/v1/inventory/usage":
+            return httpx2.Response(200, json=[USAGE])
+        return httpx2.Response(500)
+
+    answer_with(client, handler)
+    add_printer("12.00")
+    page = client.get("/production/new?prints=6")
+    assert page.status_code == 200 and HINT not in page.text
+    assert send(client, form([6], (add_article(), "1"))).status_code == 303
