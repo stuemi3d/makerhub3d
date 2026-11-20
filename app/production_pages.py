@@ -15,6 +15,9 @@ from app import print_list, production, production_form, production_view, stock
 from app.archive_parts import archive_parts
 from app.article_pages import confirmed, varied, wants_popup
 from app.bambuddy import BambuddyClient, BambuddyError
+from app.calc_form import spool_name
+from app.default_price import standard_price_spools
+from app.i18n import translate
 from app.models import AppSettings, Article, BambuddyConnection
 from app.permissions import Permission, requires
 from app.production_parts import detect, same_article, stored_detected
@@ -52,6 +55,30 @@ def add_production_routes(
         if not url or api_key is None:
             return None
         return BambuddyClient(url, api_key, transport=transport)
+
+    def default_price_notes(rows: list[print_list.PrintRow]) -> dict[int, str]:
+        """Per print: the notice that Bambuddy charged its default price (issue #228). Empty
+        when the usage cannot be read; the notice is only help and never stops anything."""
+        client = parts_client()
+        if client is None or not rows:
+            return {}
+        try:
+            usages = client.usage()
+            spools = {spool.id: spool for spool in client.spools()}
+            default_price = client.default_filament_cost()
+        except BambuddyError:
+            return {}
+        notes: dict[int, str] = {}
+        for row in rows:
+            found = standard_price_spools(
+                row.finished_at, row.printer_id, usages, spools, default_price
+            )
+            if found:
+                names = ", ".join(spool_name(spool) for spool in found)
+                notes[row.archive_id] = translate(language, "production.default_price").format(
+                    spools=names
+                )
+        return notes
 
     def detect_parts(draft: production_form.Draft) -> None:
         """Fills the parts mask from what Bambuddy and the file say (a first visit). Whatever
@@ -158,6 +185,7 @@ def add_production_routes(
             errors = {**errors, "prints": "production.error.no_printer"}
         found = {row.archive_id: row for row in prints.rows}
         shown = []
+        notes = default_price_notes([found[i] for i in draft.ids if i in found])
         for archive_id in draft.ids:
             row = found.get(archive_id)
             if row is None:
@@ -180,6 +208,7 @@ def add_production_routes(
                     "machine": value("machine", machine),
                     "device": device,
                     "missing": None in (row.material_value, row.electricity_value),
+                    "default_price": notes.get(archive_id),
                     "machine_hint": None if machine is not None else hint,
                 }
             )

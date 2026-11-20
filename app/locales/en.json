@@ -600,6 +600,7 @@
   "production.choose_print": "Choose print",
   "production.new.title": "New production",
   "production.new.intro": "Check the costs of the prints and enter the result article with its good pieces; it gets all costs. Look at the costs with \"Preview\"; only \"Book\" changes the stock.",
+  "production.default_price": "Bambuddy probably charged the default price for the material because the spool has no price (spool: {spools}). Please check; if the spool was free, enter 0 in the field “Material”.",
   "production.cost_missing": "Bambuddy has no costs for this print. Empty fields count as 0; please check.",
   "production.has_errors": "Please check the marked fields.",
   "production.detail.title": "Production",
