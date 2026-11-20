@@ -88,6 +88,7 @@ class Spool:
     label_weight: Decimal | None
     weight_used: Decimal | None
     category: str | None
+    archived: bool = False
 
 
 @dataclass(frozen=True)
@@ -230,6 +231,7 @@ def _spool(raw: Any) -> Spool:
         label_weight=_decimal(item, "label_weight"),
         weight_used=_decimal(item, "weight_used"),
         category=_text(item, "category"),
+        archived=bool(_optional_text(item, "archived_at")),
     )
 
 
@@ -292,7 +294,7 @@ class BambuddyClient:
         self._transport = transport
         self._timeout = timeout
 
-    def _get(self, path: str, params: dict[str, int] | None = None) -> Any:
+    def _get(self, path: str, params: dict[str, int | str] | None = None) -> Any:
         try:
             # No redirects: they could carry the key to another host.
             with httpx2.Client(
@@ -353,7 +355,7 @@ class BambuddyClient:
             raise BambuddyError("unreachable", path) from None
         return bytes(data)
 
-    def _list(self, path: str, params: dict[str, int] | None = None) -> list:
+    def _list(self, path: str, params: dict[str, int | str] | None = None) -> list:
         data = self._get(path, params)
         if not isinstance(data, list):
             raise BambuddyError("bad_response", path)
@@ -405,8 +407,12 @@ class BambuddyClient:
         """The stored .gcode.3mf of an archive entry (read only). The caller checks the content."""
         return self._get_file(ARCHIVE_FILE_PATH.format(id=int(archive_id)), max_bytes)
 
-    def spools(self) -> list[Spool]:
-        return [_spool(i) for i in self._list(SPOOLS_PATH)]
+    def spools(self, include_archived: bool = False) -> list[Spool]:
+        """The active spools; with `include_archived` also those archived in Bambuddy (their
+        data stays, e.g. to name the spool of an old print)."""
+        if include_archived:
+            return [_spool(i) for i in self._list(SPOOLS_PATH, {"include_archived": "true"})]
+        return [spool for spool in map(_spool, self._list(SPOOLS_PATH)) if not spool.archived]
 
     def usage(self, limit: int = USAGE_LIMIT) -> list[Usage]:
         """The newest lines of the usage history (which spool a print used, with its cost)."""
