@@ -1,0 +1,7 @@
+{% extends "_confirm_layout.html" %}
+{% set title_key = 'filaments.release.title' %}
+{% set button_key = 'filaments.release.button' %}
+{% set action = '/filaments/spools/' ~ spool_id ~ '/release' %}
+{% set cancel_url = '/filaments/' ~ filament_id ~ '/spools' %}
+{% set subject = '#' ~ spool_id %}
+{% block details %}<p>{{ t('filaments.release.question') }}</p>{% endblock %}

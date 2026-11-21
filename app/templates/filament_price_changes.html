@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% from "_data_table.html" import head, actions_head, icon_link with context %}
+{% from "_form_macros.html" import swatch with context %}
+{% block title %}{{ t('filaments.changes.title') }} – {{ app_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>{{ t('filaments.changes.title') }}</h1>
+  <div class="page-actions">
+    <a href="/filaments" role="button" class="secondary outline">{{ t('filaments.assigned.back') }}</a>
+  </div>
+</div>
+<p>{{ t('filaments.changes.intro') }}</p>
+{% if unreadable %}<p role="alert"><span class="chip chip-warn chip-wrap">{{ t('filaments.spools.unreadable') }}</span></p>{% endif %}
+{# Refreshed after a pop-up was saved (app.js). #}
+<div id="changes-list" data-popup-refresh>
+{% if rows %}
+<article class="data-card">
+<div class="data-scroll">
+<table class="data-table">
+  <thead>
+    <tr>
+      {{ head(t('filaments.changes.col.filament')) }}
+      {{ head(t('filaments.assigned.col.spool')) }}
+      {{ head(t('filaments.assigned.col.price'), numeric=true) }}
+      {% if can_edit %}{{ actions_head() }}{% endif %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in rows %}
+    <tr id="change-{{ r.id }}">
+      <td class="cell-strong"><a href="/filaments/{{ r.filament_id }}/spools">{{ r.filament }}</a></td>
+      <td>{{ swatch(r.color) }} {{ r.label }}</td>
+      <td class="num">{{ r.old if r.old is not none else t('filaments.price.none') }} → {{ r.new }}</td>
+      {% if can_edit %}
+      <td class="row-actions">{{ icon_link('/filaments/spools/' ~ r.id ~ '/price', 'take', popup=true, subject='#' ~ r.id) }}</td>
+      {% endif %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+</article>
+{% else %}
+<article class="empty-hint"><p>{{ t('filaments.changes.empty') }}</p></article>
+{% endif %}
+</div>
+{% endblock %}

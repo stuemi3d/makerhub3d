@@ -52,7 +52,7 @@ from app.printer_model_pages import add_printer_model_routes
 from app.production_pages import add_production_routes
 from app.sales_pages import add_sales_routes
 from app.settings_form import FIELD_NAMES, form_values, validate
-from app.spool_list import SpoolCache
+from app.spool_manage_pages import add_spool_manage_routes
 from app.spool_pages import add_spool_routes
 from app.stock_pages import add_stock_routes
 from app.template_pages import add_template_routes
@@ -645,8 +645,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     add_variant_bulk_routes(app, new_session, render, read_form)
     add_stock_routes(app, new_session, render, read_form, language)
     add_spool_routes(app, new_session, bambuddy_cipher, render, read_form, language)
-    app.state.spool_cache = SpoolCache()
     add_filament_routes(app, new_session, bambuddy_cipher, render, read_form, language)
+    add_spool_manage_routes(app, new_session, bambuddy_cipher, render, read_form, language)
     add_sales_routes(app, new_session, render, read_form, language)
     add_analysis_routes(app, new_session, render, language)
     add_production_routes(app, new_session, bambuddy_cipher, render, read_form, language)

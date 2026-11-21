@@ -1,0 +1,8 @@
+{% extends "_confirm_layout.html" %}
+{% set title_key = 'filaments.price.title' %}
+{% if new %}{% set button_key = 'filaments.price.button' %}{% endif %}
+{% set action = '/filaments/spools/' ~ spool_id ~ '/price' %}
+{% set cancel_url = '/filaments/' ~ filament_id ~ '/spools' %}
+{% block details %}{% if new %}<p>{{ t('filaments.price.question') }}</p>
+<p>{{ t('filaments.price.hint') | replace('{old}', old or t('filaments.price.none')) | replace('{new}', new) }}</p>
+{% else %}<p>{{ t('filaments.price.same') }}</p>{% endif %}{% endblock %}
