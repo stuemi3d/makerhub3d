@@ -28,6 +28,7 @@ def load(
     new_session: Callable[[], Session],
     cipher: Cipher | None,
     transport: httpx2.BaseTransport | None,
+    include_archived: bool = False,
 ) -> SpoolList:
     with new_session() as db:
         row = db.get(BambuddyConnection, 1)
@@ -39,6 +40,6 @@ def load(
         return SpoolList(problem="bambuddy.error.key_unreadable")
     try:
         client = BambuddyClient(url, api_key, transport=transport, timeout=SPOOLS_TIMEOUT)
-        return SpoolList(client.spools())
+        return SpoolList(client.spools(include_archived=include_archived))
     except BambuddyError as error:
         return SpoolList(problem=f"bambuddy.error.{error.code}")

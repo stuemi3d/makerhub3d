@@ -89,6 +89,9 @@ class Spool:
     weight_used: Decimal | None
     category: str | None
     archived: bool = False
+    # e.g. "Matte"; the colour as "#RRGGBB" (from Bambuddy's RGBA code), both may be missing
+    subtype: str | None = None
+    color: str | None = None
 
 
 @dataclass(frozen=True)
@@ -220,6 +223,17 @@ def _archive(raw: Any) -> Archive:
     )
 
 
+_RGBA = re.compile(r"[0-9A-Fa-f]{8}")
+
+
+def _color(item: dict) -> str | None:
+    """ "#RRGGBB" from Bambuddy's RGBA code ("FFFFF0FF"); anything else counts as missing."""
+    code = _optional_text(item, "rgba")
+    if code is None or not _RGBA.fullmatch(code):
+        return None
+    return "#" + code[:6].upper()
+
+
 def _spool(raw: Any) -> Spool:
     item = _entry(raw)
     return Spool(
@@ -232,6 +246,8 @@ def _spool(raw: Any) -> Spool:
         weight_used=_decimal(item, "weight_used"),
         category=_text(item, "category"),
         archived=bool(_optional_text(item, "archived_at")),
+        subtype=_optional_text(item, "subtype"),
+        color=_color(item),
     )
 
 

@@ -15,12 +15,13 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app import audit, auth, filaments
+from app import audit, auth, filaments, spool_pages
 from app.article_pages import confirmed, saved_in_popup, varied, wants_popup
-from app.models import Filament
-from app.permissions import Permission, requires
+from app.models import Filament, SpoolAssignment
+from app.permissions import Permission, has_permission, requires
 from app.settings_form import format_decimal
 from app.table_sort import chosen_sort, sort_links
+from app.two_factor import Cipher
 
 LIST_ADDRESS = "/filaments"
 CENTS = Decimal("0.01")
@@ -30,6 +31,7 @@ GRAMS = Decimal("0.001")
 def add_filament_routes(
     app: FastAPI,
     new_session: Callable[[], Session],
+    cipher: Cipher | None,
     render: Callable[..., HTMLResponse],
     read_form: Callable[[Request, tuple[str, ...]], Awaitable[dict[str, str]]],
     language: str,
@@ -82,6 +84,15 @@ def add_filament_routes(
         }
         return sorted(rows, key=column[key], reverse=reverse)
 
+    def waiting_count(request: Request) -> int | None:
+        """How many Bambuddy spools wait for a filament; None when it cannot be told (only
+        people who may assign are asked, and a Bambuddy problem is no reason for an error)."""
+        if not has_permission(request.state.user.role, Permission.EDIT):
+            return None
+        transport = getattr(app.state, "bambuddy_transport", None)
+        spools, problem = spool_pages.waiting_spools(new_session, cipher, transport)
+        return None if problem else len(spools)
+
     @app.get(LIST_ADDRESS, response_class=HTMLResponse, dependencies=view)
     def filaments_page(
         request: Request, sort: str | None = None, dir: str | None = None
@@ -94,6 +105,7 @@ def add_filament_routes(
             request,
             "filaments.html",
             "nav.filaments",
+            waiting=waiting_count(request),
             filaments=sorted_rows(rows, key, direction),
             sort_links=sort_links(LIST_ADDRESS, filaments.SORT_KEYS, chosen, ("name", "asc")),
         )
@@ -217,12 +229,19 @@ def add_filament_routes(
         )
         return RedirectResponse(LIST_ADDRESS, status_code=303)
 
+    def has_spools(db: Session, filament_id: int) -> bool:
+        found = db.scalar(
+            select(SpoolAssignment.id).where(SpoolAssignment.filament_id == filament_id).limit(1)
+        )
+        return found is not None
+
     @app.get(
         f"{LIST_ADDRESS}/{{filament_id}}/delete", response_class=HTMLResponse, dependencies=edit
     )
     def delete_filament_page(request: Request, filament_id: int) -> HTMLResponse:
         with new_session() as db:
             name = name_of(loaded(db, filament_id))
+            blocked = has_spools(db, filament_id)
         return varied(
             render(
                 request,
@@ -231,12 +250,16 @@ def add_filament_routes(
                 popup=wants_popup(request),
                 filament_id=filament_id,
                 filament_name=name,
+                blocked=blocked,
             )
         )
 
     def remove(actor_id: int, filament_id: int) -> None:
         with new_session() as db, db.begin():
             item = loaded(db, filament_id)
+            # Checked here, not only by hiding the button: with spools only switching off is left.
+            if has_spools(db, filament_id):
+                raise HTTPException(status_code=409)
             name = name_of(item)
             db.delete(item)
             audit.record_change(db, actor_id, "filament.deleted", name)

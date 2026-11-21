@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% from "_data_table.html" import actions_head, icon_svg, chip with context %}
+{% from "_form_macros.html" import swatch with context %}
+{% block title %}{{ t('filaments.spools.title') }} – {{ app_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>{{ t('filaments.spools.title') }}</h1>
+  <div class="page-actions">
+    <a href="/filaments" role="button" class="secondary outline">{{ t('filaments.spools.back') }}</a>
+    {% if rows %}<button type="submit" form="assign-form" name="scope" value="all">{{ t('filaments.spools.confirm_all') }}</button>{% endif %}
+  </div>
+</div>
+<p>{{ t('filaments.spools.intro') }}</p>
+{% if problem %}
+<article class="empty-hint"><p role="alert"><mark>{{ t(problem) }}</mark></p></article>
+{% elif rows %}
+{% if errors %}<p role="alert"><mark>{{ t('article.has_errors') }}</mark></p>{% endif %}
+<form id="assign-form" method="post" action="/filaments/spools/assign" novalidate>
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<article class="data-card">
+<div class="data-scroll">
+<table class="data-table">
+  <thead>
+    <tr>
+      <th scope="col">{{ t('filaments.spools.col.spool') }}</th>
+      <th scope="col">{{ t('filaments.spools.col.filament') }}</th>
+      {{ actions_head() }}
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in rows %}
+    {% set label = t('filaments.spools.confirm_one') ~ ' #' ~ r.id %}
+    <tr id="spool-{{ r.id }}">
+      <td class="cell-strong">{{ swatch(r.color) }} #{{ r.id }} {{ [r.brand, r.material ~ (' ' ~ r.subtype if r.subtype else ''), r.color_name] | select | join(' · ') }}{% if r.old %} {{ chip(t('filaments.spool.in_archive'), 'inactive') }}{% endif %}
+        <br><small>{{ t('filaments.spools.line' if r.price is not none else 'filaments.spools.line_no_price') | replace('{price}', r.price or '') | replace('{grams}', r.weight or t('table.empty_value')) }}</small></td>
+      <td>
+        <select name="choice_{{ r.id }}" aria-label="{{ t('filaments.spools.col.filament') }} #{{ r.id }}"{% if errors.get(r.id) %} aria-invalid="true"{% endif %}>
+          {% for filament_id, filament_label in r.options %}<option value="f{{ filament_id }}"{% if r.choice == 'f' ~ filament_id %} selected{% endif %}>{{ filament_label }}</option>{% endfor %}
+          <option value="new"{% if r.choice == 'new' %} selected{% endif %}>{{ t('filaments.spool.new') }}{% if r.like %} {{ t('filaments.spool.new_like') | replace('{id}', r.like | string) }}{% endif %}</option>
+          <option value=""{% if r.choice == '' %} selected{% endif %}>{{ t('filaments.spool.skip') }}</option>
+        </select>
+        {% if r.other_brand %}<small>{{ t('filaments.spool.similar') | replace('{spool}', r.brand) | replace('{filament}', r.other_brand) }}</small>{% endif %}
+        {% if not r.color_name %}<input type="text" maxlength="50" autocomplete="off" name="color_name_{{ r.id }}" value="{{ r.typed_name }}" placeholder="{{ t('filaments.spool.color_name') }}" aria-label="{{ t('filament.field.color_name') }} #{{ r.id }}">{% endif %}
+        {% if errors.get(r.id) %}<small role="alert">{{ t(errors[r.id]) }}</small>{% endif %}
+      </td>
+      <td class="row-actions">
+        <button type="submit" class="icon-btn" name="scope" value="{{ r.id }}" title="{{ label }}">{{ icon_svg('activate') }}<span class="visually-hidden">{{ label }}</span></button>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+</article>
+</form>
+{% else %}
+<article class="empty-hint"><p>{{ t('filaments.spools.empty') }}</p></article>
+{% endif %}
+{% endblock %}
