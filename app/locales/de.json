@@ -1117,5 +1117,12 @@
   "table.action.release": "Zuordnung lösen",
   "log.action.filament.spool_price_taken": "Spulenpreis übernommen",
   "log.action.filament.spool_moved": "Spule einem anderen Filament zugeordnet",
-  "log.action.filament.spool_released": "Zuordnung einer Spule gelöst"
+  "log.action.filament.spool_released": "Zuordnung einer Spule gelöst",
+  "filaments.price.chip": "Preis geändert ({n})",
+  "filaments.price.notice": "{n} Spulen haben in Bambuddy einen anderen Preis.",
+  "filaments.price.notice.link": "Jetzt prüfen",
+  "filaments.changes.title": "Geänderte Spulenpreise",
+  "filaments.changes.intro": "Bei diesen Spulen ist der Preis in Bambuddy anders als der gespeicherte Wert. Übernimmst du ihn, rechnen Durchschnitt und letzter Preis mit dem neuen Preis. Bambuddy bleibt unverändert.",
+  "filaments.changes.empty": "Alle gespeicherten Spulenpreise stimmen mit Bambuddy überein.",
+  "filaments.changes.col.filament": "Filament"
 }

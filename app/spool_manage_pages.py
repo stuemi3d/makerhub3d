@@ -139,6 +139,40 @@ def add_spool_manage_routes(
             can_edit=has_permission(request.state.user.role, Permission.EDIT),
         )
 
+    @app.get("/filaments/price-changes", response_class=HTMLResponse, dependencies=view)
+    def changes_page(request: Request) -> HTMLResponse:
+        """All spools whose price in Bambuddy differs from the stored one, over all filaments."""
+        with new_session() as db:
+            names = {i.id: name_of(i) for i in db.scalars(select(Filament))}
+            held = list(db.scalars(select(SpoolAssignment).order_by(SpoolAssignment.spool_id)))
+        live = live_cached() if held else {}
+        rows = []
+        for assignment in held:
+            spool = live.get(assignment.spool_id) if live else None
+            new_price = changed_price(assignment.price_per_kg, spool)
+            if new_price is None:
+                continue
+            rows.append(
+                {
+                    "id": assignment.spool_id,
+                    "filament": names[assignment.filament_id],
+                    "filament_id": assignment.filament_id,
+                    "label": spool_text(spool),
+                    "color": (spool.color if spool else "") or "",
+                    "old": money(assignment.price_per_kg),
+                    "new": money(new_price),
+                }
+            )
+        rows.sort(key=lambda r: (r["filament"].casefold(), r["id"]))
+        return render(
+            request,
+            "filament_price_changes.html",
+            "nav.filaments",
+            rows=rows,
+            unreadable=live is None,
+            can_edit=has_permission(request.state.user.role, Permission.EDIT),
+        )
+
     # --- take over a changed price ---------------------------------------------------------
 
     @app.get("/filaments/spools/{spool_id}/price", response_class=HTMLResponse, dependencies=edit)

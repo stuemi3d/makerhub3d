@@ -1117,5 +1117,12 @@
   "table.action.release": "Release assignment",
   "log.action.filament.spool_price_taken": "Spool price taken over",
   "log.action.filament.spool_moved": "Spool assigned to another filament",
-  "log.action.filament.spool_released": "Spool assignment released"
+  "log.action.filament.spool_released": "Spool assignment released",
+  "filaments.price.chip": "Price changed ({n})",
+  "filaments.price.notice": "{n} spools have a different price in Bambuddy.",
+  "filaments.price.notice.link": "Check now",
+  "filaments.changes.title": "Changed spool prices",
+  "filaments.changes.intro": "The price of these spools in Bambuddy differs from the stored value. If you take it over, the average and the last price use the new price. Bambuddy stays unchanged.",
+  "filaments.changes.empty": "All stored spool prices match Bambuddy.",
+  "filaments.changes.col.filament": "Filament"
 }

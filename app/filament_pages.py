@@ -20,6 +20,7 @@ from app.article_pages import confirmed, saved_in_popup, varied, wants_popup
 from app.models import Filament, SpoolAssignment
 from app.permissions import Permission, has_permission, requires
 from app.settings_form import format_decimal
+from app.spool_manage_pages import changed_price
 from app.table_sort import chosen_sort, sort_links
 from app.two_factor import Cipher
 
@@ -120,19 +121,33 @@ def add_filament_routes(
         live = {s.id: s for s in found.spools} if found and not found.problem else None
         unreadable = bool(held) and live is None and found is not None and bool(found.problem)
         rows = []
+        price_changes = 0
         for item in items:
             mine = held.get(item.id, [])
+            changed = (
+                sum(
+                    1
+                    for h in mine
+                    if changed_price(h.price_per_kg, live.get(h.spool_id)) is not None
+                )
+                if live is not None
+                else 0
+            )
+            price_changes += changed
             # Nothing assigned: the stock is 0 without asking Bambuddy
             summary = filament_stock.summarize(
                 mine, live if live is not None or mine else {}, item.min_stock_kg
             )
-            rows.append(stock_view(row_view(item), summary, item.active))
+            row = stock_view(row_view(item), summary, item.active)
+            row["price_changes"] = changed
+            rows.append(row)
         return render(
             request,
             "filaments.html",
             "nav.filaments",
             waiting=waiting_count(request, found),
             stock_unreadable=unreadable,
+            price_changes=price_changes,
             filaments=sorted_rows(rows, key, direction),
             sort_links=sort_links(LIST_ADDRESS, filaments.SORT_KEYS, chosen, ("name", "asc")),
         )

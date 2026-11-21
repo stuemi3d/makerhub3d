@@ -68,6 +68,10 @@ def stored_price(spool_id: int):
     return next(a for a in assignments() if a.spool_id == spool_id).price_per_kg
 
 
+def assignments_price(spool_id: int) -> float:
+    return float(stored_price(spool_id))
+
+
 def last_log() -> ChangeLogEntry:
     with db() as session:
         return session.query(ChangeLogEntry).order_by(ChangeLogEntry.id.desc()).first()
