@@ -23,6 +23,7 @@ from app import (
     calc_form,
     calc_store,
     calculation_files,
+    price_rule,
     printer_models,
     production_form,
     spool_list,
@@ -155,6 +156,7 @@ def add_calculation_routes(
             article_choices = [] if editing else choices(db, article_id)
             printers = production_form.load_printers(db)
             settings = db.get(AppSettings, 1)
+            filament_prices = calc_store.filament_prices_of(db)
             tables = {}
             for device_id, _ in printers.choices:
                 device = db.get(Device, device_id)
@@ -183,6 +185,7 @@ def add_calculation_routes(
             target_price=target,
             language=language,
             names=dict(printers.choices),
+            filaments=filament_prices,
         )
         outcome = calc_form.evaluate(draft, ctx)
         outcome.errors.update(extra_errors or {})
@@ -200,6 +203,7 @@ def add_calculation_routes(
             article_choices=article_choices,
             printers=printers.choices,
             outcome=outcome,
+            price_rules=price_rule.RULES,
             errors=outcome.errors,
             can_add_row=len(draft.rows) < calc_form.MAX_ROWS,
             form_action=form_action,

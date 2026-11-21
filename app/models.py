@@ -53,6 +53,9 @@ class AppSettings(Base):
     spool_category: Mapped[str] = mapped_column(String(50))
     # Calculation: offer only the spools of that category (issue #186); off = all spools
     spool_business_only: Mapped[bool] = mapped_column(Boolean, server_default=false())
+    # The price rule that a new position of a calculation starts with (issue #237):
+    # average, last, standard or spool (a single spool, as before)
+    price_rule: Mapped[str] = mapped_column(String(20), server_default="spool")
     # Percent; warn when actual costs differ more than this from the calculation
     deviation_threshold: Mapped[Decimal] = mapped_column(DecimalText)
 
@@ -335,6 +338,11 @@ class CalculationMaterial(Base):
     # Time share of the material in minutes and its kWh per hour as used
     minutes: Mapped[Decimal] = mapped_column(DecimalText)
     kwh_per_hour: Mapped[Decimal] = mapped_column(DecimalText)
+    # How the price was found (issue #237): average, last, standard or spool. With a filament
+    # rule the position has one line without a spool; the filament is only a number (it can be
+    # deleted later, its name stays in the line).
+    price_rule: Mapped[str] = mapped_column(String(20), server_default="spool")
+    filament_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     spools: Mapped[list["CalculationSpool"]] = relationship(
         cascade="all, delete-orphan", order_by="CalculationSpool.position"
     )
@@ -349,7 +357,8 @@ class CalculationSpool(Base):
     material_id: Mapped[int] = mapped_column(ForeignKey("calculation_materials.id"), index=True)
     position: Mapped[int] = mapped_column(Integer)
     # The Bambuddy spool id (the spool itself is only read, never stored) and a text for it
-    spool_id: Mapped[int] = mapped_column(Integer)
+    # (empty with a filament rule: the label is then the name of the filament)
+    spool_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     label: Mapped[str] = mapped_column(String(200))
     grams: Mapped[Decimal] = mapped_column(DecimalText)
     price_per_kg: Mapped[Decimal] = mapped_column(DecimalText)

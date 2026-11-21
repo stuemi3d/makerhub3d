@@ -57,7 +57,7 @@
       <td class="cell-strong">{{ m.material }}</td>
       <td class="num">{{ m.grams }}</td>
       {% if item.multi %}<td class="num">{{ m.minutes }}</td>{% endif %}
-      <td>{% for s in m.spools %}{{ s.label }}: {{ s.grams }} g × {{ s.price }} {{ t('calc.view.per_kg') }}{% if not loop.last %}<br>{% endif %}{% endfor %}</td>
+      <td>{% if m.rule != 'spool' %}<small>{{ t('calc.rule.' ~ m.rule) }}</small><br>{% endif %}{% for s in m.spools %}{{ s.label }}: {{ s.grams }} g × {{ s.price }} {{ t('calc.view.per_kg') }}{% if not loop.last %}<br>{% endif %}{% endfor %}</td>
     </tr>
     {% endfor %}
   </tbody>

@@ -12,7 +12,7 @@ from decimal import ROUND_HALF_UP, Decimal
 
 from starlette.datastructures import FormData
 
-from app import printer_models
+from app import price_rule, printer_models
 from app.bambuddy import Spool
 from app.calculation import (
     CalculationError,
@@ -49,10 +49,14 @@ class Row:
     # From a file (issue #181): the colour and the material as the file names it
     color: str = ""
     file_material: str = ""
+    # The price rule and the chosen filament (issue #237); an empty rule is the default of the
+    # settings
+    rule: str = ""
+    filament: str = ""
 
     def blank(self) -> bool:
         # The time share does not count: it is prefilled when there are several materials
-        return not (self.material or self.grams or any(self.spools))
+        return not (self.material or self.grams or any(self.spools) or self.filament)
 
 
 @dataclass
@@ -136,6 +140,8 @@ def read(form: FormData | None) -> Draft:
                 spools=spools,
                 color=valid_color(_text(form, f"color_{index}")),
                 file_material=_text(form, f"filemat_{index}"),
+                rule=_text(form, f"rule_{index}"),
+                filament=_text(form, f"filament_{index}"),
             )
         )
     return draft
@@ -188,11 +194,15 @@ class RowView:
     material: str | None = None
     # The time share as the field shows it
     minutes_shown: str = ""
+    # The rule that counts, and with a filament rule the filaments to choose from
+    rule: str = price_rule.SPOOL
+    filament_options: list[tuple[str, str]] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
 class PlannedSpool:
-    spool_id: int
+    # None with a filament rule (the label is then the name of the filament)
+    spool_id: int | None
     label: str
     grams: Decimal
     price_per_kg: Decimal
@@ -205,6 +215,8 @@ class PlannedMaterial:
     minutes: Decimal
     kwh_per_hour: Decimal
     spools: list[PlannedSpool]
+    rule: str = price_rule.SPOOL
+    filament_id: int | None = None
 
 
 @dataclass(frozen=True)
@@ -247,6 +259,27 @@ class Outcome:
 
 
 @dataclass(frozen=True)
+class FilamentPrices:
+    """A filament with the prices the rules use (all from stored values, never from Bambuddy)."""
+
+    id: int
+    name: str
+    material: str
+    active: bool
+    standard: Decimal | None
+    average: Decimal | None
+    last: Decimal | None
+
+    def price(self, rule: str) -> Decimal | None:
+        found = {
+            price_rule.AVERAGE: self.average,
+            price_rule.LAST: self.last,
+            price_rule.STANDARD: self.standard,
+        }.get(rule)
+        return found if found is not None and found > 0 else None
+
+
+@dataclass(frozen=True)
 class Context:
     """What the check needs besides the draft."""
 
@@ -262,6 +295,7 @@ class Context:
     language: str
     # Device id -> name of the printer
     names: dict[int, str] = field(default_factory=dict)
+    filaments: list[FilamentPrices] = field(default_factory=list)
 
 
 def _positive(text: str) -> Decimal | None:
@@ -346,6 +380,50 @@ def _allocate(
     return lines, last, complete
 
 
+def row_rule(ctx: Context, row: Row) -> str:
+    """The rule of a position: the chosen one, or the default of the settings. An unknown
+    rule counts as the default (and is marked as an error by `evaluate`)."""
+    if row.rule in price_rule.RULES:
+        return row.rule
+    default = ctx.settings.price_rule
+    return default if default in price_rule.RULES else price_rule.DEFAULT
+
+
+def _filament_options(ctx: Context, material: str) -> list[tuple[str, str]]:
+    wanted = printer_models.same_material(material)
+    found = [
+        (str(item.id), item.name)
+        for item in ctx.filaments
+        if item.active and printer_models.same_material(item.material) == wanted
+    ]
+    return sorted(found, key=lambda option: option[1].casefold())
+
+
+def _by_filament(
+    errors: dict[str, str],
+    index: int,
+    row: Row,
+    rule: str,
+    grams: Decimal | None,
+    view: "RowView",
+    ctx: Context,
+) -> tuple["FilamentPrices | None", Decimal | None, bool]:
+    """The chosen filament, its price by the rule and whether the position is complete. A price
+    that is missing is never replaced by 0: the position stays incomplete, with a note."""
+    name = f"filament_{index}"
+    allowed = {value for value, _ in view.filament_options}
+    chosen = next((f for f in ctx.filaments if str(f.id) == row.filament), None)
+    if row.filament not in allowed or chosen is None:
+        if row.filament:
+            errors[name] = "calc.error.filament"
+        return None, None, False
+    price = chosen.price(rule)
+    if price is None:
+        view.note = f"calc.filament.no_price_{rule}"
+        return chosen, None, False
+    return chosen, price, grams is not None
+
+
 def _has_error(errors: dict[str, str], index: int) -> bool:
     return any(name.startswith(f"spool_{index}_") for name in errors)
 
@@ -423,13 +501,21 @@ def evaluate(draft: Draft, ctx: Context) -> Outcome:
         out.rows.append(view)
         grams = _positive(row.grams)
         material = _canonical(table, row.material)
-        options = _options(ctx, material, draft) if material else []
+        rule = row_rule(ctx, row)
+        by_filament = rule in price_rule.FILAMENT_RULES
+        view.rule = rule
+        options = _options(ctx, material, draft) if material and not by_filament else []
+        if material and by_filament:
+            view.filament_options = _filament_options(ctx, material)
         view.material = material
         view.minutes_shown = row.minutes or (
             draft.print_minutes if out.multi and index == 0 else ""
         )
         if material is None:
             view.hint = "calc.spool.choose_material"
+        elif by_filament:
+            if not view.filament_options:
+                view.hint = "calc.filament.none_for_material"
         elif not options and not ctx.spool_problem:
             view.hint = (
                 "calc.spool.none_filtered"
@@ -439,6 +525,8 @@ def evaluate(draft: Draft, ctx: Context) -> Outcome:
         if not show_errors or (row.blank() and not (strict and index == 0)):
             view.slots = _slots(index, row, options, -1, False, errors)
             continue
+        if row.rule and row.rule not in price_rule.RULES:
+            errors[f"rule_{index}"] = "calc.error.rule"
         filled += 1
         if (table or strict) and material is None:
             fail(f"material_{index}", "calc.error.material", row.material)
@@ -447,27 +535,45 @@ def evaluate(draft: Draft, ctx: Context) -> Outcome:
         minutes = parse_decimal(view.minutes_shown) if shared_time else print_minutes
         if minutes is None and shared_time:
             fail(f"minutes_{index}", "calc.error.number", view.minutes_shown)
-        lines, last, done = _allocate(errors, index, row, grams, options, ctx)
-        view.slots = _slots(index, row, options, last, done, errors)
-        incomplete = not done and not _has_error(errors, index) and grams is not None
-        if incomplete and not view.hint and strict:
-            view.note = "calc.spool.incomplete"
+        if by_filament:
+            chosen, price, done = _by_filament(errors, index, row, rule, grams, view, ctx)
+            if not row.filament:
+                fail(f"filament_{index}", "calc.error.filament", "")
+            view.slots = []
+            piece = [(chosen, grams, price)] if done else []
+            lines = []
+        else:
+            lines, last, done = _allocate(errors, index, row, grams, options, ctx)
+            view.slots = _slots(index, row, options, last, done, errors)
+            incomplete = not done and not _has_error(errors, index) and grams is not None
+            if incomplete and not view.hint and strict:
+                view.note = "calc.spool.incomplete"
+            piece = []
         if not done:
             complete = False
         materials += [MaterialLine(take, spool.cost_per_kg) for spool, take in lines]
+        materials += [MaterialLine(taken, price) for _, taken, price in piece]
         if material is not None and minutes is not None:
             power.append(PowerLine(minutes, table[material]))
             if grams is not None and done:
+                if by_filament:
+                    found, taken, price = piece[0]
+                    parts = [PlannedSpool(None, found.name, taken, price)]
+                else:
+                    found = None
+                    parts = [
+                        PlannedSpool(spool.id, spool_name(spool), take, spool.cost_per_kg)
+                        for spool, take in lines
+                    ]
                 planned.append(
                     PlannedMaterial(
                         material,
                         grams,
                         minutes,
                         table[material],
-                        [
-                            PlannedSpool(spool.id, spool_name(spool), take, spool.cost_per_kg)
-                            for spool, take in lines
-                        ],
+                        parts,
+                        rule,
+                        found.id if found else None,
                     )
                 )
     if out.multi and shared_time:
@@ -479,7 +585,15 @@ def evaluate(draft: Draft, ctx: Context) -> Outcome:
         )
     if show_errors and filled == 0:
         fail("material_0", "calc.error.material", "")
-    if errors or missing or not complete or filled == 0 or ctx.spool_problem:
+    # Bambuddy is only needed for positions that take a single spool
+    spools_needed = any(
+        view.rule == price_rule.SPOOL
+        for view in out.rows
+        if not view.row.blank() or view is out.rows[0]
+    )
+    if not spools_needed:
+        out.spool_problem = None
+    if errors or missing or not complete or filled == 0 or out.spool_problem:
         return out
     try:
         entry = CalculationInput(

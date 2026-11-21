@@ -4,6 +4,7 @@ import re
 from dataclasses import dataclass
 from decimal import Decimal
 
+from app import price_rule
 from app.models import AppSettings, Rounding
 
 # Digits with at most one decimal separator (comma or dot); no exponent, no thousands separator.
@@ -34,6 +35,7 @@ FIELD_NAMES = (
     "rounding",
     "spool_category",
     "spool_business_only",
+    "price_rule",
     "deviation_threshold",
 )
 
@@ -49,6 +51,7 @@ def form_values(settings: AppSettings, language: str) -> dict[str, str]:
     values["rounding"] = str(settings.rounding)
     values["spool_category"] = settings.spool_category
     values["spool_business_only"] = "1" if settings.spool_business_only else ""
+    values["price_rule"] = settings.price_rule
     return values
 
 
@@ -98,6 +101,13 @@ def validate(raw: dict[str, str]) -> tuple[dict[str, object], dict[str, str]]:
         errors["spool_category"] = "settings.error.too_long"
     else:
         values["spool_category"] = category
+
+    # A form that does not send the choice keeps the way it was before filaments (single spool)
+    rule = raw.get("price_rule") or price_rule.DEFAULT
+    if rule in price_rule.RULES:
+        values["price_rule"] = rule
+    else:
+        errors["price_rule"] = "settings.error.choice"
 
     # A checkbox: only "1" counts, a missing field means off
     values["spool_business_only"] = raw.get("spool_business_only", "") == "1"

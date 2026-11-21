@@ -83,7 +83,8 @@ def test_page_shows_all_fields_with_defaults(client: TestClient) -> None:
 def test_all_five_rounding_choices_are_offered(client: TestClient) -> None:
     html = client.get("/settings").text
 
-    options = re.findall(r'<option value="([^"]+)"', html)
+    block = re.search(r'<select[^>]*name="rounding".*?</select>', html, re.DOTALL)
+    options = re.findall(r'<option value="([^"]+)"', block.group(0))
     assert options == ["none", "ten_cents", "fifty_cents", "ends_90", "whole_euro"]
 
 

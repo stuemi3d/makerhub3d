@@ -337,7 +337,7 @@ Der Maintainer hat die frühere Bedingung („erst nach Alltagsnutzung von M1“
 - [x] Filamente: Stamm anlegen, bearbeiten, deaktivieren (#235)
 - [x] Filamente: Bambuddy-Spulen zuordnen, Preis und Gewicht als Wert (#236)
 - [ ] Filamente: Zustand der Zuordnung nachführen, Preis-Hinweis, Zuordnung ändern, Zwischenspeicher (#245)
-- [ ] Kalkulation: Filament und Preisregel wählen (#237)
+- [x] Kalkulation: Filament und Preisregel wählen (#237)
 - [x] Filamente: Bestand pro Sorte und Warnung beim Mindestbestand (#238)
 - [ ] Anleitung: Filamente und Spulen (#239)
 - [ ] Später, bei Bedarf: Reservierungen für Produktionen

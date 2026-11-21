@@ -94,6 +94,28 @@
       </div>
       {{ num('grams_' ~ i, 'calc.field.grams', view.row.grams) }}
       {% if outcome.multi %}{{ num('minutes_' ~ i, 'calc.field.minutes', view.minutes_shown) }}{% endif %}
+      <div class="field-wide">
+        <label for="rule_{{ i }}">{{ t('calc.field.rule') }}</label>
+        <select name="rule_{{ i }}" id="rule_{{ i }}"{% if errors.get('rule_' ~ i) %} aria-invalid="true" aria-describedby="rule_{{ i }}-error"{% endif %}>
+          {% for rule in price_rules %}
+          <option value="{{ rule }}"{% if view.rule == rule %} selected{% endif %}>{{ t('calc.rule.' ~ rule) }}</option>
+          {% endfor %}
+        </select>
+        {{ err('rule_' ~ i) }}
+      </div>
+      {% if view.rule != 'spool' %}
+      <div class="field-wide">
+        <label for="filament_{{ i }}">{{ t('calc.field.filament') }}</label>
+        <select name="filament_{{ i }}" id="filament_{{ i }}" data-search="{{ t('calc.search.filament') }}" data-search-empty="{{ t('calc.search.filament_none') }}"{% if errors.get('filament_' ~ i) %} aria-invalid="true" aria-describedby="filament_{{ i }}-error"{% endif %}>
+          <option value="">{{ t('calc.choose_filament') }}</option>
+          {% for value, label in view.filament_options %}
+          <option value="{{ value }}"{% if view.row.filament == value %} selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        {{ err('filament_' ~ i) }}
+        {% if view.hint %}<small>{{ t(view.hint)|replace('{material}', view.material or '') }}</small>{% endif %}
+      </div>
+      {% else %}
       {% for slot in view.slots %}
       <div class="field-wide">
         <label for="{{ slot.name }}">{{ t('calc.field.spool') }}</label>
@@ -107,6 +129,7 @@
         {% if loop.last and view.hint %}<small>{{ t(view.hint)|replace('{material}', view.material or '') }}</small>{% endif %}
       </div>
       {% endfor %}
+      {% endif %}
     </div>
     {% if view.note %}<p role="status"><mark>{{ t(view.note) }}</mark></p>{% endif %}
   </div>
