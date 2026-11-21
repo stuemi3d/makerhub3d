@@ -654,3 +654,26 @@ class Filament(Base):
     # Brand, material, subtype and colour name without case and extra spaces: one filament each
     identity_key: Mapped[str] = mapped_column(String(250))
     created_at: Mapped[datetime] = mapped_column(DateTime)
+
+
+class SpoolAssignment(Base):
+    """A Bambuddy spool assigned to a filament (issue #236).
+
+    Only the spool number points to Bambuddy; price and nominal weight are kept as values from
+    the moment of the assignment, so the average price survives a deleted spool.
+    """
+
+    __tablename__ = "spool_assignments"
+    __table_args__ = (Index("ux_spool_assignments_spool_id", "spool_id", unique=True),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    spool_id: Mapped[int] = mapped_column(Integer)
+    filament_id: Mapped[int] = mapped_column(ForeignKey("filaments.id"), index=True)
+    # Euro per kg of the spool; empty (None) = Bambuddy had no price (not 0)
+    price_per_kg: Mapped[Decimal | None] = mapped_column(DecimalText, nullable=True)
+    # Nominal weight in grams (what was bought), empty if Bambuddy did not say
+    weight_g: Mapped[Decimal | None] = mapped_column(DecimalText, nullable=True)
+    # Brand, material, subtype and colour name of the spool as Bambuddy had them (normalised):
+    # the next spool with the same key gets the same filament proposed
+    spool_key: Mapped[str] = mapped_column(String(250), index=True)
+    assigned_at: Mapped[datetime] = mapped_column(DateTime)

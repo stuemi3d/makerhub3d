@@ -1,7 +1,8 @@
 {% extends "_confirm_layout.html" %}
 {% set title_key = 'filament.delete.title' %}
-{% set button_key = 'filament.delete.button' %}
+{% if not blocked %}{% set button_key = 'filament.delete.button' %}{% endif %}
 {% set action = '/filaments/' ~ filament_id ~ '/delete' %}
 {% set cancel_url = '/filaments' %}
 {% set subject = filament_name %}
-{% block details %}<p>{{ t('filament.delete.confirm') }}</p>{% endblock %}
+{% block details %}{% if blocked %}<p role="alert"><mark>{{ t('filament.delete.blocked') }}</mark></p>
+{% else %}<p>{{ t('filament.delete.confirm') }}</p>{% endif %}{% endblock %}

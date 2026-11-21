@@ -16,6 +16,7 @@
   <h1>{{ t('filaments.title') }}</h1>
   {% if can('edit') %}
   <div class="page-actions">
+    <a href="/filaments/spools" role="button" class="secondary outline">{{ t('filaments.assign') }}{% if waiting %} <span class="chip chip-inactive" data-open-spools>{{ waiting }}</span>{% endif %}</a>
     <a {{ popup_attrs('/filaments/new') }} role="button">{{ t('filaments.new') }}</a>
   </div>
   {% endif %}

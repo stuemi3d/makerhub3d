@@ -332,10 +332,11 @@ Der Maintainer hat die frühere Bedingung („erst nach Alltagsnutzung von M1“
 
 **M3b – Filamente und Preisregeln**
 
-- [ ] Standardpreis-Hinweis auch bei archivierten Spulen (#233)
+- [x] Standardpreis-Hinweis auch bei archivierten Spulen (#233)
 - [x] Plan: Filamente als eigenes Objekt mit Spulen-Zuordnung (#234)
-- [ ] Filamente: Stamm anlegen, bearbeiten, deaktivieren (#235)
-- [ ] Filamente: Bambuddy-Spulen zuordnen, Preis als Wert (#236)
+- [x] Filamente: Stamm anlegen, bearbeiten, deaktivieren (#235)
+- [x] Filamente: Bambuddy-Spulen zuordnen, Preis und Gewicht als Wert (#236)
+- [ ] Filamente: Zustand der Zuordnung nachführen, Preis-Hinweis, Zuordnung ändern, Zwischenspeicher (#245)
 - [ ] Kalkulation: Filament und Preisregel wählen (#237)
 - [ ] Filamente: Bestand pro Sorte und Warnung beim Mindestbestand (#238)
 - [ ] Anleitung: Filamente und Spulen (#239)
