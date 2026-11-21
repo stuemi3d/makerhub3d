@@ -36,7 +36,7 @@ def test_a_filament_with_the_standard_price_is_chosen_and_calculated(
     fake_bambuddy: str,  # noqa: F811
     viewport_name: str,
 ) -> None:
-    color = f"Rechenfarbe {viewport_name}"
+    color = f"Preisregel {viewport_name}"
     filament = make_filament(live_server, color, "25")
     printer, _ = prepare(admin_page, live_server, fake_bambuddy, viewport_name, "f")
     admin_page.goto("/calculation")
