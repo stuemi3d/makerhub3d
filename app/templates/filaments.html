@@ -22,6 +22,7 @@
   {% endif %}
 </div>
 <p>{{ t('filaments.intro') }}</p>
+{% if stock_unreadable %}<p role="alert"><span class="chip chip-warn">{{ t('filaments.stock.unreadable') }}</span></p>{% endif %}
 {# Refreshed after the pop-up was saved (app.js). #}
 <div id="filaments-list" data-popup-refresh>
 {% if filaments %}
@@ -35,6 +36,10 @@
       {{ head(t('filament.field.material'), sort_links.material) }}
       {{ head(t('filament.field.standard_price'), sort_links.price, numeric=true) }}
       {{ head(t('filament.field.min_stock_kg'), numeric=true) }}
+      {{ head(t('filament.col.stock'), numeric=true) }}
+      {{ head(t('filament.col.spools'), numeric=true) }}
+      {{ head(t('filament.col.avg_price'), numeric=true) }}
+      {{ head(t('filament.col.last_price'), numeric=true) }}
       {{ head(t('article.col.status'), sort_links.status) }}
       {% if can('edit') %}{{ actions_head() }}{% endif %}
     </tr>
@@ -47,6 +52,10 @@
       <td>{{ f.material }}</td>
       <td class="num cell-price">{{ f.price if f.price is not none else t('table.empty_value') }}</td>
       <td class="num">{{ f.min_stock if f.min_stock is not none else t('table.empty_value') }}</td>
+      <td class="num cell-stock">{{ f.stock if f.stock is not none else t('table.empty_value') }}{% if f.low %} {{ chip(t('stock.low'), 'warn') }}{% endif %}</td>
+      <td class="num cell-spools">{{ f.spools if f.spools is not none else t('table.empty_value') }}</td>
+      <td class="num cell-avg">{{ f.average if f.average is not none else t('table.empty_value') }}</td>
+      <td class="num cell-last">{{ f.last if f.last is not none else t('table.empty_value') }}</td>
       <td class="cell-status">{{ chip(t('article.status.active' if f.active else 'article.status.inactive'), 'active' if f.active else 'inactive') }}</td>
       {% if can('edit') %}
       <td class="row-actions">{{ icon_link('/filaments/' ~ f.id ~ '/edit', 'edit', popup=true, subject=f.name) }} {{ switch(f) }} {{ icon_link('/filaments/' ~ f.id ~ '/delete', 'delete', popup=true, subject=f.name) }}</td>

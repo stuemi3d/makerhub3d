@@ -130,7 +130,7 @@ Der Artikel ist der Knotenpunkt; alles andere hängt über die Artikelnummer an 
 | --- | --- |
 | Dashboard (Startseite) | Kennzahlen des Zeitraums, Mindestbestand, nicht zugeordnete Drucke, Warnungen |
 | Artikel | Vorlagen und Artikel anlegen; Variante aus Vorlage erzeugen. Artikel-Detail mit Kacheln **Kalkulationen · Produktionen · Lager · Verkäufe** (jeweils mit Anzahl); Klick öffnet die Tabelle mit Links zur Produktion und zum Bambuddy-Druck. Oben auf der Seite steht die Schaltfläche „Auswertung ansehen“ (für alle Rollen) |
-| Filamente (M3b) | Eigener **Menüpunkt „Filamente“** (oben in der Navigation, nicht in den Einstellungen). Tabelle mit dem gemeinsamen Baustein (Name, Marke, Material, Standardpreis, Status, Symbol-Buttons rechts); Anlegen, Bearbeiten, Deaktivieren und Löschen als Pop-ups. Später dieselbe Seite: Bestand und Preise je Sorte, Liste „Spulen ohne Filament“ |
+| Filamente (M3b) | Eigener **Menüpunkt „Filamente“** (oben in der Navigation, nicht in den Einstellungen). Tabelle mit dem gemeinsamen Baustein (Name, Marke, Material, Standardpreis, Status, Symbol-Buttons rechts); Anlegen, Bearbeiten, Deaktivieren und Löschen als Pop-ups. Dieselbe Seite: Bestand und Preise je Sorte, Liste „Spulen ohne Filament“ |
 | Kalkulation | Eigene Liste aller Kalkulationen wie bei der Produktion (Artikel, Datum, Drucker, Selbstkosten, Verkaufspreis-Vorschlag, „maßgeblich“, Symbol-Buttons rechts); oben rechts „Neue Kalkulation“. Neu, Bearbeiten, Kopieren und Ansehen sind Pop-ups; im Formular: Artikel (oder Variante), „mit Datei“ oder „von Hand“, Drucker, Werte (aus der `.gcode.3mf` oder eingetippt), Spulen, Arbeit; Live-Berechnung; Speichern nur mit gewähltem Artikel oder gewählter Variante (ohne bleibt es eine Schnellkalkulation), die Datei wird mitgespeichert. Die Kachel „Kalkulationen“ am Artikel öffnet dieselbe Liste, gefiltert auf diesen Artikel |
 | Produktion | Liste erfolgreicher und fehlgeschlagener Bambuddy-Drucke; einen oder mehrere auswählen → Produktion mit einem Ergebnis-Artikel und den Gutteilen; Kosten pro Stück in der Vorschau prüfen; oder „Ignorieren“; ab #215 mit Teile-Maske (Auswahl „mehrere gleiche Artikel“ oder „verschiedene Einzelteile eines Artikels“, Menge, Gut und Ausschuss je Teil, siehe Abschnitt 4) |
 | Verkäufe | Liste aller Verkäufe (Datum, Artikel, Menge, Preis pro Stück, Summe, Notiz, Status), filterbar nach Artikel; „Verkauf erfassen“ und Stornieren als Pop-ups; der Preis ist mit dem Soll-Verkaufspreis vorbelegt. Die Kachel „Verkäufe“ am Artikel öffnet dieselbe Liste, gefiltert |
@@ -338,7 +338,7 @@ Der Maintainer hat die frühere Bedingung („erst nach Alltagsnutzung von M1“
 - [x] Filamente: Bambuddy-Spulen zuordnen, Preis und Gewicht als Wert (#236)
 - [ ] Filamente: Zustand der Zuordnung nachführen, Preis-Hinweis, Zuordnung ändern, Zwischenspeicher (#245)
 - [ ] Kalkulation: Filament und Preisregel wählen (#237)
-- [ ] Filamente: Bestand pro Sorte und Warnung beim Mindestbestand (#238)
+- [x] Filamente: Bestand pro Sorte und Warnung beim Mindestbestand (#238)
 - [ ] Anleitung: Filamente und Spulen (#239)
 - [ ] Später, bei Bedarf: Reservierungen für Produktionen
 

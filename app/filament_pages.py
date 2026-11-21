@@ -15,7 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app import audit, auth, filaments, spool_pages
+from app import audit, auth, filament_stock, filaments, spool_list, spool_pages
 from app.article_pages import confirmed, saved_in_popup, varied, wants_popup
 from app.models import Filament, SpoolAssignment
 from app.permissions import Permission, has_permission, requires
@@ -84,14 +84,21 @@ def add_filament_routes(
         }
         return sorted(rows, key=column[key], reverse=reverse)
 
-    def waiting_count(request: Request) -> int | None:
+    def waiting_count(request: Request, found: spool_list.SpoolList | None) -> int | None:
         """How many Bambuddy spools wait for a filament; None when it cannot be told (only
         people who may assign are asked, and a Bambuddy problem is no reason for an error)."""
-        if not has_permission(request.state.user.role, Permission.EDIT):
+        if found is None or not has_permission(request.state.user.role, Permission.EDIT):
             return None
-        transport = getattr(app.state, "bambuddy_transport", None)
-        spools, problem = spool_pages.waiting_spools(new_session, cipher, transport)
+        spools, problem = spool_pages.waiting_in(new_session, found)
         return None if problem else len(spools)
+
+    def held_by_filament(db: Session) -> dict[int, list[filament_stock.Held]]:
+        held: dict[int, list[filament_stock.Held]] = {}
+        for row in db.scalars(select(SpoolAssignment)):
+            held.setdefault(row.filament_id, []).append(
+                filament_stock.Held(row.spool_id, row.price_per_kg, row.weight_g, row.assigned_at)
+            )
+        return held
 
     @app.get(LIST_ADDRESS, response_class=HTMLResponse, dependencies=view)
     def filaments_page(
@@ -100,15 +107,43 @@ def add_filament_routes(
         chosen = chosen_sort(filaments.SORT_KEYS, sort, dir)
         key, direction = chosen or ("name", "asc")
         with new_session() as db:
-            rows = [row_view(item) for item in db.scalars(select(Filament))]
+            items = list(db.scalars(select(Filament)))
+            held = held_by_filament(db)
+        # Bambuddy is asked once for the whole page (and not at all when nothing is assigned
+        # and nobody may assign); the answer is kept for a short time.
+        found = None
+        if held or has_permission(request.state.user.role, Permission.EDIT):
+            transport = getattr(app.state, "bambuddy_transport", None)
+            found = spool_list.load_cached(
+                app.state.spool_cache, new_session, cipher, transport, include_archived=True
+            )
+        live = {s.id: s for s in found.spools} if found and not found.problem else None
+        unreadable = bool(held) and live is None and found is not None and bool(found.problem)
+        rows = []
+        for item in items:
+            mine = held.get(item.id, [])
+            # Nothing assigned: the stock is 0 without asking Bambuddy
+            summary = filament_stock.summarize(
+                mine, live if live is not None or mine else {}, item.min_stock_kg
+            )
+            rows.append(stock_view(row_view(item), summary, item.active))
         return render(
             request,
             "filaments.html",
             "nav.filaments",
-            waiting=waiting_count(request),
+            waiting=waiting_count(request, found),
+            stock_unreadable=unreadable,
             filaments=sorted_rows(rows, key, direction),
             sort_links=sort_links(LIST_ADDRESS, filaments.SORT_KEYS, chosen, ("name", "asc")),
         )
+
+    def stock_view(row: dict, summary: filament_stock.Summary, active: bool) -> dict:
+        row["stock"] = shown(summary.stock_kg, CENTS)
+        row["spools"] = summary.spool_count
+        row["average"] = shown(summary.average_price, CENTS)
+        row["last"] = shown(summary.last_price, CENTS)
+        row["low"] = summary.low and active
+        return row
 
     def form_page(
         request: Request,

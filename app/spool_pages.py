@@ -43,6 +43,13 @@ def waiting_spools(
     """The spools of Bambuddy (also archived ones) that have no filament yet, by number, and the
     translation key of the problem if Bambuddy cannot be read (then the list is empty)."""
     found = spool_list.load(new_session, cipher, transport, include_archived=True)
+    return waiting_in(new_session, found)
+
+
+def waiting_in(
+    new_session: Callable[[], Session], found: spool_list.SpoolList
+) -> tuple[list[Spool], str | None]:
+    """Like `waiting_spools`, for a list of spools that was read already."""
     if found.problem:
         return [], NOT_SET_UP.get(found.problem, found.problem)
     with new_session() as db:
