@@ -18,7 +18,8 @@ def test_spool_details_fit_the_screen_and_actions_stay_reachable(
     viewport_name: str,
 ) -> None:
     mine = spools(viewport_name)[0]
-    mine["id"] += 20  # own spool number: the browser database is shared with other tests
+    # own spool numbers (101/111): the browser database is shared with the other spool tests
+    mine["id"] = 101 if viewport_name == "desktop" else 111
     mine["color_name"] = f"Details {viewport_name}"
     mine["note"] = "Eine ziemlich lange Notiz zur Spule, " * 6
     mine["last_dried_at"] = "2026-10-01T08:00:00"
