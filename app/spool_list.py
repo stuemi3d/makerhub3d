@@ -4,7 +4,6 @@ Problems come back as data (a translation key), never as an exception, so that t
 usable when Bambuddy is missing.
 """
 
-import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
@@ -44,46 +43,3 @@ def load(
         return SpoolList(client.spools(include_archived=include_archived))
     except BambuddyError as error:
         return SpoolList(problem=f"bambuddy.error.{error.code}")
-
-
-CACHE_SECONDS = 90.0
-
-
-class SpoolCache:
-    """Keeps a successful answer for a short time, so that pages stay fast with many spools.
-    A problem is never kept: the next call asks again."""
-
-    def __init__(self, ttl: float = CACHE_SECONDS, clock: Callable[[], float] = time.monotonic):
-        self._ttl = ttl
-        self._clock = clock
-        self._kept: dict[object, tuple[float, SpoolList]] = {}
-
-    def get(self, key: object, fetch: Callable[[], SpoolList]) -> SpoolList:
-        kept = self._kept.get(key)
-        if kept is not None and self._clock() - kept[0] < self._ttl:
-            return kept[1]
-        found = fetch()
-        if found.problem:
-            self._kept.pop(key, None)
-        else:
-            self._kept[key] = (self._clock(), found)
-        return found
-
-    def clear(self) -> None:
-        """Forget everything, e.g. after a change that must show at once."""
-        self._kept.clear()
-
-
-def load_cached(
-    cache: SpoolCache,
-    new_session: Callable[[], Session],
-    cipher: Cipher | None,
-    transport: httpx2.BaseTransport | None,
-    include_archived: bool = False,
-) -> SpoolList:
-    """Like `load`, but a fresh answer is reused. The key includes the connection, so a changed
-    address or key is never answered from the old connection's spools."""
-    with new_session() as db:
-        row = db.get(BambuddyConnection, 1)
-        key = (row.url, row.api_key_encrypted, include_archived)
-    return cache.get(key, lambda: load(new_session, cipher, transport, include_archived))

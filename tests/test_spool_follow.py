@@ -283,28 +283,36 @@ def test_14_unknown_spool_or_filament_gives_404(client: AppClient) -> None:
     assert client.get("/filaments/spools/5/move").status_code == 404
 
 
-# --- Case 15: cache ----------------------------------------------------------------------------
+# --- Case 15: always fresh ---------------------------------------------------------------------
 
 
-def test_15_two_page_views_ask_bambuddy_once_and_a_change_makes_it_read_again(
+def test_15_a_price_changed_and_changed_back_shows_no_hint_at_once(client: AppClient) -> None:
+    bambuddy = linked(client, spool(1, cost_per_kg=0))
+    fid = one_filament(client)
+    assign(fid, 1, price="0")
+    bambuddy.spools[0]["cost_per_kg"] = 4
+    assert hint(client.get(spools_page(fid)).text, 1)
+    bambuddy.spools[0]["cost_per_kg"] = 0
+    assert hint(client.get(spools_page(fid)).text, 1) is None
+    assert "data-price-chip" not in client.get("/filaments").text
+    assert "/filaments/spools/1/price" not in client.get("/filaments/price-changes").text
+
+
+def test_15_every_view_asks_bambuddy_once_and_a_state_change_shows_at_once(
     client: AppClient,
 ) -> None:
     bambuddy = linked(client, spool(1, cost_per_kg=25), spool(2))
     fid = one_filament(client)
     assign(fid, 1, price="20")
-    bambuddy.requests.clear()
 
     def spool_requests() -> int:
         return sum(1 for r in bambuddy.requests if r.url.path.endswith("/inventory/spools"))
 
-    client.get(spools_page(fid))
+    bambuddy.requests.clear()
     client.get(spools_page(fid))
     assert spool_requests() == 1
-    client.post("/filaments/spools/1/price", follow_redirects=False)
     bambuddy.spools[0]["archived_at"] = ARCHIVED
-    before = spool_requests()
     assert state_of(client.get(spools_page(fid)).text, 1) == DE["filaments.state.archived"]
-    assert spool_requests() > before
 
 
 def test_texts_exist_in_both_languages() -> None:

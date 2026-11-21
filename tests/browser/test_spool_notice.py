@@ -12,13 +12,13 @@ from tests.browser.test_production import connect
 from tests.browser.test_spool_assignment import SERVED, fake_bambuddy  # noqa: F401
 
 
-def spool(viewport: str, price: float) -> dict:
+def spool(viewport: str, price: float, more: int = 0) -> dict:
     return {
-        "id": 81 if viewport == "desktop" else 91,
+        "id": (81 if viewport == "desktop" else 91) + more,
         "material": "PETG",
         "brand": "Beispielmarke",
         "subtype": "",
-        "color_name": f"Hinweis {viewport}",
+        "color_name": f"Hinweis {viewport}" + (" zwei" if more else ""),
         "rgba": "778899FF",
         "cost_per_kg": price,
         "label_weight": 1000,
@@ -64,3 +64,32 @@ def test_chip_notice_and_overview_show_a_changed_price(
     dialog.locator("button[type=submit]").click()
     expect(dialog).not_to_be_visible()
     expect(admin_page.locator(f"#change-{mine['id']}")).to_have_count(0)
+
+
+def test_a_long_notice_does_not_widen_the_page_when_bambuddy_is_gone(
+    admin_page: Page,
+    fake_bambuddy: str,  # noqa: F811
+    viewport_name: str,
+) -> None:
+    mine = spool(viewport_name, 20, 1)
+    SERVED[:] = [spool("desktop", 20, 1), spool("phone", 20, 1)]
+    connect(admin_page, fake_bambuddy)
+    admin_page.goto("/filaments/spools")
+    row = admin_page.locator(f"#spool-{mine['id']}")
+    row.get_by_role("button", name=f"{t('filaments.spools.confirm_one')} #{mine['id']}").click()
+    expect(row).to_have_count(0)
+
+    # Bambuddy is no longer there (an address nobody listens on): the notices are long sentences.
+    admin_page.goto("/settings/bambuddy")
+    admin_page.fill("#url", "http://127.0.0.1:9")
+    admin_page.fill("#api_key", "test-key-nur-fuer-tests")
+    admin_page.locator("main form[action='/settings/bambuddy'] button[type=submit]").click()
+    admin_page.goto("/filaments")
+    notice = admin_page.locator("[role=alert] .chip-warn")
+    expect(notice).to_be_visible()
+    # The notice must end inside the screen (the page-wide check is weak on a phone: the browser
+    # widens its layout window to fit a too-wide line).
+    box = notice.bounding_box()
+    viewport = admin_page.viewport_size
+    assert box is not None and viewport is not None
+    assert box["x"] + box["width"] <= viewport["width"]

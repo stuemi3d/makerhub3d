@@ -93,7 +93,6 @@ def test_18_no_chip_for_a_deleted_spool_or_when_bambuddy_cannot_be_read(
     assert chip(client.get(LIST).text) is None
     assign(fid, 2, price="20")
     client.app.state.bambuddy_transport = httpx2.MockTransport(lambda r: httpx2.Response(500))
-    client.app.state.spool_cache.clear()
     html = client.get(LIST).text
     assert chip(html) is None and notice(html) is None
 
@@ -175,18 +174,21 @@ def test_22_the_overview_needs_a_login(client: AppClient) -> None:
         assert anonymous.get(OVERVIEW, follow_redirects=False).status_code in (303, 401, 403)
 
 
-# --- Case 23: no extra request ----------------------------------------------------------------
+# --- Case 23: one request per page view -------------------------------------------------------
 
 
-def test_23_list_and_overview_share_one_request_to_bambuddy(client: AppClient) -> None:
+def test_23_each_page_view_asks_bambuddy_exactly_once(client: AppClient) -> None:
     bambuddy = linked(client, spool(1, cost_per_kg=25))
     fid = one_filament(client)
     assign(fid, 1, price="20")
-    bambuddy.requests.clear()
-    client.get(LIST)
-    client.get(OVERVIEW)
-    asked = [r for r in bambuddy.requests if r.url.path.endswith("/inventory/spools")]
-    assert len(asked) == 1
+
+    def asked() -> int:
+        return sum(1 for r in bambuddy.requests if r.url.path.endswith("/inventory/spools"))
+
+    for address in (LIST, OVERVIEW, f"/filaments/{fid}/spools"):
+        bambuddy.requests.clear()
+        client.get(address)
+        assert asked() == 1, address
 
 
 def test_texts_exist_in_both_languages() -> None:

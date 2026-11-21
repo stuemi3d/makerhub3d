@@ -72,12 +72,6 @@ def add_spool_manage_routes(
     def transport():
         return getattr(app.state, "bambuddy_transport", None)
 
-    def live_cached() -> dict[int, Spool] | None:
-        found = spool_list.load_cached(
-            app.state.spool_cache, new_session, cipher, transport(), include_archived=True
-        )
-        return None if found.problem else {s.id: s for s in found.spools}
-
     def live_fresh() -> dict[int, Spool] | None:
         found = spool_list.load(new_session, cipher, transport(), include_archived=True)
         return None if found.problem else {s.id: s for s in found.spools}
@@ -110,7 +104,7 @@ def add_spool_manage_routes(
                     .order_by(SpoolAssignment.spool_id)
                 )
             )
-        live = live_cached() if held else {}
+        live = live_fresh() if held else {}
         rows = []
         for assignment in held:
             spool = live.get(assignment.spool_id) if live else None
@@ -145,7 +139,7 @@ def add_spool_manage_routes(
         with new_session() as db:
             names = {i.id: name_of(i) for i in db.scalars(select(Filament))}
             held = list(db.scalars(select(SpoolAssignment).order_by(SpoolAssignment.spool_id)))
-        live = live_cached() if held else {}
+        live = live_fresh() if held else {}
         rows = []
         for assignment in held:
             spool = live.get(assignment.spool_id) if live else None
@@ -215,7 +209,6 @@ def add_spool_manage_routes(
                 [{"field": spool_text(spool), "old": plain(old), "new": plain(new_price)}],
             )
             filament_id = assignment.filament_id
-        app.state.spool_cache.clear()
         return filament_id
 
     @app.post("/filaments/spools/{spool_id}/price", dependencies=edit)
@@ -256,7 +249,7 @@ def add_spool_manage_routes(
 
     def move(actor_id: int, spool_id: int, raw: str) -> int | None:
         """Moves the spool; the filament it came from, or None when the target is not valid."""
-        live = live_cached()
+        live = live_fresh()
         with new_session() as db, db.begin():
             assignment = assignment_of(db, spool_id)
             # no filament number is longer than nine digits (and only plain digits count)
@@ -274,7 +267,6 @@ def add_spool_manage_routes(
                 [{"field": "filament", "old": name_of(source), "new": name_of(target)}],
             )
             origin = source.id
-        app.state.spool_cache.clear()
         return origin
 
     @app.post("/filaments/spools/{spool_id}/move", response_class=HTMLResponse, dependencies=edit)
@@ -303,7 +295,7 @@ def add_spool_manage_routes(
         )
 
     def release(actor_id: int, spool_id: int) -> int:
-        live = live_cached()
+        live = live_fresh()
         with new_session() as db, db.begin():
             assignment = assignment_of(db, spool_id)
             filament = filament_of(db, assignment.filament_id)
@@ -317,7 +309,6 @@ def add_spool_manage_routes(
                 [{"field": "filament", "old": name_of(filament), "new": ""}],
             )
             db.delete(assignment)
-        app.state.spool_cache.clear()
         return origin
 
     @app.post("/filaments/spools/{spool_id}/release", dependencies=edit)

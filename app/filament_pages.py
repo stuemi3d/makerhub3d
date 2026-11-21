@@ -111,13 +111,12 @@ def add_filament_routes(
             items = list(db.scalars(select(Filament)))
             held = held_by_filament(db)
         # Bambuddy is asked once for the whole page (and not at all when nothing is assigned
-        # and nobody may assign); the answer is kept for a short time.
+        # and nobody may assign). It is read afresh every time, so that a price changed back in
+        # Bambuddy shows at once.
         found = None
         if held or has_permission(request.state.user.role, Permission.EDIT):
             transport = getattr(app.state, "bambuddy_transport", None)
-            found = spool_list.load_cached(
-                app.state.spool_cache, new_session, cipher, transport, include_archived=True
-            )
+            found = spool_list.load(new_session, cipher, transport, include_archived=True)
         live = {s.id: s for s in found.spools} if found and not found.problem else None
         unreadable = bool(held) and live is None and found is not None and bool(found.problem)
         rows = []

@@ -17,7 +17,6 @@ import pytest
 from app import filament_stock
 from app.bambuddy import Spool
 from app.models import SpoolAssignment
-from app.spool_list import SpoolCache
 from tests.auth import READER_NAME, AppClient, add_user, client_as
 from tests.test_filaments import LIST, db, make, stored
 from tests.test_spool_assignment import linked, spool
@@ -261,54 +260,16 @@ def test_13_without_assignments_bambuddy_is_not_asked_and_there_is_no_hint(
     assert cells(html)["stock"] == "0,00"
 
 
-def test_14_two_page_views_in_a_row_ask_bambuddy_only_once(client: AppClient) -> None:
-    bambuddy = linked(client, spool(1))
+def test_14_every_page_view_reads_bambuddy_afresh(client: AppClient) -> None:
+    bambuddy = linked(client, spool(1, weight_used=0))
     fid = one_filament(client)
     assign(fid, 1)
+    assert cells(client.get(LIST).text)["stock"] == "1,00"
+    bambuddy.spools[0]["weight_used"] = 500
     bambuddy.requests.clear()
-    client.get(LIST)
-    client.get(LIST)
+    assert cells(client.get(LIST).text)["stock"] == "0,50"
     spool_requests = [r for r in bambuddy.requests if r.url.path == "/api/v1/inventory/spools"]
     assert len(spool_requests) == 1
-
-
-def test_14_the_cache_expires_after_its_time() -> None:
-    clock = [1000.0]
-    cache = SpoolCache(ttl=90, clock=lambda: clock[0])
-    calls: list[int] = []
-
-    def fetch():
-        calls.append(1)
-        return filament_stock_list()
-
-    cache.get("key", fetch)
-    clock[0] += 89
-    cache.get("key", fetch)
-    assert len(calls) == 1
-    clock[0] += 2
-    cache.get("key", fetch)
-    assert len(calls) == 2
-
-
-def test_14_a_problem_is_not_kept_in_the_cache() -> None:
-    from app.spool_list import SpoolList
-
-    cache = SpoolCache(ttl=90, clock=lambda: 0.0)
-    calls: list[int] = []
-
-    def fetch():
-        calls.append(1)
-        return SpoolList(problem="bambuddy.error.unreachable")
-
-    cache.get("key", fetch)
-    cache.get("key", fetch)
-    assert len(calls) == 2
-
-
-def filament_stock_list():
-    from app.spool_list import SpoolList
-
-    return SpoolList([])
 
 
 def test_15_five_thousand_spools_stay_fast_with_one_bambuddy_request(client: AppClient) -> None:

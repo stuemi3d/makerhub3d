@@ -598,6 +598,13 @@ button.icon-btn {
   white-space: nowrap;
 }
 
+/* A chip that carries a sentence (a notice in a paragraph) must wrap, or the phone page gets wider
+   than the screen. */
+p > .chip {
+  white-space: normal;
+  border-radius: 0.6rem;
+}
+
 .chip-active {
   background: var(--mh-success-bg);
   color: var(--mh-success-text);
