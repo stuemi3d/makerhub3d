@@ -42,6 +42,7 @@ from app.calculation_pages import add_calculation_routes
 from app.config import Settings
 from app.db import make_engine, run_migrations
 from app.device_pages import add_device_routes
+from app.filament_pages import add_filament_routes
 from app.i18n import translate
 from app.log_pages import add_log_routes
 from app.models import AppSettings, Rounding, User, UserRole
@@ -71,6 +72,7 @@ NAV_ITEMS = (
     {"key": "nav.calculation", "href": "/calculation", "permission": Permission.VIEW},
     {"key": "nav.production", "href": "/production", "permission": Permission.VIEW},
     {"key": "nav.stock", "href": "/stock", "permission": Permission.VIEW},
+    {"key": "nav.filaments", "href": "/filaments", "permission": Permission.VIEW},
     {"key": "nav.sales", "href": "/sales", "permission": Permission.VIEW},
     {"key": "nav.analysis", "href": "/analysis", "permission": Permission.VIEW},
     # Open to everyone (issue #73): others only reach the appearance page, not the admin pages.
@@ -637,6 +639,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     add_variant_routes(app, new_session, render, read_form, language)
     add_variant_bulk_routes(app, new_session, render, read_form)
     add_stock_routes(app, new_session, render, read_form, language)
+    add_filament_routes(app, new_session, render, read_form, language)
     add_sales_routes(app, new_session, render, read_form, language)
     add_analysis_routes(app, new_session, render, language)
     add_production_routes(app, new_session, bambuddy_cipher, render, read_form, language)

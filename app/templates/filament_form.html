@@ -1,0 +1,43 @@
+{% extends "_popup_layout.html" if popup else "base.html" %}
+{% from "_form_macros.html" import field_attrs, feedback %}
+{% set title_key = 'filament.form.edit' if filament_id else 'filament.form.new' %}
+{% block title %}{{ t(title_key) }} – {{ app_name }}{% endblock %}
+{% block content %}
+{% set action = '/filaments/' ~ filament_id if filament_id else '/filaments/new' %}
+<h1{% if popup %} id="popup-title"{% endif %}>{{ t(title_key) }}</h1>
+{% if errors %}
+<p role="alert"><mark>{{ t('article.has_errors') }}</mark></p>
+{% endif %}
+<form method="post" action="{{ action }}" novalidate{% if popup %} hx-post="{{ action }}" hx-target="#popup-body" hx-swap="innerHTML"{% endif %}>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label for="brand">{{ t('filament.field.brand') }}</label>
+  <input type="text" maxlength="50" autocomplete="off" {{ field_attrs('brand', errors) }}{% if popup %} autofocus{% endif %} value="{{ values.get('brand', '') }}">
+  {{ feedback('brand', errors, t, 'filament.hint.') }}
+  <label for="material">{{ t('filament.field.material') }}</label>
+  <input type="text" maxlength="50" autocomplete="off" {{ field_attrs('material', errors) }} value="{{ values.get('material', '') }}">
+  {{ feedback('material', errors, t, 'filament.hint.') }}
+  <label for="subtype">{{ t('filament.field.subtype') }}</label>
+  <input type="text" maxlength="50" autocomplete="off" {{ field_attrs('subtype', errors) }} value="{{ values.get('subtype', '') }}">
+  {{ feedback('subtype', errors, t, 'filament.hint.') }}
+  <label for="color_name">{{ t('filament.field.color_name') }}</label>
+  <input type="text" maxlength="50" autocomplete="off" {{ field_attrs('color_name', errors) }} value="{{ values.get('color_name', '') }}">
+  {{ feedback('color_name', errors, t, 'filament.hint.') }}
+  <label for="color">{{ t('filament.field.color') }}</label>
+  <input type="text" maxlength="7" autocomplete="off" placeholder="{{ t('filament.placeholder.color') }}" {{ field_attrs('color', errors) }} value="{{ values.get('color', '') }}">
+  {{ feedback('color', errors, t, 'filament.hint.') }}
+  <label for="standard_price">{{ t('filament.field.standard_price') }}</label>
+  <input type="text" inputmode="decimal" autocomplete="off" {{ field_attrs('standard_price', errors) }} value="{{ values.get('standard_price', '') }}">
+  {{ feedback('standard_price', errors, t, 'filament.hint.') }}
+  <label for="min_stock_kg">{{ t('filament.field.min_stock_kg') }}</label>
+  <input type="text" inputmode="decimal" autocomplete="off" {{ field_attrs('min_stock_kg', errors) }} value="{{ values.get('min_stock_kg', '') }}">
+  {{ feedback('min_stock_kg', errors, t, 'filament.hint.') }}
+  <label for="note">{{ t('filament.field.note') }}</label>
+  <textarea rows="3" maxlength="500" {{ field_attrs('note', errors) }}>{{ values.get('note', '') }}</textarea>
+  {{ feedback('note', errors, t, 'filament.hint.') }}
+  <div class="form-actions">
+    <button type="submit">{{ t('filament.save') }}</button>
+    {% if popup %}<button type="button" class="secondary outline" data-popup-close>{{ t('article.cancel') }}</button>
+    {% else %}<a href="/filaments" role="button" class="secondary outline">{{ t('article.cancel') }}</a>{% endif %}
+  </div>
+</form>
+{% endblock %}
