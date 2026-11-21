@@ -29,6 +29,7 @@ from app import (
     calculation_files,
     dashboard,
     dashboard_page,
+    price_rule,
     print_list,
     two_factor,
 )
@@ -542,6 +543,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             errors={},
             saved=saved == "1",
             roundings=list(Rounding),
+            price_rules=price_rule.RULES,
         )
 
     # The theme lives in the browser only (issue #73), so every role may open this page.
@@ -568,6 +570,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 errors=errors,
                 saved=False,
                 roundings=list(Rounding),
+                price_rules=price_rule.RULES,
             )
         with new_session() as session, session.begin():
             row = session.get(AppSettings, 1)

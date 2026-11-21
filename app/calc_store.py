@@ -12,9 +12,16 @@ from decimal import Decimal
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app import audit, auth, stock, table_sort
-from app.calc_form import Draft, Plan, Row, cents
-from app.models import Article, Calculation, CalculationMaterial, CalculationSpool
+from app import audit, auth, filament_stock, filaments, stock, table_sort
+from app.calc_form import Draft, FilamentPrices, Plan, Row, cents
+from app.models import (
+    Article,
+    Calculation,
+    CalculationMaterial,
+    CalculationSpool,
+    Filament,
+    SpoolAssignment,
+)
 from app.production_form import input_text
 
 SORT_KEYS = ("article", "date", "printer", "cost", "price")
@@ -76,6 +83,8 @@ def _fill(item: Calculation, plan: Plan) -> None:
             grams=material.grams,
             minutes=material.minutes,
             kwh_per_hour=material.kwh_per_hour,
+            price_rule=material.rule,
+            filament_id=material.filament_id,
             spools=[
                 CalculationSpool(
                     position=slot,
@@ -235,7 +244,11 @@ def draft_of(item: Calculation, language: str) -> Draft:
                 material=material.material,
                 grams=input_text(material.grams, language),
                 minutes=input_text(material.minutes, language),
-                spools=[str(piece.spool_id) for piece in material.spools],
+                spools=[
+                    str(piece.spool_id) for piece in material.spools if piece.spool_id is not None
+                ],
+                rule=material.price_rule,
+                filament=str(material.filament_id) if material.filament_id is not None else "",
             )
             for material in item.materials
         ]
@@ -267,6 +280,8 @@ class DetailMaterial:
     minutes: str
     kwh: str
     spools: list[DetailSpool]
+    # average, last, standard or spool
+    rule: str = "spool"
 
 
 def detail_materials(item: Calculation, language: str) -> list[DetailMaterial]:
@@ -284,6 +299,34 @@ def detail_materials(item: Calculation, language: str) -> list[DetailMaterial]:
                 )
                 for piece in material.spools
             ],
+            rule=material.price_rule,
         )
         for material in item.materials
     ]
+
+
+def filament_prices_of(db: Session) -> list[FilamentPrices]:
+    """The filaments with the prices of the rules, from the values stored with the assignments
+    (so archived and deleted spools count and Bambuddy is not asked)."""
+    held: dict[int, list[filament_stock.Held]] = {}
+    for row in db.scalars(select(SpoolAssignment)):
+        held.setdefault(row.filament_id, []).append(
+            filament_stock.Held(row.spool_id, row.price_per_kg, row.weight_g, row.assigned_at)
+        )
+    found = []
+    for item in db.scalars(select(Filament)):
+        summary = filament_stock.summarize(held.get(item.id, []), {}, None)
+        found.append(
+            FilamentPrices(
+                id=item.id,
+                name=filaments.display_name(
+                    item.brand, item.material, item.subtype, item.color_name
+                ),
+                material=item.material,
+                active=item.active,
+                standard=item.standard_price,
+                average=summary.average_price,
+                last=summary.last_price,
+            )
+        )
+    return found

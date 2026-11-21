@@ -45,6 +45,13 @@ id="{{ name }}" name="{{ name }}"{% if errors.get(name) %} aria-invalid="true" a
       {{ t('settings.field.spool_business_only') }}
     </label>
     <small id="spool_business_only-hint">{{ t('settings.hint.spool_business_only') }}</small>
+    <label for="price_rule">{{ t('settings.field.price_rule') }}</label>
+    <select {{ field_attrs('price_rule') }}>
+      {% for rule in price_rules %}
+      <option value="{{ rule }}"{% if values.get('price_rule') == rule %} selected{% endif %}>{{ t('calc.rule.' ~ rule) }}</option>
+      {% endfor %}
+    </select>
+    {{ feedback('price_rule') }}
     <label for="deviation_threshold">{{ t('settings.field.deviation_threshold') }}</label>
     <input type="text" inputmode="decimal" autocomplete="off" {{ field_attrs('deviation_threshold') }} value="{{ values.get('deviation_threshold', '') }}">
     {{ feedback('deviation_threshold') }}
