@@ -20,6 +20,7 @@ def test_a_filament_is_created_edited_and_switched_off_in_popups(
     admin_page.get_by_role("link", name=t("nav.filaments"), exact=True).click()
     expect(admin_page.locator("h1")).to_have_text(t("filaments.title"))
     assert fits_screen_width(admin_page)
+    admin_page.wait_for_load_state("load")  # the scripts must be ready before the pop-up link
 
     # An empty form keeps the pop-up open with errors; Cancel closes it without saving.
     admin_page.get_by_role("button", name=t("filaments.new"), exact=True).click()
