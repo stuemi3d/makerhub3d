@@ -22,8 +22,8 @@
   {% endif %}
 </div>
 <p>{{ t('filaments.intro') }}</p>
-{% if stock_unreadable %}<p role="alert"><span class="chip chip-warn">{{ t('filaments.stock.unreadable') }}</span></p>{% endif %}
-{% if price_changes %}<p role="status" data-price-notice><span class="chip chip-warn">{{ t('filaments.price.notice') | replace('{n}', price_changes | string) }}</span> <a href="/filaments/price-changes">{{ t('filaments.price.notice.link') }}</a></p>{% endif %}
+{% if stock_unreadable %}<p role="alert"><span class="chip chip-warn chip-wrap">{{ t('filaments.stock.unreadable') }}</span></p>{% endif %}
+{% if price_changes %}<p role="status" data-price-notice><span class="chip chip-warn chip-wrap">{{ t('filaments.price.notice') | replace('{n}', price_changes | string) }}</span> <a href="/filaments/price-changes">{{ t('filaments.price.notice.link') }}</a></p>{% endif %}
 {# Refreshed after the pop-up was saved (app.js). #}
 <div id="filaments-list" data-popup-refresh>
 {% if filaments %}

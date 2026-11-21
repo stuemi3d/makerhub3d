@@ -10,7 +10,7 @@
   </div>
 </div>
 <p>{{ t('filaments.assigned.intro') }}</p>
-{% if unreadable and rows %}<p role="alert"><span class="chip chip-warn">{{ t('filaments.spools.unreadable') }}</span></p>{% endif %}
+{% if unreadable and rows %}<p role="alert"><span class="chip chip-warn chip-wrap">{{ t('filaments.spools.unreadable') }}</span></p>{% endif %}
 {# Refreshed after a pop-up was saved (app.js). #}
 <div id="assigned-list" data-popup-refresh>
 {% if rows %}

@@ -600,7 +600,8 @@ button.icon-btn {
 
 /* A chip that carries a sentence (a notice in a paragraph) must wrap, or the phone page gets wider
    than the screen. */
-p > .chip {
+/* Used as: class="chip chip-warn chip-wrap". */
+.chip-wrap {
   white-space: normal;
   border-radius: 0.6rem;
 }
