@@ -1,6 +1,7 @@
 """Bambuddy client (issue #117, test cases 1-10). Uses recorded, cleaned answers only."""
 
 import json
+from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
 
@@ -217,3 +218,34 @@ def test_invalid_addresses_are_refused(url: str) -> None:
 )
 def test_valid_addresses_are_accepted(url: str) -> None:
     BambuddyClient(url, KEY)
+
+
+def test_spools_have_dried_used_note_and_location() -> None:
+    first, second, _ = make_client().spools()
+    assert first.last_dried_at == datetime(2026, 10, 1, 8, 0)
+    assert first.last_used == datetime(2026, 11, 5, 17, 30)
+    assert first.note == "Beispielnotiz"
+    assert first.storage_location is None
+    assert second.storage_location == "Regal 3"
+    assert second.last_dried_at is None and second.note is None
+
+
+def test_odd_dried_and_used_times_never_break_the_spool_list() -> None:
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(
+            200,
+            json=[
+                {
+                    "id": 1,
+                    "material": "PLA",
+                    "last_dried_at": "kein Datum",
+                    "last_used": "2026-11-05T01:30:00+02:00",
+                    "note": 5,
+                }
+            ],
+        )
+
+    spool = make_client(handler).spools()[0]
+    assert spool.last_dried_at is None
+    assert spool.last_used == datetime(2026, 11, 4, 23, 30)  # normalised to UTC
+    assert spool.note is None

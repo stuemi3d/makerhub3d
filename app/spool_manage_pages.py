@@ -8,6 +8,7 @@ price and weight only change when a person takes a price over. Admin and employe
 """
 
 from collections.abc import Awaitable, Callable
+from datetime import datetime
 from decimal import Decimal
 
 from fastapi import FastAPI, HTTPException, Request, Response
@@ -16,7 +17,7 @@ from fastapi.responses import HTMLResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app import audit, filaments, spool_list
+from app import audit, filaments, spool_list, stock
 from app.article_pages import confirmed, varied, wants_popup
 from app.bambuddy import Spool
 from app.models import Filament, SpoolAssignment
@@ -76,6 +77,16 @@ def add_spool_manage_routes(
         found = spool_list.load(new_session, cipher, transport(), include_archived=True)
         return None if found.problem else {s.id: s for s in found.spools}
 
+    def day_text(moment: datetime | None) -> str | None:
+        return None if moment is None else stock.format_date(moment.date(), language)
+
+    def remaining_text(spool: Spool | None) -> str | None:
+        """Nominal weight minus what Bambuddy counted as used, never below zero."""
+        if spool is None or spool.label_weight is None or spool.weight_used is None:
+            return None
+        left = max(spool.label_weight - spool.weight_used, Decimal(0))
+        return format_decimal(left.quantize(Decimal("1")), language)
+
     def assignment_of(db: Session, spool_id: int) -> SpoolAssignment:
         item = db.scalar(select(SpoolAssignment).where(SpoolAssignment.spool_id == spool_id))
         if item is None:
@@ -120,6 +131,12 @@ def add_spool_manage_routes(
                     if assignment.weight_g is None
                     else format_decimal(assignment.weight_g.quantize(Decimal("1")), language),
                     "new_price": money(new_price),
+                    "remaining": remaining_text(spool),
+                    "assigned": stock.format_date(assignment.assigned_at.date(), language),
+                    "dried": day_text(spool.last_dried_at if spool else None),
+                    "used": day_text(spool.last_used if spool else None),
+                    "note": ((spool.note if spool else None) or "").strip() or None,
+                    "location": ((spool.storage_location if spool else None) or "").strip() or None,
                 }
             )
         return render(
@@ -129,6 +146,7 @@ def add_spool_manage_routes(
             filament_id=filament_id,
             filament_name=name,
             rows=rows,
+            show_location=any(r["location"] for r in rows),
             unreadable=live is None,
             can_edit=has_permission(request.state.user.role, Permission.EDIT),
         )

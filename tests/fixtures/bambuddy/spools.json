@@ -9,7 +9,11 @@
     "label_weight": 750,
     "weight_used": 434.0,
     "category": null,
-    "archived_at": null
+    "archived_at": null,
+    "note": "Beispielnotiz",
+    "last_dried_at": "2026-10-01T08:00:00",
+    "last_used": "2026-11-05T17:30:00",
+    "storage_location": null
   },
   {
     "id": 2,
@@ -21,7 +25,8 @@
     "label_weight": 1000,
     "weight_used": 179.0,
     "category": null,
-    "archived_at": null
+    "archived_at": null,
+    "storage_location": "Regal 3"
   },
   {
     "id": 3,
