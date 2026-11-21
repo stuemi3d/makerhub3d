@@ -69,6 +69,10 @@ class SpoolCache:
             self._kept[key] = (self._clock(), found)
         return found
 
+    def clear(self) -> None:
+        """Forget everything, e.g. after a change that must show at once."""
+        self._kept.clear()
+
 
 def load_cached(
     cache: SpoolCache,

@@ -53,7 +53,7 @@
       <td class="num cell-price">{{ f.price if f.price is not none else t('table.empty_value') }}</td>
       <td class="num">{{ f.min_stock if f.min_stock is not none else t('table.empty_value') }}</td>
       <td class="num cell-stock">{{ f.stock if f.stock is not none else t('table.empty_value') }}{% if f.low %} {{ chip(t('stock.low'), 'warn') }}{% endif %}</td>
-      <td class="num cell-spools">{{ f.spools if f.spools is not none else t('table.empty_value') }}</td>
+      <td class="num cell-spools"><a href="/filaments/{{ f.id }}/spools" title="{{ t('filaments.spools.show') }} {{ f.name }}">{{ f.spools if f.spools is not none else t('table.empty_value') }}</a></td>
       <td class="num cell-avg">{{ f.average if f.average is not none else t('table.empty_value') }}</td>
       <td class="num cell-last">{{ f.last if f.last is not none else t('table.empty_value') }}</td>
       <td class="cell-status">{{ chip(t('article.status.active' if f.active else 'article.status.inactive'), 'active' if f.active else 'inactive') }}</td>
