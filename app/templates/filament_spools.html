@@ -36,9 +36,10 @@
       <td>
         <select name="choice_{{ r.id }}" aria-label="{{ t('filaments.spools.col.filament') }} #{{ r.id }}"{% if errors.get(r.id) %} aria-invalid="true"{% endif %}>
           {% for filament_id, filament_label in r.options %}<option value="f{{ filament_id }}"{% if r.choice == 'f' ~ filament_id %} selected{% endif %}>{{ filament_label }}</option>{% endfor %}
-          <option value="new"{% if r.choice == 'new' %} selected{% endif %}>{{ t('filaments.spool.new') }}</option>
+          <option value="new"{% if r.choice == 'new' %} selected{% endif %}>{{ t('filaments.spool.new') }}{% if r.like %} {{ t('filaments.spool.new_like') | replace('{id}', r.like | string) }}{% endif %}</option>
           <option value=""{% if r.choice == '' %} selected{% endif %}>{{ t('filaments.spool.skip') }}</option>
         </select>
+        {% if r.other_brand %}<small>{{ t('filaments.spool.similar') | replace('{spool}', r.brand) | replace('{filament}', r.other_brand) }}</small>{% endif %}
         {% if not r.color_name %}<input type="text" maxlength="50" autocomplete="off" name="color_name_{{ r.id }}" value="{{ r.typed_name }}" placeholder="{{ t('filaments.spool.color_name') }}" aria-label="{{ t('filament.field.color_name') }} #{{ r.id }}">{% endif %}
         {% if errors.get(r.id) %}<small role="alert">{{ t(errors[r.id]) }}</small>{% endif %}
       </td>

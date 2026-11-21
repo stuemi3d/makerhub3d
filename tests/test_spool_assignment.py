@@ -438,3 +438,118 @@ def test_the_client_reads_subtype_and_colour_of_a_spool() -> None:
     first, second = client.spools()
     assert first.subtype == "Matte" and first.color == "#FFFFF0"
     assert second.subtype is None and second.color is None
+
+
+# --- Issue #236, follow-up after the test of the pull request ---------------------------------
+
+SAME_PETG = dict(material="PETG", color_name="Gray")
+
+
+def test_21_identical_spools_without_a_filament_are_marked_as_belonging_together(
+    client: AppClient,
+) -> None:
+    linked(client, *[spool(n, **SAME_PETG) for n in (50, 51, 52, 53, 54)])
+    html = client.get(PAGE).text
+    first = rows(html)[50]
+    assert DE["filaments.spool.new"] in first and "wie #50" not in first
+    for number in (51, 52, 53, 54):
+        assert "wie #50" in rows(html)[number]
+    post(client, "all", **{f"choice_{n}": "new" for n in (50, 51, 52, 53, 54)})
+    (item,) = stored()
+    assert [a.filament_id for a in assignments()] == [item.id] * 5
+
+
+def test_22_spools_with_different_details_get_no_such_note(client: AppClient) -> None:
+    linked(client, spool(1), spool(2, color_name="Black"))
+    html = client.get(PAGE).text
+    assert "wie #" not in html
+
+
+def test_23_a_similar_brand_is_proposed_with_a_note_and_assigned_only_on_confirming(
+    client: AppClient,
+) -> None:
+    linked(client, spool(3, brand="Bambu", archived_at="2026-11-01T10:00:00"))
+    make(client)
+    (item,) = stored()
+    html = client.get(PAGE).text
+    assert selected(html, 3) == f"f{item.id}"
+    assert "Bambu ↔ Bambu Lab" in rows(html)[3]
+    assert assignments() == []
+    post(client, "3", choice_3=f"f{item.id}")
+    assert [a.filament_id for a in assignments()] == [item.id]
+
+
+@pytest.mark.parametrize(
+    "more",
+    [
+        dict(brand="Polymaker"),  # another brand
+        dict(brand="Bambu Labor"),  # not at the start of a word
+        dict(color_name="Ivory Whyte"),  # another colour
+        dict(subtype="Basic"),  # another subtype
+        dict(material="PETG"),  # another material
+        dict(brand=None),  # no brand
+    ],
+)
+def test_24_only_a_brand_at_a_word_start_with_the_same_rest_is_proposed(
+    client: AppClient, more: dict
+) -> None:
+    linked(client, spool(3, **{"brand": "Bambu", **more}))
+    make(client)
+    html = client.get(PAGE).text
+    assert selected(html, 3) == "new" and "↔" not in html
+
+
+def test_25_two_fitting_filaments_give_no_proposal(client: AppClient) -> None:
+    linked(client, spool(3, brand="Bambu"))
+    make(client, brand="Bambu Lab")
+    make(client, brand="Bambu Studio")
+    html = client.get(PAGE).text
+    assert selected(html, 3) == "new" and "↔" not in html
+
+
+def test_26_the_exact_match_has_no_note_and_an_earlier_assignment_goes_first(
+    client: AppClient,
+) -> None:
+    linked(client, spool(1), spool(2, brand="Bambu"), spool(3, brand="Bambu"))
+    make(client)
+    make(client, brand="Bambu Studio")
+    exact, studio = stored()
+    assert "↔" not in rows(client.get(PAGE).text)[1]
+    assert selected(client.get(PAGE).text, 1) == f"f{exact.id}"
+    # two filaments fit "Bambu"; after one was chosen by hand, the same spools follow it
+    post(client, "2", choice_2=f"f{studio.id}")
+    html = client.get(PAGE).text
+    assert selected(html, 3) == f"f{studio.id}" and "↔" not in rows(html)[3]
+
+
+def test_27_archived_and_active_spools_are_treated_alike(client: AppClient) -> None:
+    linked(
+        client, spool(1, brand="Bambu"), spool(2, brand="Bambu", archived_at="2026-11-01T10:00:00")
+    )
+    make(client)
+    (item,) = stored()
+    html = client.get(PAGE).text
+    assert selected(html, 1) == selected(html, 2) == f"f{item.id}"
+    assert "↔" in rows(html)[1] and "↔" in rows(html)[2]
+
+
+def test_the_related_brand_also_works_the_other_way_and_ignores_case_and_spaces(
+    client: AppClient,
+) -> None:
+    linked(client, spool(1, brand="  BAMBU   lab "), spool(2, brand="bambu"))
+    make(client, brand="Bambu")
+    make(client, brand="Bambu  Lab", color_name="Black")
+    first, _second = stored()
+    html = client.get(PAGE).text
+    assert selected(html, 2) == f"f{first.id}"  # "bambu" is the same brand as "Bambu"
+    assert "↔" not in rows(html)[2]
+    assert selected(html, 1) == f"f{first.id}" and "↔" in rows(html)[1]  # "Bambu lab" ~ "Bambu"
+
+
+def test_a_proposal_with_a_brand_note_has_no_like_note_and_the_note_is_escaped(
+    client: AppClient,
+) -> None:
+    linked(client, spool(1, brand="Bambu"), spool(2, brand="Bambu"))
+    make(client, brand="Bambu <b>Lab</b>")
+    html = client.get(PAGE).text
+    assert "wie #" not in html and "<b>Lab</b>" not in html and "&lt;b&gt;" in html

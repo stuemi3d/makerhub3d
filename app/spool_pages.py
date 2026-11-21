@@ -81,14 +81,24 @@ def add_spool_routes(
                 )
             ):
                 learned[key] = filament_id  # the newest assignment wins
-        by_identity = {item.identity_key: item.id for item in items}
+        candidates = [
+            spool_assignment.Candidate(
+                item.id, item.brand, item.material, item.subtype, item.color_name
+            )
+            for item in items
+        ]
         options = sorted(
             ((item.id, filament_name(item)) for item in items), key=lambda o: o[1].casefold()
         )
         rows = []
+        first_new: dict[str, int] = {}  # spool key -> the first spool that proposes it as new
         for spool in spools:
-            proposed = spool_assignment.propose(spool, by_identity, learned)
-            default = f"f{proposed}" if proposed else NEW
+            proposed = spool_assignment.propose(spool, candidates, learned)
+            default = f"f{proposed.filament_id}" if proposed.filament_id else NEW
+            like = None
+            if default == NEW:
+                like = first_new.setdefault(spool_assignment.spool_key(spool), spool.id)
+                like = None if like == spool.id else like
             rows.append(
                 {
                     "id": spool.id,
@@ -100,6 +110,8 @@ def add_spool_routes(
                     "price": number(spool.cost_per_kg),
                     "weight": number(spool.label_weight, "1"),
                     "old": spool.archived,
+                    "like": like,
+                    "other_brand": proposed.other_brand,
                     "choice": choices.get(f"choice_{spool.id}", default),
                     "typed_name": texts.get(f"color_name_{spool.id}", ""),
                     "options": options,

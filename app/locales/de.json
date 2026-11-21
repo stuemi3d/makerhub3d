@@ -1060,5 +1060,7 @@
   "filament.delete.blocked": "Diesem Filament sind Spulen zugeordnet. Es kann nur noch deaktiviert werden.",
   "log.action.filament.spool_assigned": "Spule einem Filament zugeordnet",
   "filaments.spools.line": "{price} €/kg · {grams} g",
-  "filaments.spools.line_no_price": "kein Preis · {grams} g"
+  "filaments.spools.line_no_price": "kein Preis · {grams} g",
+  "filaments.spool.new_like": "(wie #{id})",
+  "filaments.spool.similar": "Marke weicht ab: {spool} ↔ {filament}. Bitte prüfen."
 }

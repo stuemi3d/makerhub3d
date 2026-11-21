@@ -1060,5 +1060,7 @@
   "filament.delete.blocked": "Spools are assigned to this filament. It can only be switched off.",
   "log.action.filament.spool_assigned": "Spool assigned to a filament",
   "filaments.spools.line": "{price} €/kg · {grams} g",
-  "filaments.spools.line_no_price": "no price · {grams} g"
+  "filaments.spools.line_no_price": "no price · {grams} g",
+  "filaments.spool.new_like": "(like #{id})",
+  "filaments.spool.similar": "Brand differs: {spool} ↔ {filament}. Please check."
 }
