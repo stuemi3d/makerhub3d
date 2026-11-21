@@ -92,6 +92,11 @@ class Spool:
     # e.g. "Matte"; the colour as "#RRGGBB" (from Bambuddy's RGBA code), both may be missing
     subtype: str | None = None
     color: str | None = None
+    # Extra details of the spool, shown on the spools page of a filament (all may be missing)
+    note: str | None = None
+    storage_location: str | None = None
+    last_dried_at: datetime | None = None
+    last_used: datetime | None = None
 
 
 @dataclass(frozen=True)
@@ -193,6 +198,14 @@ def _time(item: dict, name: str) -> datetime | None:
     return moment
 
 
+def _optional_time(item: dict, name: str) -> datetime | None:
+    """A time that is only extra information: an odd value counts as missing."""
+    try:
+        return _time({name: _optional_text(item, name)}, name)
+    except BambuddyError:
+        return None
+
+
 def _entry(item: Any) -> dict:
     if not isinstance(item, dict):
         raise _bad()
@@ -248,6 +261,10 @@ def _spool(raw: Any) -> Spool:
         archived=bool(_optional_text(item, "archived_at")),
         subtype=_optional_text(item, "subtype"),
         color=_color(item),
+        note=_optional_text(item, "note"),
+        storage_location=_optional_text(item, "storage_location"),
+        last_dried_at=_optional_time(item, "last_dried_at"),
+        last_used=_optional_time(item, "last_used"),
     )
 
 

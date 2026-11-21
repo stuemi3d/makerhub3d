@@ -1117,3 +1117,11 @@ main .detail-card:not(.auth-box) > form [type="submit"] {
   margin: 0;
   padding: 0.35rem 0;
 }
+
+/* Free text from Bambuddy (spool note): wraps instead of widening the table. */
+.data-table .cell-note {
+  min-width: 12rem;
+  max-width: 24rem;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
