@@ -11,7 +11,7 @@ Das Tool beantwortet für jeden Artikel eine Frage: *Was habe ich kalkuliert, wa
 **Drin (Version 1):**
 
 - Artikelstamm mit Vorlagen und Varianten, jede Variante mit eigener Artikelnummer (z. B. `123456-rt`, automatisch aus Vorlagennummer und Kürzeln der Merkmalswerte zusammengesetzt); Kalkulation ist immer optional
-- Kalkulation für noch nicht gedruckte Teile: Filament aus den Bambuddy-Spulen, Druckzeit und Gramm aus einer gesliceten `.gcode.3mf`-Datei (oder von Hand eingetragen), Strom, Maschine, Ausschussquote, Arbeitszeit, Gewinnaufschlag
+- Kalkulation für noch nicht gedruckte Teile: Filament (ab M3b über Filamente mit wählbarer Preisregel, davor direkt aus den Bambuddy-Spulen), Druckzeit und Gramm aus einer gesliceten `.gcode.3mf`-Datei (oder von Hand eingetragen), Strom, Maschine, Ausschussquote, Arbeitszeit, Gewinnaufschlag
 - Produktion: einen oder mehrere Drucke aus dem Bambuddy-Archiv genau einem Artikel zuordnen; nicht zugeordnete (z. B. private) Drucke bleiben unberührt
 - Lager: Zugänge aus Produktionen, Abgänge vorerst von Hand
 - Auswertung pro Artikel: kalkuliert ↔ produziert ↔ verkauft, als Verlauf; Dashboard als Startseite
@@ -24,7 +24,7 @@ Das Tool beantwortet für jeden Artikel eine Frage: *Was habe ich kalkuliert, wa
 **Bewusst nicht drin:**
 
 - Rechnungen, Angebote, Buchhaltung, EÜR → Rechnungs-Software
-- Druckersteuerung, Spulen- und Filamentverwaltung → Bambuddy
+- Druckersteuerung und die Verwaltung der einzelnen Spulen (Gewicht, Preis, Archivieren) → Bambuddy. MakerHub 3D ordnet Spulen nur **Filamenten** zu und ergänzt Daten (siehe Abschnitt 4, „Filamente“)
 - Kunden- und Auftragsverwaltung, Sets und Stücklisten
 
 ## 2. Architektur
@@ -75,10 +75,22 @@ Der Artikel ist der Knotenpunkt; alles andere hängt über die Artikelnummer an 
 | Lagerbewegung | Artikel, Datum, Menge (+/−), Art (Produktion, Verkauf, Korrektur, Storno), Bezug | Produktion oder Verkauf |
 | Verkauf | Artikel, Datum, Menge, Preis pro Stück, Quelle (Hand, RechnungsFee, Haben) | Rechnungsnummer bzw. externe ID |
 | Ignoriert | Bambuddy-Archiv-ID, Datum | nicht relevante Drucke ausblenden |
+| Filament (M3b) | Marke, Material, Untertyp (z. B. Basic, Matte), Farbname, Farbe, Standardpreis pro kg (optional), Mindestbestand in kg (optional, gilt für die Summe aller aktiven Spulen des Filaments; Bambuddys Schwelle gilt nur je einzelner Spule), Notiz, aktiv. Der Name wird aus den Feldern zusammengesetzt (z. B. „Bambu Lab · PLA Matte · Ivory White“). Gleiche Marke, gleiches Material, gleicher Untertyp und gleiche Farbe gibt es nur einmal | Spulen über die Spulen-Zuordnung |
+| Spulen-Zuordnung (M3b) | Bambuddy-Spulen-ID, Filament, **Preis pro kg und Gewicht der Spule als Wert** (zum Zeitpunkt der Zuordnung), Datum, zuletzt gesehener Zustand (aktiv, archiviert, nicht mehr in Bambuddy) | Bambuddy-Spule (nur gelesen) |
 | Druckermodell | Name (nur aus den Modellen wählbar, die Bambuddy meldet), Tabelle **Material → Stromverbrauch in kWh pro Stunde** (z. B. PLA 0,10; PETG 0,13). Mehrere Drucker desselben Modells nutzen dieselbe Tabelle. Die Tabelle hat beliebig viele Zeilen (technisch höchstens 100); die Reihenfolge der Zeilen bestimmt der Nutzer (Pfeile oder Ziehen) und sie gilt in der Übersicht (eine Zeile pro Material) und in der Auswahl der Kalkulation. Löschen nur, solange kein Drucker das Modell nutzt. Ohne Modell oder ohne Tabelle ist keine Kalkulation möglich (Hinweis: zuerst eine Tabelle anlegen). Passt ein Material aus der Datei nicht genau (z. B. „PLA-CF“ bei „PLA“), wählt der Nutzer ein passendes Material aus der Tabelle und bekommt den Hinweis, den Filamenttyp künftig dort zu hinterlegen; es wird nie geraten und nie mit 0 gerechnet. Ein Ersatzwert in den Einstellungen entfällt. Später denkbar: Knopf an der Tabelle „Durchschnitt aus Bambuddy holen“ | Modelle aus der Bambuddy-Druckerliste (nur lesend) |
 | Gerät | Typ (Drucker/Trockner), Name, Anschaffungsdatum und -wert, Nutzungsjahre, Wartungsaufschlag (%), nur Drucker: Druckstunden/Jahr und Druckermodell (optional; wird bei einem Bambuddy-Drucker automatisch gewählt, wenn ein Modell mit gleichem Namen existiert); aktiv/deaktiviert; Bambuddy-Drucker-ID, wenn ein Drucker aus Bambuddy übernommen wurde (dann ist der Name gesperrt). Restwert und Stundensatz werden nur angezeigt, nicht gespeichert | Drucker aus Bambuddy übernehmbar (nur lesend); ein Gerät lässt sich löschen, solange keine Produktion daran hängt, sonst nur deaktivieren |
-| Einstellungen | Strompreis (eigen oder aus Bambuddy), Arbeits-Stundensatz, Standard-Ausschussquote, Standard-Gewinnaufschlag, Rundung, Spulen-Kategorie für „geschäftlich“ und Schalter „nur geschäftliche Spulen anzeigen“ (Standard: aus), Abweichungsschwelle | – |
+| Einstellungen | Strompreis (eigen oder aus Bambuddy), Arbeits-Stundensatz, Standard-Ausschussquote, Standard-Gewinnaufschlag, Rundung, Spulen-Kategorie für „geschäftlich“ und Schalter „nur geschäftliche Spulen anzeigen“ (Standard: aus), Vorgabe der Preisregel in der Kalkulation (M3b), Abweichungsschwelle | – |
 | Benutzer, Änderungsprotokoll | siehe Sicherheit | – |
+
+**Filamente (M3b):** Bambuddy kennt nur einzelne Spulen, jede mit eigenem Preis; dieselbe Sorte (z. B. „Bambu Lab PLA Matte Ivory White“) gehört dort nicht zusammen. Deshalb gibt es in MakerHub 3D **Filamente** als übergeordnete Objekte, denen Bambuddy-Spulen zugeordnet werden. So wie eine Produktion nur die Archiv-ID speichert, speichert MakerHub 3D hier nur die Spulen-ID und liest alles Übrige (Restgewicht, Name, Archiv-Zustand) aus Bambuddy; es wird nie in Bambuddy geschrieben. Die Entscheidungen im Einzelnen:
+
+- **Zuordnung:** Eine Liste „Spulen ohne Filament“ (auch archivierte Spulen) schlägt je Spule ein Filament aus Marke, Material, Untertyp und Farbname vor (vorhandenes oder „neues Filament anlegen“). Der Nutzer bestätigt, einzeln oder alle richtigen auf einmal. Es wird nie geraten: Abweichende Schreibweisen („Bambu“/„Bambu Lab“, „Gray“/„Grey“) werden nur vorgeschlagen; eine bestätigte Zusammenführung gilt künftig für dieselbe Schreibweise. Spulen ohne Farbname bekommen nur Marke und Material vorgeschlagen, den Farbnamen trägt der Nutzer ein. Ein Hinweis auf neue, noch nicht zugeordnete Spulen erscheint beim Öffnen der Seite (kein Hintergrund-Abruf).
+- **Preis und Gewicht als Wert:** Bei der Zuordnung werden Preis pro kg und Gewicht der Spule gespeichert. Damit bleiben Durchschnitt und letzter Preis erhalten, auch wenn die Spule in Bambuddy gelöscht wird, und die Seiten bleiben auch bei vielen Spulen schnell. Ändert sich der Preis in Bambuddy später, erscheint ein Hinweis „Preis geändert, übernehmen?“; erst nach Bestätigung ändert sich der gespeicherte Wert (nichts ändert sich still).
+- **Archivierte und gelöschte Spulen:** Archivierte Spulen werden mitgelesen (Abfrage-Option `include_archived=true` an der Spulenliste); sie zählen für den Preis (Durchschnitt, letzter Preis), aber nicht für den Bestand. Eine in Bambuddy gelöschte Spule zeigt „nicht mehr in Bambuddy“, ihr gespeicherter Preis bleibt. Empfehlung an Nutzer (Anleitung): Spulen archivieren statt löschen.
+- **Bestand je Filament:** Summe der Restgewichte der aktiven zugeordneten Spulen, Anzahl der Spulen, Durchschnitts- und letzter Preis. Ist ein Mindestbestand eingetragen und die Summe liegt darunter, erscheint eine Warnung (Chip wie bei den Artikeln); ohne Mindestbestand gibt es weder Warnung noch Chip. Die Spulenliste wird ein bis zwei Minuten zwischengespeichert.
+- **Preisregel in der Kalkulation:** Je Materialzeile wählt man ein Filament und die Regel **Durchschnitt** (gleitend, nach Gramm gewichtet), **letzter Preis**, **Standardpreis des Filaments** (der übliche Einkaufspreis, den man dort einträgt; nicht zu verwechseln mit Bambuddys Standardpreis aus dessen Einstellungen) oder **einzelne Spule** (wie bisher). Die Vorgabe steht in den Einstellungen. Regel, Preis pro kg und Gramm werden mit der Kalkulation als Wert gespeichert; eine spätere Preisänderung ändert gespeicherte Kalkulationen nicht (neu rechnen über „Kopieren“). Fehlt ein Preis, bleibt die Position unvollständig; es wird nie mit 0 gerechnet.
+- **Produktion:** rechnet unverändert mit dem Preis der Rolle, den Bambuddy beim Buchen liefert (als Wert gespeichert; MakerHub 3D rechnet hier nie mit dem Filament-Standardpreis). Hat Bambuddy selbst bei einer Spule ohne Preis seinen eigenen Standardpreis gerechnet, bleibt der Wert, und der Hinweis aus „Hinweis auf den Standardpreis (#228)“ erscheint. Die Auswertung zeigt so Soll (Kalkulation, z. B. Standardpreis) gegen Ist (Rollenpreis); die Abweichung ist der Einkaufsvorteil.
+- **Später denkbar (nur bei Bedarf):** Reservierungen von Filament für geplante Produktionen; Auswertung des Einkaufsvorteils.
 
 **Vorlagen und Varianten:** Eine Vorlage beschreibt z. B. „Halter A“ mit dem Merkmal Farbe; jede Variante („Halter A rot“, `123456-rt`) ist ein vollwertiger Artikel mit eigener Artikelnummer und eigenem Bestand. Artikel ohne Varianten brauchen keine Vorlage. Preis und Mindestbestand erbt die Variante von der Vorlage und kann sie überschreiben. Kalkulationen gehören immer zu einem Artikel oder einer Variante, nie zur Vorlage: Größen und Varianten können anders kosten.
 
@@ -118,6 +130,7 @@ Der Artikel ist der Knotenpunkt; alles andere hängt über die Artikelnummer an 
 | --- | --- |
 | Dashboard (Startseite) | Kennzahlen des Zeitraums, Mindestbestand, nicht zugeordnete Drucke, Warnungen |
 | Artikel | Vorlagen und Artikel anlegen; Variante aus Vorlage erzeugen. Artikel-Detail mit Kacheln **Kalkulationen · Produktionen · Lager · Verkäufe** (jeweils mit Anzahl); Klick öffnet die Tabelle mit Links zur Produktion und zum Bambuddy-Druck. Oben auf der Seite steht die Schaltfläche „Auswertung ansehen“ (für alle Rollen) |
+| Filamente (M3b) | Eigener **Menüpunkt „Filamente“** (oben in der Navigation, nicht in den Einstellungen). Tabelle mit dem gemeinsamen Baustein (Name, Marke, Material, Standardpreis, Status, Symbol-Buttons rechts); Anlegen, Bearbeiten, Deaktivieren und Löschen als Pop-ups. Später dieselbe Seite: Bestand und Preise je Sorte, Liste „Spulen ohne Filament“ |
 | Kalkulation | Eigene Liste aller Kalkulationen wie bei der Produktion (Artikel, Datum, Drucker, Selbstkosten, Verkaufspreis-Vorschlag, „maßgeblich“, Symbol-Buttons rechts); oben rechts „Neue Kalkulation“. Neu, Bearbeiten, Kopieren und Ansehen sind Pop-ups; im Formular: Artikel (oder Variante), „mit Datei“ oder „von Hand“, Drucker, Werte (aus der `.gcode.3mf` oder eingetippt), Spulen, Arbeit; Live-Berechnung; Speichern nur mit gewähltem Artikel oder gewählter Variante (ohne bleibt es eine Schnellkalkulation), die Datei wird mitgespeichert. Die Kachel „Kalkulationen“ am Artikel öffnet dieselbe Liste, gefiltert auf diesen Artikel |
 | Produktion | Liste erfolgreicher und fehlgeschlagener Bambuddy-Drucke; einen oder mehrere auswählen → Produktion mit einem Ergebnis-Artikel und den Gutteilen; Kosten pro Stück in der Vorschau prüfen; oder „Ignorieren“; ab #215 mit Teile-Maske (Auswahl „mehrere gleiche Artikel“ oder „verschiedene Einzelteile eines Artikels“, Menge, Gut und Ausschuss je Teil, siehe Abschnitt 4) |
 | Verkäufe | Liste aller Verkäufe (Datum, Artikel, Menge, Preis pro Stück, Summe, Notiz, Status), filterbar nach Artikel; „Verkauf erfassen“ und Stornieren als Pop-ups; der Preis ist mit dem Soll-Verkaufspreis vorbelegt. Die Kachel „Verkäufe“ am Artikel öffnet dieselbe Liste, gefiltert |
@@ -160,7 +173,7 @@ Gerechnet wird in dieser Reihenfolge. Standardwerte (Ausschussquote, Gewinnaufsc
 
 | Baustein | Bezug | Berechnung | Werte |
 | --- | --- | --- | --- |
-| Material | pro Platte | Gramm ÷ 1000 × Preis/kg, eine Zeile pro Filament/Farbe | Gramm aus der `.gcode.3mf` (inkl. Spülmenge) oder von Hand; Preis je Zeile von der gewählten Bambuddy-Spule (eine bestellte Spule wird zuerst in Bambuddy angelegt); mehrere Spulen siehe „Spulen“ unten |
+| Material | pro Platte | Gramm ÷ 1000 × Preis/kg, eine Zeile pro Filament/Farbe | Gramm aus der `.gcode.3mf` (inkl. Spülmenge) oder von Hand; Preis je Zeile von der gewählten Bambuddy-Spule (eine bestellte Spule wird zuerst in Bambuddy angelegt); ab M3b alternativ vom Filament nach gewählter Preisregel; mehrere Spulen siehe „Spulen“ unten |
 | Strom | pro Platte | Summe über die Materialien der Platte: Druckzeit des Materials in Stunden × Verbrauch in kWh pro Stunde × Strompreis pro kWh | Verbrauch je Druckermodell und Material aus der Tabelle des Modells (siehe „Druckermodell“ in Abschnitt 4), nicht mehr als Durchschnitt aus dem Archiv; Zeitanteil je Material aus der `.gcode.3mf` oder von Hand |
 | Maschine | pro Platte | Druckzeit in Stunden × Maschinensatz | Maschinensatz = Stundensatz des gewählten Druckers + Trocknungsaufschlag (siehe unten) |
 | Ausschussquote | auf Druckkosten | × (1 + Ausschussquote ÷ 100) | Standard aus Einstellungen |
@@ -183,7 +196,7 @@ Gerechnet wird in dieser Reihenfolge. Standardwerte (Ausschussquote, Gewinnaufsc
 
 **Verkaufspreis-Vorschlag:** wie in Schritt 6, immer aufgerundet (je nach Einstellung auf den Cent, ,10, ,50, den nächsten Preis mit ,90 am Ende oder ganze Euro); Kleinunternehmer-tauglich (ohne Umsatzsteuer). Angezeigt werden Selbstkosten **ohne und mit Arbeitszeit**, Verkaufspreis-Vorschlag, Gewinn pro Stück und effektiver Stundenlohn (Schritte 7–9).
 
-**Spulen:** Die Kalkulation zeigt standardmäßig alle Spulen des gewählten Materials. Geschäftliche Spulen werden über das Bambuddy-Feld „Kategorie“ erkannt (Wort in den Einstellungen festlegbar); ist dort „nur geschäftliche Spulen anzeigen“ eingeschaltet, zeigt die Kalkulation nur diese, mit dem Schalter „alle Spulen“ im Formular. Ohne gewähltes Material und wenn keine Spule passt, steht ein Hinweis unter der Spulenwahl. Der verwendete Preis wird in der Kalkulation gespeichert. Pro Position (Material/Farbe) wählt man zuerst eine Spule. Ist ihr Restgewicht kleiner als die benötigten Gramm, erscheint eine weitere Zeile für eine weitere Spule: Die Gramm werden der Reihe nach verteilt (erste Spule bis zu ihrem Restgewicht, der Rest auf die nächste), der Preis wird je Spule gerechnet. Angenommen wird, dass die Spule leergedruckt wird. Deckt keine Spule das Restgewicht ab oder gibt es keine Spule mit passendem Material, bleibt die Position unvollständig und die Kalkulation lässt sich nicht speichern (es wird nie mit 0 gerechnet). Es gibt keinen Durchschnitt und keine freie Preiseingabe; möglicher späterer Ausbau (nur bei Bedarf): ein Kontrollkästchen „von Hand eingeben“.
+**Spulen:** Die Kalkulation zeigt standardmäßig alle Spulen des gewählten Materials. Geschäftliche Spulen werden über das Bambuddy-Feld „Kategorie“ erkannt (Wort in den Einstellungen festlegbar); ist dort „nur geschäftliche Spulen anzeigen“ eingeschaltet, zeigt die Kalkulation nur diese, mit dem Schalter „alle Spulen“ im Formular. Ohne gewähltes Material und wenn keine Spule passt, steht ein Hinweis unter der Spulenwahl. Der verwendete Preis wird in der Kalkulation gespeichert. Pro Position (Material/Farbe) wählt man zuerst eine Spule. Ist ihr Restgewicht kleiner als die benötigten Gramm, erscheint eine weitere Zeile für eine weitere Spule: Die Gramm werden der Reihe nach verteilt (erste Spule bis zu ihrem Restgewicht, der Rest auf die nächste), der Preis wird je Spule gerechnet. Angenommen wird, dass die Spule leergedruckt wird. Deckt keine Spule das Restgewicht ab oder gibt es keine Spule mit passendem Material, bleibt die Position unvollständig und die Kalkulation lässt sich nicht speichern (es wird nie mit 0 gerechnet). Bis zur Umsetzung der Filamente (M3b) gibt es keinen Durchschnitt und keine freie Preiseingabe; danach gelten Filament und Preisregel (Abschnitt 4, „Filamente“). Möglicher späterer Ausbau (nur bei Bedarf): ein Kontrollkästchen „von Hand eingeben“.
 
 **Werte aus Bambuddy:** Strompreis und Druckerliste haben einen Schalter „aus Bambuddy übernehmen“; gesetzt = abgeglichen und gesperrt, sonst eigener Wert.
 
@@ -316,6 +329,17 @@ Der Maintainer hat die frühere Bedingung („erst nach Alltagsnutzung von M1“
 - [x] Kalkulation, Teil 1: von Hand rechnen und am Artikel speichern (#161)
 - [x] Kalkulation, Teil 2: mit `.gcode.3mf`-Datei (#181)
 - [x] Kalkulation, Teil 3: Datei mit der Kalkulation speichern (#182)
+
+**M3b – Filamente und Preisregeln**
+
+- [ ] Standardpreis-Hinweis auch bei archivierten Spulen (#233)
+- [x] Plan: Filamente als eigenes Objekt mit Spulen-Zuordnung (#234)
+- [ ] Filamente: Stamm anlegen, bearbeiten, deaktivieren (#235)
+- [ ] Filamente: Bambuddy-Spulen zuordnen, Preis als Wert (#236)
+- [ ] Kalkulation: Filament und Preisregel wählen (#237)
+- [ ] Filamente: Bestand pro Sorte und Warnung beim Mindestbestand (#238)
+- [ ] Anleitung: Filamente und Spulen (#239)
+- [ ] Später, bei Bedarf: Reservierungen für Produktionen
 
 **M4 – Verkauf und Auswertung**
 
