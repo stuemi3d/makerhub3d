@@ -1130,5 +1130,21 @@
   "filaments.changes.title": "Geänderte Spulenpreise",
   "filaments.changes.intro": "Bei diesen Spulen ist der Preis in Bambuddy anders als der gespeicherte Wert. Übernimmst du ihn, rechnen Durchschnitt und letzter Preis mit dem neuen Preis. Bambuddy bleibt unverändert.",
   "filaments.changes.empty": "Alle gespeicherten Spulenpreise stimmen mit Bambuddy überein.",
-  "filaments.changes.col.filament": "Filament"
+  "filaments.changes.col.filament": "Filament",
+  "filter.toggle": "Filter",
+  "filter.search": "Suche",
+  "filter.search.placeholder": "Suchen …",
+  "filter.reset": "Zurücksetzen",
+  "filter.remove": "Filter entfernen",
+  "filter.apply": "Filtern",
+  "filter.no_results": "Keine Treffer.",
+  "articles.filter.status": "Status",
+  "articles.filter.status.active": "Aktiv",
+  "articles.filter.status.inactive": "Inaktiv",
+  "articles.filter.status.all": "Aktive und inaktive",
+  "articles.filter.stock": "Bestand",
+  "articles.filter.stock.all": "Beliebiger Bestand",
+  "articles.filter.stock.low": "Unter Mindestbestand",
+  "articles.filter.stock.zero": "Bestand null",
+  "articles.filter.stock.available": "Vorhanden"
 }

@@ -237,13 +237,11 @@ def test_invalid_sort_values_are_ignored(
     assert numbers(client, query) == ["3D-0002", "3D-0010"]
 
 
-def test_sorting_is_kept_when_switching_inactive(client: AppClient, three_articles: None) -> None:
-    html = client.get("/articles?sort=name&dir=desc").text
+def test_sorting_and_status_filter_keep_each_other(client: AppClient, three_articles: None) -> None:
+    shown = client.get("/articles?status=all&sort=name&dir=desc").text
 
-    assert 'href="/articles?inactive=1&amp;sort=name&amp;dir=desc"' in html
-    shown = client.get("/articles?inactive=1&sort=name&dir=desc").text
-    assert 'href="/articles?sort=name&amp;dir=desc"' in shown
-    assert 'href="/articles?inactive=1&amp;sort=price&amp;dir=asc"' in shown
+    assert 'href="/articles?status=all&amp;sort=price&amp;dir=asc"' in shown
+    assert 'name="sort" value="name"' in shown
 
 
 # --- Action icons (cases 10-11) ---------------------------------------------------------------

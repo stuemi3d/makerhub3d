@@ -249,21 +249,18 @@ def test_new_button_is_in_the_heading_row(
     assert DE[new_key] in head.group(0)
 
 
-def test_inactive_toggle_sits_next_to_the_button_and_still_works(client: AppClient) -> None:
+def test_status_filter_replaces_the_inactive_toggle(client: AppClient) -> None:
     article_id = make_article(client)
     client.post(f"/articles/{article_id}/deactivate", data={})
 
     html = client.get("/articles").text
     head = re.search(r'<div class="page-head">.*?</h1>.*?</div>', html, re.DOTALL)
     assert head
-    assert 'href="/articles?inactive=1"' in head.group(0)
+    assert "inactive=1" not in head.group(0)
     assert "3D-0001" not in html
+    assert 'name="status"' in html
 
-    html = client.get("/articles?inactive=1").text
-    assert "3D-0001" in html
-    assert 'href="/articles"' in re.search(
-        r'<div class="page-head">.*?</h1>.*?</div>', html, re.DOTALL
-    ).group(0)
+    assert "3D-0001" in client.get("/articles?status=all").text
 
 
 @pytest.mark.parametrize(

@@ -2,20 +2,21 @@
 {% block title %}{{ t('articles.title') }} – {{ app_name }}{% endblock %}
 {% from "_data_table.html" import head, actions_head, icon_link, chip with context %}
 {% from "_form_macros.html" import popup_attrs %}
+{% from "_filter_bar.html" import filter_bar, filter_chips with context %}
 {% block content %}
 <div class="page-head">
   <h1>{{ t('articles.title') }}</h1>
   <div class="page-actions">
-    {% if show_inactive %}<a href="{{ toggle_inactive_href }}" role="button" class="secondary outline">{{ t('articles.hide_inactive') }}</a>
-    {% else %}<a href="{{ toggle_inactive_href }}" role="button" class="secondary outline">{{ t('articles.show_inactive') }}</a>{% endif %}
     {% if can('edit') %}<a {{ popup_attrs('/articles/new') }} role="button">{{ t('articles.new') }}</a>{% endif %}
   </div>
 </div>
+{{ filter_bar(filters, 'articles-list') }}
 {# Refreshed after a pop-up was saved (app.js): everything that depends on the articles. #}
 <div id="articles-list" data-popup-refresh>
 {% if purged %}
 <p role="status"><ins>{{ t('article.purge.done') }}</ins></p>
 {% endif %}
+{{ filter_chips(filters) }}
 {% if articles %}
 <article class="data-card">
 <div class="data-scroll">
@@ -56,8 +57,12 @@
 </article>
 {% else %}
 <article class="empty-hint">
+  {% if filters.active_count %}
+  <p>{{ t('filter.no_results') }}</p>
+  {% else %}
   <p>{{ t('articles.empty') }}</p>
   {% if can('edit') %}<a {{ popup_attrs('/articles/new') }} role="button">{{ t('articles.empty.create') }}</a>{% endif %}
+  {% endif %}
 </article>
 {% endif %}
 </div>

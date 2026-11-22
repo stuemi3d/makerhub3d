@@ -1130,5 +1130,21 @@
   "filaments.changes.title": "Changed spool prices",
   "filaments.changes.intro": "The price of these spools in Bambuddy differs from the stored value. If you take it over, the average and the last price use the new price. Bambuddy stays unchanged.",
   "filaments.changes.empty": "All stored spool prices match Bambuddy.",
-  "filaments.changes.col.filament": "Filament"
+  "filaments.changes.col.filament": "Filament",
+  "filter.toggle": "Filter",
+  "filter.search": "Search",
+  "filter.search.placeholder": "Search …",
+  "filter.reset": "Reset",
+  "filter.remove": "Remove filter",
+  "filter.apply": "Filter",
+  "filter.no_results": "No results.",
+  "articles.filter.status": "Status",
+  "articles.filter.status.active": "Active",
+  "articles.filter.status.inactive": "Inactive",
+  "articles.filter.status.all": "Active and inactive",
+  "articles.filter.stock": "Stock",
+  "articles.filter.stock.all": "Any stock",
+  "articles.filter.stock.low": "Below minimum",
+  "articles.filter.stock.zero": "Stock is zero",
+  "articles.filter.stock.available": "In stock"
 }

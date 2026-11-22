@@ -1125,3 +1125,87 @@ main .detail-card:not(.auth-box) > form [type="submit"] {
   white-space: normal;
   overflow-wrap: anywhere;
 }
+
+/* Filter bar above the lists: the fields in a row; on the phone folded away. */
+.filter-bar {
+  margin-bottom: 1rem;
+}
+
+.filter-bar > summary {
+  display: none;
+  width: auto;
+  margin: 0 0 0.5rem;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.875rem;
+  list-style: none;
+}
+
+.filter-bar > summary::-webkit-details-marker {
+  display: none;
+}
+
+.filter-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem 1rem;
+  margin: 0;
+}
+
+.filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.filter-field input,
+.filter-field select {
+  margin: 0;
+  min-width: 10rem;
+  max-width: 100%;
+}
+
+.filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+  font-size: 0.875rem;
+}
+
+.filter-chips li {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.filter-chips .filter-chip {
+  padding: 0.125rem 0.625rem;
+  border: 1px solid var(--pico-muted-border-color);
+  border-radius: 999px;
+}
+
+.filter-chip a {
+  margin-left: 0.25rem;
+  text-decoration: none;
+}
+
+@media (max-width: 47.99rem) {
+  .filter-bar > summary {
+    display: inline-block;
+  }
+
+  .filter-field {
+    width: 100%;
+  }
+
+  .filter-field input,
+  .filter-field select {
+    width: 100%;
+  }
+}

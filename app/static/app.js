@@ -568,3 +568,16 @@ if (window.htmx) {
   setUp(document);
   document.body.addEventListener("htmx:afterSettle", () => setUp(document));
 })();
+
+// Filter bar (issue #257): open on the desktop, folded away behind the "Filter" button on the
+// phone (unless a filter is active, then the fields stay visible).
+(() => {
+  const wide = window.matchMedia("(min-width: 48rem)");
+  const sync = () => {
+    document.querySelectorAll("details[data-filter-bar]").forEach((bar) => {
+      bar.open = wide.matches || bar.querySelector("summary[data-filter-active]") !== null;
+    });
+  };
+  sync();
+  wide.addEventListener("change", sync);
+})();

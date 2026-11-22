@@ -9,7 +9,6 @@ The stock tile counts the stock movements (issue #11).
 import json
 from collections.abc import Awaitable, Callable
 from decimal import Decimal
-from urllib.parse import urlencode
 
 from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.concurrency import run_in_threadpool
@@ -25,15 +24,18 @@ from app import (
     audit,
     auth,
     calc_store,
+    list_filter,
     sales,
     stock,
     variants,
 )
 from app.article_form import FIELD_NAMES, form_values, number_key, validate
 from app.i18n import translate
+from app.list_filter import Field
 from app.models import Article
 from app.permissions import Permission, requires
 from app.settings_form import format_decimal
+from app.table_sort import chosen_sort, sort_links
 
 # Order of the tiles on the detail page. The counts are 0 until M2 to M4 bring the data.
 SECTIONS = ("calculations", "productions", "stock", "sales")
@@ -44,38 +46,43 @@ PAGES = (*SECTIONS, "analysis")
 SORT_KEYS = ("number", "name", "price", "stock", "status")
 
 
-def chosen_sort(sort: str | None, direction: str | None) -> tuple[str, str] | None:
-    """The sort from the address, or None (default order) if it is missing or invalid."""
-    if sort is None:
-        return None
-    if sort not in SORT_KEYS or direction not in (None, "asc", "desc"):
-        return None
-    return sort, direction or "asc"
+FILTER_FIELDS = (
+    Field("q", "filter.search"),
+    Field(
+        "status",
+        "articles.filter.status",
+        (
+            ("active", "articles.filter.status.active"),
+            ("inactive", "articles.filter.status.inactive"),
+            ("all", "articles.filter.status.all"),
+        ),
+        "active",
+    ),
+    Field(
+        "stock",
+        "articles.filter.stock",
+        (
+            ("all", "articles.filter.stock.all"),
+            ("low", "articles.filter.stock.low"),
+            ("zero", "articles.filter.stock.zero"),
+            ("available", "articles.filter.stock.available"),
+        ),
+        "all",
+    ),
+)
 
 
-def list_url(chosen: tuple[str, str] | None, inactive: bool) -> str:
-    """The list address with the chosen sorting kept, with or without inactive articles."""
-    params = {"inactive": "1"} if inactive else {}
-    if chosen:
-        params["sort"], params["dir"] = chosen
-    return "/articles" + ("?" + urlencode(params) if params else "")
-
-
-def sort_links(chosen: tuple[str, str] | None, inactive: bool) -> dict[str, dict[str, str]]:
-    """Per column: where a click leads and the aria-sort state. A click on the sorted column
-    reverses it; the default order (no choice) counts as number ascending."""
-    current = chosen or ("number", "asc")
-    links = {}
-    for key in SORT_KEYS:
-        active = key == current[0]
-        next_dir = "desc" if active and current[1] == "asc" else "asc"
-        params = {"inactive": "1"} if inactive else {}
-        params.update(sort=key, dir=next_dir)
-        links[key] = {
-            "href": "/articles?" + urlencode(params),
-            "aria": ("ascending" if current[1] == "asc" else "descending") if active else "none",
-        }
-    return links
+def keeps_article(item: dict, values: dict[str, str]) -> bool:
+    """Whether an article row passes the filter (status is already handled by the query)."""
+    if not list_filter.matches(values["q"], item["number"], item["name"]):
+        return False
+    stock_level = item["stock"]
+    return {
+        "all": True,
+        "low": bool(item["min_stock"]) and stock_level < item["min_stock"],
+        "zero": stock_level == 0,
+        "available": stock_level > 0,
+    }[values["stock"]]
 
 
 def sort_articles(items: list[dict], key: str, direction: str) -> list[dict]:
@@ -187,17 +194,22 @@ def add_article_routes(
     @app.get("/articles", response_class=HTMLResponse, dependencies=view)
     def article_list(
         request: Request,
-        inactive: str | None = None,
         purged: str | None = None,
         sort: str | None = None,
         direction: str | None = Query(None, alias="dir"),
     ) -> HTMLResponse:
-        show_inactive = inactive == "1"
-        chosen = chosen_sort(sort, direction)
+        source = dict(request.query_params)
+        # The old address of "show deactivated articles" keeps working
+        if "status" not in source and source.get("inactive") == "1":
+            source["status"] = "all"
+        values = list_filter.read(FILTER_FIELDS, source)
+        chosen = chosen_sort(SORT_KEYS, sort, direction)
         with new_session() as db:
             query = select(Article).order_by(Article.number_key)
-            if not show_inactive:
+            if values["status"] == "active":
                 query = query.where(Article.active.is_(True))
+            elif values["status"] == "inactive":
+                query = query.where(Article.active.is_(False))
             articles = list(db.scalars(query))
             levels = stock.stock_levels(db, [article.id for article in articles])
             items = []
@@ -205,17 +217,27 @@ def add_article_routes(
                 item = article_view(article)
                 item["stock"] = levels[article.id]
                 item["price_value"] = variants.effective(article, "selling_price")
-                items.append(item)
+                if keeps_article(item, values):
+                    items.append(item)
         items = sort_articles(items, *(chosen or ("number", "asc")))
+        sorting = {"sort": chosen[0], "dir": chosen[1]} if chosen else {}
+        bar = list_filter.build(
+            "/articles", FILTER_FIELDS, values, lambda key: translate(language, key), sorting
+        )
         return render(
             request,
             "articles.html",
             "nav.articles",
             articles=items,
-            show_inactive=show_inactive,
             purged=purged == "1",
-            sort_links=sort_links(chosen, show_inactive),
-            toggle_inactive_href=list_url(chosen, not show_inactive),
+            filters=bar,
+            sort_links=sort_links(
+                "/articles",
+                SORT_KEYS,
+                chosen,
+                ("number", "asc"),
+                list_filter.params(FILTER_FIELDS, values),
+            ),
         )
 
     def form_page(request: Request, status_code: int = 200, **context) -> HTMLResponse:
