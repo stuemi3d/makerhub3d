@@ -7,14 +7,15 @@ before the spool is assigned: the list is first read when the page is opened.
 from playwright.sync_api import Page, expect
 
 from tests.browser.conftest import t
+from tests.browser.numbers import spool_number
 from tests.browser.test_pages import fits_screen_width
 from tests.browser.test_production import connect
-from tests.browser.test_spool_assignment import SERVED, fake_bambuddy  # noqa: F401
+from tests.browser.test_spool_assignment import fake_bambuddy, serve  # noqa: F401
 
 
 def spool(viewport: str, price: float, more: int = 0) -> dict:
     return {
-        "id": (81 if viewport == "desktop" else 91) + more,
+        "id": spool_number(__name__, viewport, more),
         "material": "PETG",
         "brand": "Beispielmarke",
         "subtype": "",
@@ -33,7 +34,7 @@ def test_chip_notice_and_overview_show_a_changed_price(
     viewport_name: str,
 ) -> None:
     mine = spool(viewport_name, 20)
-    SERVED[:] = [spool("desktop", 20), spool("phone", 20)]
+    serve([spool("desktop", 20), spool("phone", 20)])
     connect(admin_page, fake_bambuddy)
     admin_page.goto("/filaments/spools")
     row = admin_page.locator(f"#spool-{mine['id']}")
@@ -41,7 +42,7 @@ def test_chip_notice_and_overview_show_a_changed_price(
     expect(row).to_have_count(0)
 
     # Bambuddy now says 25 instead of 20 (both spools are served, see test_filament_stock).
-    SERVED[:] = [spool("desktop", 25), spool("phone", 25)]
+    serve([spool("desktop", 25), spool("phone", 25)])
 
     admin_page.goto("/filaments")
     line = admin_page.locator("table.data-table tbody tr").filter(has_text=mine["color_name"])
@@ -72,7 +73,7 @@ def test_a_long_notice_does_not_widen_the_page_when_bambuddy_is_gone(
     viewport_name: str,
 ) -> None:
     mine = spool(viewport_name, 20, 1)
-    SERVED[:] = [spool("desktop", 20, 1), spool("phone", 20, 1)]
+    serve([spool("desktop", 20, 1), spool("phone", 20, 1)])
     connect(admin_page, fake_bambuddy)
     admin_page.goto("/filaments/spools")
     row = admin_page.locator(f"#spool-{mine['id']}")
