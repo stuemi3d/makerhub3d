@@ -1046,7 +1046,7 @@
   "filament.hint.color_name": "Optional, z. B. Ivory White.",
   "filament.hint.color": "Optional, z. B. #FFFFF0.",
   "filament.hint.standard_price": "Optional: dein üblicher Einkaufspreis pro kg, z. B. 19,90.",
-  "filament.hint.min_stock_kg": "Optional: Warnung, wenn alle Spulen dieses Filaments zusammen weniger haben (kommt später).",
+  "filament.hint.min_stock_kg": "Optional: Warnung, wenn alle Spulen dieses Filaments zusammen weniger haben.",
   "filament.hint.note": "Optional.",
   "filament.form.new": "Neues Filament",
   "filament.form.edit": "Filament bearbeiten",

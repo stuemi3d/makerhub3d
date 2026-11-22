@@ -1046,7 +1046,7 @@
   "filament.hint.color_name": "Optional, e.g. Ivory White.",
   "filament.hint.color": "Optional, e.g. #FFFFF0.",
   "filament.hint.standard_price": "Optional: your usual purchase price per kg, e.g. 19.90.",
-  "filament.hint.min_stock_kg": "Optional: warning when all spools of this filament together hold less (comes later).",
+  "filament.hint.min_stock_kg": "Optional: warning when all spools of this filament together hold less.",
   "filament.hint.note": "Optional.",
   "filament.form.new": "New filament",
   "filament.form.edit": "Edit filament",
