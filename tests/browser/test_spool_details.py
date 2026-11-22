@@ -6,9 +6,10 @@ Bambuddy is played by the tiny server of the spool test.
 from playwright.sync_api import Page, expect
 
 from tests.browser.conftest import t
+from tests.browser.numbers import spool_number
 from tests.browser.test_pages import fits_screen_width
 from tests.browser.test_production import connect
-from tests.browser.test_spool_assignment import SERVED, fake_bambuddy  # noqa: F401
+from tests.browser.test_spool_assignment import fake_bambuddy, serve  # noqa: F401
 from tests.browser.test_spool_follow import spools
 
 
@@ -18,12 +19,11 @@ def test_spool_details_fit_the_screen_and_actions_stay_reachable(
     viewport_name: str,
 ) -> None:
     mine = spools(viewport_name)[0]
-    # own spool numbers (101/111): the browser database is shared with the other spool tests
-    mine["id"] = 101 if viewport_name == "desktop" else 111
+    mine["id"] = spool_number(__name__, viewport_name)
     mine["color_name"] = f"Details {viewport_name}"
     mine["note"] = "Eine ziemlich lange Notiz zur Spule, " * 6
     mine["last_dried_at"] = "2026-10-01T08:00:00"
-    SERVED[:] = [mine]
+    serve([mine])
     connect(admin_page, fake_bambuddy)
 
     admin_page.goto("/filaments/spools")

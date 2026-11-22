@@ -62,6 +62,7 @@ Die App hat einen festen Stil. Neue Funktionen sollen sich **überall gleich** a
 ## Browser-Tests (Playwright)
 
 - Browser-Tests liegen in `tests/browser/` und laufen getrennt vom normalen Testlauf: `uv run pytest -m browser`. Jeder Test läuft in Desktop- und Handy-Ansicht (390 px breit).
+- **Beispielnummern** (z. B. Spulennummern) in Browser-Tests nie von Hand wählen: alle Tests teilen sich eine Datenbank, und doppelte Nummern fallen erst im vollen Lauf in GitHub auf. Nummern kommen aus `tests/browser/numbers.py` (`spool_number(__name__, viewport, index)`), Bambuddy-Antworten setzt man mit `serve(...)`.
 - Der Test-Browser ruft nur die lokale Testversion auf (`127.0.0.1`, eigene leere Datenbank in einem temporären Ordner). Jede Anfrage an eine andere Adresse wird blockiert und lässt den Test fehlschlagen.
 - Chromium wird einmalig im Home-Ordner installiert, ohne `sudo`: `uv run playwright install chromium`. Fehlen Systembibliotheken, nenne dem Maintainer den genauen `sudo`-Befehl und erkläre in einfachen Worten, was er installiert.
 - Bei einem fehlgeschlagenen Browser-Test liegt ein Screenshot in `test-results/` (nicht im Git).

@@ -7,16 +7,16 @@ pop-up of the app, never through a browser dialog.
 from playwright.sync_api import Page, expect
 
 from tests.browser.conftest import t
+from tests.browser.numbers import spool_number
 from tests.browser.test_pages import fits_screen_width
 from tests.browser.test_production import connect
-from tests.browser.test_spool_assignment import SERVED, fake_bambuddy  # noqa: F401
+from tests.browser.test_spool_assignment import fake_bambuddy, serve  # noqa: F401
 
 
 def spools(viewport: str) -> list[dict]:
-    base = 61 if viewport == "desktop" else 71
     return [
         {
-            "id": base,
+            "id": spool_number(__name__, viewport),
             "material": "PETG",
             "brand": "Beispielmarke",
             "subtype": "",
@@ -36,7 +36,7 @@ def test_spools_of_a_filament_show_state_and_can_be_released(
     viewport_name: str,
 ) -> None:
     mine = spools(viewport_name)[0]
-    SERVED[:] = spools("desktop") + spools("phone")
+    serve(spools("desktop") + spools("phone"))
     connect(admin_page, fake_bambuddy)
 
     admin_page.goto("/filaments/spools")

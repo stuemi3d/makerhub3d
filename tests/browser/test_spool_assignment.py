@@ -14,15 +14,15 @@ import pytest
 from playwright.sync_api import Page, expect
 
 from tests.browser.conftest import HOST, t
+from tests.browser.numbers import check_unique, spool_number
 from tests.browser.test_pages import fits_screen_width
 from tests.browser.test_production import connect
 
 
 def spools_for(viewport: str) -> list[dict]:
-    base = 21 if viewport == "desktop" else 31
     return [
         {
-            "id": base + offset,
+            "id": spool_number(__name__, viewport, offset),
             "material": "PLA",
             "brand": "Beispielmarke",
             "subtype": "Matte",
@@ -39,6 +39,12 @@ def spools_for(viewport: str) -> list[dict]:
 
 # What the fake Bambuddy says right now; every test sets its own spools.
 SERVED: list[dict] = []
+
+
+def serve(spools: list[dict]) -> None:
+    """Set what the fake Bambuddy says; a number served twice fails with a clear message."""
+    check_unique(spools)
+    SERVED[:] = spools
 
 
 class FakeBambuddy(BaseHTTPRequestHandler):
@@ -70,7 +76,7 @@ def test_spools_are_confirmed_one_by_one_and_all_at_once(
     admin_page: Page, fake_bambuddy: str, viewport_name: str
 ) -> None:
     first, second = spools_for(viewport_name)
-    SERVED[:] = [first, second]
+    serve([first, second])
     connect(admin_page, fake_bambuddy)
 
     # The list page has a button with the number of waiting spools.
