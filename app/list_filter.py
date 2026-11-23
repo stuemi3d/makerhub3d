@@ -6,22 +6,26 @@ trimmed and cut. Filtering itself is done by the pages on the loaded rows; text 
 plain text (no wildcards), so special characters mean what they say.
 """
 
+import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from datetime import date
 from urllib.parse import urlencode
 
 MAX_TEXT = 100
+_DATE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
 
 
 @dataclass(frozen=True)
 class Field:
-    """One filter. Without `options` it is a search text field, otherwise a choice.
-    `default` is the choice that means "not filtered" (or the standard view)."""
+    """One filter. Without `options` it is a search text field (or a date with kind "date"),
+    otherwise a choice. `default` is the choice that means "not filtered" (or the standard view)."""
 
     name: str
     label: str
     options: tuple[tuple[str, str], ...] = ()
     default: str = ""
+    kind: str = ""
 
 
 def read(fields: tuple[Field, ...], source: Mapping[str, str]) -> dict[str, str]:
@@ -31,8 +35,20 @@ def read(fields: tuple[Field, ...], source: Mapping[str, str]) -> dict[str, str]
         raw = (source.get(field.name) or "").strip()[:MAX_TEXT]
         if field.options and raw not in {value for value, _ in field.options}:
             raw = field.default
+        if field.kind == "date" and date_of(raw) is None:
+            raw = ""
         values[field.name] = raw
     return values
+
+
+def date_of(text: str) -> date | None:
+    """A date field value (year-month-day), or None when it is empty or not a real date."""
+    if not _DATE.fullmatch(text):
+        return None
+    try:
+        return date.fromisoformat(text)
+    except ValueError:
+        return None
 
 
 def params(fields: tuple[Field, ...], values: Mapping[str, str]) -> dict[str, str]:
@@ -53,8 +69,10 @@ def build(
     values: Mapping[str, str],
     translate: Callable[[str], str],
     keep: Mapping[str, str] | None = None,
+    show_date: Callable[[date], str] | None = None,
 ) -> dict:
-    """What the template needs. `keep` are address parts that stay (the sorting)."""
+    """What the template needs. `keep` are address parts that stay (the sorting);
+    `show_date` writes a date field's value for the chip."""
     keep = dict(keep or {})
     active = params(fields, values)
     shown = []
@@ -67,12 +85,15 @@ def build(
                 "label": translate(field.label),
                 "value": values[field.name],
                 "choices": choices,
+                "kind": "choice" if choices else field.kind or "search",
             }
         )
         if field.name not in active:
             continue
         label_of = dict(choices)
         text = label_of.get(values[field.name], values[field.name])
+        if field.kind == "date" and show_date is not None:
+            text = show_date(date.fromisoformat(values[field.name]))
         others = {name: value for name, value in active.items() if name != field.name}
         chips.append(
             {

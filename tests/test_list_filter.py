@@ -68,3 +68,19 @@ def test_text_matches_any_part_case_blind() -> None:
     # No wildcard meaning for % and _
     assert not list_filter.matches("%", "3D-0001", "x")
     assert list_filter.matches("", "a")
+
+
+def test_date_fields_accept_only_real_dates() -> None:
+    fields = (Field("from", "f.from", kind="date"),)
+    assert list_filter.read(fields, {"from": " 2026-03-10 "}) == {"from": "2026-03-10"}
+    for bad in ("morgen", "2026-13-45", "10.03.2026", ""):
+        assert list_filter.read(fields, {"from": bad}) == {"from": ""}
+    bar = list_filter.build(
+        "/c", fields, {"from": "2026-03-10"}, words_from, None, lambda d: "10.03."
+    )
+    assert bar["fields"][0]["kind"] == "date"
+    assert bar["chips"][0]["text"] == "Von: 10.03."
+
+
+def words_from(key: str) -> str:
+    return {"f.from": "Von"}[key]

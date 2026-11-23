@@ -517,6 +517,21 @@
   white-space: normal;
 }
 
+/* Very wide tables: the action symbols stay at the right edge while the rest scrolls. Not on
+   the phone, where the symbols alone would take the whole width. */
+@media (min-width: 768px) {
+  .data-table.sticky-actions .row-actions {
+    position: sticky;
+    right: 0;
+    background: var(--mh-surface);
+    box-shadow: -1px 0 0 var(--mh-border);
+  }
+
+  .data-table.sticky-actions thead .row-actions {
+    background: var(--mh-surface-raised);
+  }
+}
+
 .data-table thead th a {
   color: inherit;
   text-decoration: none;

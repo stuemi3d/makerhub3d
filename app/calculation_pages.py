@@ -23,15 +23,19 @@ from app import (
     calc_form,
     calc_store,
     calculation_files,
+    list_filter,
     price_rule,
     printer_models,
     production_form,
     spool_list,
     stock,
+    table_sort,
     variants,
 )
 from app.article_pages import confirmed, varied, wants_popup
 from app.calculation_file_store import FileStore
+from app.i18n import translate
+from app.list_filter import Field
 from app.models import AppSettings, Article, Calculation, Device, PrinterModel
 from app.permissions import Permission, has_permission, requires
 from app.two_factor import Cipher
@@ -91,10 +95,55 @@ def add_calculation_routes(
 
     # --- The list ---------------------------------------------------------------------------
 
+    def filter_fields(db: Session, article_id: int | None) -> tuple[Field, ...]:
+        """The filter bar: the choices are the articles with a calculation (and the one asked
+        for) and the printers that were used."""
+        articles = db.execute(
+            select(Article.id, Article.number, Article.name)
+            .where(
+                Article.id.in_(select(Calculation.article_id)) | (Article.id == (article_id or 0))
+            )
+            .order_by(Article.number_key)
+        )
+        printers = db.scalars(select(Calculation.printer_name).distinct().order_by("printer_name"))
+        return (
+            Field("q", "filter.search"),
+            Field(
+                "article",
+                "calc.filter.article",
+                (
+                    ("", "calc.filter.article.all"),
+                    *((str(a.id), f"{a.number} · {a.name}") for a in articles),
+                ),
+            ),
+            Field("from", "calc.filter.from", kind="date"),
+            Field("to", "calc.filter.to", kind="date"),
+            Field(
+                "printer",
+                "calc.filter.printer",
+                (("", "calc.filter.printer.all"), *((name, name) for name in printers)),
+            ),
+            Field(
+                "state",
+                "calc.filter.state",
+                (("all", "calc.filter.state.all"), ("main", "calc.filter.state.main")),
+                "all",
+            ),
+        )
+
+    def keeps(row: calc_store.ListRow, values: dict[str, str]) -> bool:
+        first, last = list_filter.date_of(values["from"]), list_filter.date_of(values["to"])
+        return (
+            list_filter.matches(values["q"], row.number, row.name, row.printer)
+            and (first is None or row.day >= first)
+            and (last is None or row.day <= last)
+            and (not values["printer"] or row.printer == values["printer"])
+            and (values["state"] == "all" or row.is_main)
+        )
+
     @app.get(LIST, response_class=HTMLResponse, dependencies=view_right)
     def calculation_list(
         request: Request,
-        article: str | None = None,
         saved: str | None = None,
         main: str | None = None,
         deleted: str | None = None,
@@ -102,14 +151,28 @@ def add_calculation_routes(
         direction: str | None = Query(None, alias="dir"),
     ) -> HTMLResponse:
         filtered = None
+        asked = (request.query_params.get("article") or "").strip()
         with new_session() as db:
-            article_id = number(article.strip()) if article else None
+            article_id = number(asked) if asked else None
             if article_id is not None:
                 found = article_of(db, article_id)
                 filtered = {"id": found.id, "number": found.number, "name": found.name}
-            shown = calc_store.rows(db, language, article_id)
-        keep = {"article": str(article_id)} if article_id is not None else None
-        shown, links = calc_store.arranged(shown, LIST, sort, direction, keep)
+            fields = filter_fields(db, article_id)
+            values = list_filter.read(fields, dict(request.query_params))
+            shown = [row for row in calc_store.rows(db, language, article_id) if keeps(row, values)]
+        chosen = table_sort.chosen_sort(calc_store.SORT_KEYS, sort, direction)
+        sorting = {"sort": chosen[0], "dir": chosen[1]} if chosen else {}
+        shown, links = calc_store.arranged(
+            shown, LIST, sort, direction, list_filter.params(fields, values)
+        )
+        bar = list_filter.build(
+            LIST,
+            fields,
+            values,
+            lambda key: translate(language, key),
+            sorting,
+            lambda day: stock.format_date(day, language),
+        )
         notice = "saved" if saved == "1" else "main" if main == "1" else None
         notice = notice or ("deleted" if deleted == "1" else None)
         return render(
@@ -120,6 +183,7 @@ def add_calculation_routes(
             sort_links=links,
             article=filtered,
             notice=notice,
+            filters=bar,
         )
 
     # --- The form: calculate and save ---------------------------------------------------------
