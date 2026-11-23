@@ -1,0 +1,34 @@
+{# Bar above the lists; data from app/list_filter.py, behaviour in app.js and app.css. #}
+{% macro filter_bar(bar, region) %}
+<details class="filter-bar" data-filter-bar open>
+  <summary id="filter-summary" role="button" class="secondary outline"{% if bar.active_count %} data-filter-active{% endif %}>{{ t('filter.toggle') }}{% if bar.active_count %} ({{ bar.active_count }}){% endif %}</summary>
+  <form method="get" action="{{ bar.path }}" class="filter-form">
+    {% for name, value in bar.hidden.items() %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endfor %}
+    {% for f in bar.fields %}
+    <label class="filter-field">
+      <span>{{ f.label }}</span>
+      {% if f.choices %}
+      <select name="{{ f.name }}" hx-get="{{ bar.path }}" hx-include="closest form" hx-trigger="change" hx-sync="closest form:replace" hx-target="#{{ region }}" hx-select="#{{ region }}" hx-select-oob="#filter-summary" hx-swap="outerHTML" hx-push-url="true">
+        {% for value, text in f.choices %}<option value="{{ value }}"{% if value == f.value %} selected{% endif %}>{{ text }}</option>{% endfor %}
+      </select>
+      {% else %}
+      <input type="search" name="{{ f.name }}" value="{{ f.value }}" maxlength="100" autocomplete="off" placeholder="{{ t('filter.search.placeholder') }}" hx-get="{{ bar.path }}" hx-include="closest form" hx-trigger="input changed delay:300ms" hx-sync="closest form:replace" hx-target="#{{ region }}" hx-select="#{{ region }}" hx-select-oob="#filter-summary" hx-swap="outerHTML" hx-push-url="true">
+      {% endif %}
+    </label>
+    {% endfor %}
+    <noscript><button type="submit">{{ t('filter.apply') }}</button></noscript>
+  </form>
+</details>
+{% endmacro %}
+
+{# Chips of the active filters; they belong inside the list area that is replaced. #}
+{% macro filter_chips(bar) %}
+{% if bar.chips %}
+<ul class="filter-chips">
+  {% for chip in bar.chips %}
+  <li class="filter-chip">{{ chip.text }} <a href="{{ chip.href }}" title="{{ t('filter.remove') }}" aria-label="{{ t('filter.remove') }}: {{ chip.text }}">×</a></li>
+  {% endfor %}
+  <li><a href="{{ bar.reset_href }}">{{ t('filter.reset') }}</a></li>
+</ul>
+{% endif %}
+{% endmacro %}

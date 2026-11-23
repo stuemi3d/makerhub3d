@@ -242,7 +242,7 @@ def test_reader_gets_no_pop_up_and_no_symbols(reader: AppClient, client: AppClie
     html = reader.get("/articles").text
     assert "/edit" not in html
     assert "/articles/new" not in html
-    assert "hx-get" not in html
+    assert "#popup-body" not in html
 
 
 def test_employee_may_use_the_pop_up(client: AppClient) -> None:
