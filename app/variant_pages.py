@@ -14,10 +14,10 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app import article_image, audit, auth, variants
+from app import article_attachments, audit, auth, variants
+from app.article_attachments import FileForm
 from app.article_form import FIELD_NAMES, number_key, validate
-from app.article_image import ImageForm
-from app.article_pages import image_context, saved_in_popup, wants_popup
+from app.article_pages import saved_in_popup, wants_popup
 from app.calculation_file_store import FileStore
 from app.models import Article, ArticleAttributeValue, ArticleTemplate
 from app.permissions import Permission, requires
@@ -29,7 +29,7 @@ def add_variant_routes(
     render: Callable[..., HTMLResponse],
     read_form: Callable[[Request, tuple[str, ...]], Awaitable[dict[str, str]]],
     language: str,
-    image_store: FileStore,
+    file_stores: dict[str, FileStore],
 ) -> None:
     edit = [requires(Permission.EDIT)]
 
@@ -82,11 +82,14 @@ def add_variant_routes(
         return form_page(request, template, fields, {"name": template["name"]}, {})
 
     def create(
-        actor_id: int, template_id: int, raw: dict[str, str], fields: list[dict], image: ImageForm
+        actor_id: int,
+        template_id: int,
+        raw: dict[str, str],
+        fields: list[dict],
+        files: dict[str, FileForm],
     ) -> tuple[dict[str, str], int | None]:
         values, errors = validate(raw)
-        if image.error:
-            errors["image"] = image.error
+        errors.update(article_attachments.errors_of(files))
         choices, choice_errors = variants.check_choices(raw, fields)
         errors.update(choice_errors)
         if errors:
@@ -115,14 +118,13 @@ def add_variant_routes(
                     for attribute_id, value_id in choices.items()
                 ]
                 db.add(article)
-                image_change = article_image.apply(db, image_store, article, image)
+                changes = article_attachments.apply(db, file_stores, article, files)
                 db.flush()
                 details = [{"field": "template", "old": "", "new": template.name}] + [
                     {"field": "attribute_value", "old": "", "new": text}
                     for text in variants.describe(db, choices).values()
                 ]
-                if image_change:
-                    details.append(image_change)
+                details += changes
                 audit.record_change(
                     db, actor_id, "article.variant_created", article.number, details
                 )
@@ -144,12 +146,12 @@ def add_variant_routes(
         template, fields = await run_in_threadpool(load, template_id)
         names = FIELD_NAMES + tuple(variants.field_name(field["id"]) for field in fields)
         raw = await read_form(request, names)
-        image = await article_image.read(request, image_store)
+        files = await article_attachments.read(request, file_stores)
         errors, article_id = await run_in_threadpool(
-            create, request.state.user.id, template_id, raw, fields, image
+            create, request.state.user.id, template_id, raw, fields, files
         )
         if errors:
-            extra = image_context(image, errors, image_store)
+            extra = article_attachments.context(files, errors, file_stores)
             return form_page(request, template, fields, raw, errors, status_code=422, **extra)
         if wants_popup(request):
             return saved_in_popup()

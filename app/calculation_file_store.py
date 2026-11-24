@@ -6,8 +6,8 @@ the upload never becomes a path: every path here is built from a name that match
 pattern of hexadecimal characters. Nothing is unpacked here (the file is only read in memory by
 `slice_reader`).
 
-The same store keeps the images of articles (issue #267) in a folder of their own, with the
-endings of the allowed image types (see `app.article_image`).
+The same store keeps the images and .gcode.3mf files of articles (issues #267 and #268), each in
+a folder of their own (see `app.article_attachments`).
 """
 
 import contextlib

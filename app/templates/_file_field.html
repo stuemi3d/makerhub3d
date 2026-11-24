@@ -1,0 +1,19 @@
+{# Optional file of an article or a single variant: the image (issue 267) or the .gcode.3mf
+   file (issue 268). A new file that waits after a refused save travels as a token; the server
+   checks it again. #}
+{% from "_form_macros.html" import feedback %}
+{% macro file_field(name, accept, current, waiting, removing, errors, t) %}
+<label for="{{ name }}">{{ t('article.field.' ~ name) }}</label>
+{% if waiting %}
+<input type="hidden" name="{{ name }}_token" value="{{ waiting.token }}">
+<input type="hidden" name="{{ name }}_token_name" value="{{ waiting.name }}">
+<p role="status" class="file-state"><small>{{ t('article.' ~ name ~ '.waiting') }}: <strong>{{ waiting.name }}</strong></small></p>
+{% elif current %}
+<p class="file-state"><small>{{ t('article.' ~ name ~ '.current') }}: <strong>{{ current }}</strong></small></p>
+{% endif %}
+<input type="file" name="{{ name }}" id="{{ name }}" accept="{{ accept }}"{% if errors.get(name) %} aria-invalid="true" aria-describedby="{{ name }}-error"{% else %} aria-describedby="{{ name }}-hint"{% endif %}>
+{{ feedback(name, errors, t, 'article.hint.') }}
+{% if current %}
+<label class="file-remove"><input type="checkbox" name="{{ name }}_remove" value="1"{% if removing %} checked{% endif %}> {{ t('article.' ~ name ~ '.remove') }}</label>
+{% endif %}
+{% endmacro %}

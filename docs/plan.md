@@ -375,7 +375,7 @@ Der Maintainer hat die frühere Bedingung („erst nach Alltagsnutzung von M1“
 - [x] Plan: Notiz, Bild und `.gcode.3mf`-Datei am Artikel (#265)
 - [x] Artikel: Notiz (#266)
 - [x] Artikel: Bild (#267)
-- [ ] Artikel: `.gcode.3mf`-Datei (#268)
+- [x] Artikel: `.gcode.3mf`-Datei (#268)
 - [ ] Kalkulation: Datei vom Artikel anbieten (#269)
 
 **M5 – Anbindung Rechnungs-Software (später)**

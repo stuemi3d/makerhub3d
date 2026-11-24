@@ -89,6 +89,12 @@
       <dt>{{ t('article.col.status') }}</dt>
       <dd>{{ chip(t('article.status.active' if article.active else 'article.status.inactive'), 'active' if article.active else 'inactive') }}</dd>
     </div>
+    {% if article.print_file_name %}
+    <div class="details-wide">
+      <dt>{{ t('article.field.print_file') }}</dt>
+      <dd><span class="print-file-name">{{ article.print_file_name }}</span> · <a href="/articles/{{ article.id }}/file" id="article-file-download" download>{{ t('article.print_file.download') }}</a></dd>
+    </div>
+    {% endif %}
     {% if article.note %}
     <div class="details-wide">
       <dt>{{ t('article.field.note') }}</dt>
