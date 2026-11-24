@@ -86,6 +86,12 @@
       <dt>{{ t('article.col.status') }}</dt>
       <dd>{{ chip(t('article.status.active' if article.active else 'article.status.inactive'), 'active' if article.active else 'inactive') }}</dd>
     </div>
+    {% if article.note %}
+    <div class="details-wide">
+      <dt>{{ t('article.field.note') }}</dt>
+      <dd class="article-note">{{ article.note }}</dd>
+    </div>
+    {% endif %}
   </dl>
 </article>
 <div class="tiles">
