@@ -8,7 +8,7 @@ together with everything that hangs on it. Calculations (issue #161) and product
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
-from app import audit, calc_store, sales, stock
+from app import article_image, audit, calc_store, sales, stock
 from app.models import Article, Production, ProductionResult, Sale, StockMovement
 
 # The kinds of records that can hang on an article, in the order the warning lists them.
@@ -48,6 +48,7 @@ def remove(db: Session, actor_id: int, article: Article) -> None:
     the caller's transaction."""
     subject = f"{article.number} · {article.name}"
     calc_store.delete_for_article(db, article.id)
+    article_image.queue_delete(db, article.image_stored)
     db.delete(article)
     audit.record_change(db, actor_id, "article.deleted", subject)
 
@@ -80,6 +81,7 @@ def purge(db: Session, actor_id: int, article: Article) -> None:
     )
     db.execute(delete(StockMovement).where(StockMovement.article_id == article.id))
     subject = f"{article.number} · {article.name}"
+    article_image.queue_delete(db, article.image_stored)
     db.delete(article)
     audit.record_change(
         db,

@@ -31,6 +31,7 @@ _ARTICLE_FIELDS = {
     "selling_price",
     "min_stock",
     "note",
+    "image",
     "template",
     "attribute_value",
     "abbreviation",

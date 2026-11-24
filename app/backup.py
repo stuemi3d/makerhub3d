@@ -1,7 +1,8 @@
 """Backups (issues #9 and #195): nightly, before a migration and by hand.
 
-A backup is one zip archive with the database (`makerhub3d.db`) and the stored calculation
-files (`calculation_files/<generated name>`). Waiting uploads are not part of it. Older
+A backup is one zip archive with the database (`makerhub3d.db`), the stored calculation
+files (`calculation_files/<generated name>`) and the images of articles
+(`article_images/<generated name>`, issue #267). Waiting uploads are not part of it. Older
 backups are plain `.db` files (database only); they are still listed, downloaded, cleaned up
 and can be restored.
 
@@ -31,6 +32,8 @@ from enum import StrEnum
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+from app.article_image import FOLDER as IMAGES_FOLDER
+from app.article_image import valid_name as valid_image_name
 from app.calculation_file_store import FOLDER as FILES_FOLDER
 from app.calculation_file_store import valid_name as valid_file_name
 from app.config import Settings
@@ -46,6 +49,9 @@ _NAME = re.compile(r"makerhub3d-(\d{8})-(\d{6})-(daily|manual|premigration)\.(db
 
 # Fixed on purpose: the name inside the archives must not change with the app's constant
 ARCHIVE_DB = "makerhub3d.db"
+# The folders of stored files in the data directory (and in the archive), with the check of
+# the generated names that may be in each
+FOLDERS = {FILES_FOLDER: valid_file_name, IMAGES_FOLDER: valid_image_name}
 
 
 class Kind(StrEnum):
@@ -96,14 +102,15 @@ def find_backup(backup_dir: Path, name: str) -> Path | None:
     return path if _parse(path) is not None else None
 
 
-def _stored_files(files_dir: Path | None) -> list[Path]:
-    """The stored calculation files (not the waiting uploads, not foreign files)."""
+def _stored_files(files_dir: Path | None, folder: str = FILES_FOLDER) -> list[Path]:
+    """The stored files of one folder (not the waiting uploads, not foreign files)."""
     if files_dir is None or not files_dir.is_dir():
         return []
+    valid = FOLDERS[folder]
     return sorted(
         path
         for path in files_dir.iterdir()
-        if valid_file_name(path.name) and path.is_file() and not path.is_symlink()
+        if valid(path.name) and path.is_file() and not path.is_symlink()
     )
 
 
@@ -112,9 +119,10 @@ def create_backup(
     backup_dir: Path,
     kind: Kind,
     now: datetime | None = None,
-    files_dir: Path | None = None,
+    data_dir: Path | None = None,
 ) -> Path:
-    """Writes a consistent archive of the database and the stored files into the backup folder."""
+    """Writes a consistent archive of the database and the stored files (the folders in
+    `FOLDERS` under `data_dir`) into the backup folder."""
     moment = (now or datetime.now(UTC)).astimezone(UTC)
     name = f"makerhub3d-{moment:%Y%m%d-%H%M%S}-{kind}.zip"
     temporary: str | None = None
@@ -139,8 +147,10 @@ def create_backup(
             source.close()
         with zipfile.ZipFile(temporary, "w") as archive:
             archive.write(copy, ARCHIVE_DB, compress_type=zipfile.ZIP_DEFLATED)
-            for path in _stored_files(files_dir):  # already compressed: stored as they are
-                archive.write(path, f"{FILES_FOLDER}/{path.name}", compress_type=zipfile.ZIP_STORED)
+            for folder in FOLDERS:
+                files = _stored_files(None if data_dir is None else data_dir / folder, folder)
+                for path in files:  # already compressed: stored as they are
+                    archive.write(path, f"{folder}/{path.name}", compress_type=zipfile.ZIP_STORED)
         final = backup_dir / name
         os.replace(temporary, final)
         temporary = None
@@ -206,9 +216,7 @@ def _log_failure(settings: Settings, key: str, error: BaseException) -> None:
 
 def make_backup(settings: Settings, kind: Kind, now: datetime | None = None) -> Path:
     """Creates a backup and cleans up afterwards."""
-    path = create_backup(
-        settings.database_path, settings.backup_dir, kind, now, settings.data_dir / FILES_FOLDER
-    )
+    path = create_backup(settings.database_path, settings.backup_dir, kind, now, settings.data_dir)
     prune(settings.backup_dir, ZoneInfo(settings.timezone))
     return path
 
@@ -275,7 +283,7 @@ def _check_archive(archive: zipfile.ZipFile) -> list[zipfile.ZipInfo]:
     for member in members:
         folder, _, leaf = member.filename.partition("/")
         allowed = member.filename == ARCHIVE_DB or (
-            folder == FILES_FOLDER and valid_file_name(leaf) and not member.is_dir()
+            folder in FOLDERS and FOLDERS[folder](leaf) and not member.is_dir()
         )
         if not allowed:
             raise RestoreError("The archive contains unexpected entries.")
@@ -298,7 +306,8 @@ def _check_database(path: Path) -> None:
 
 def restore(settings: Settings, name: str) -> None:
     """Puts a backup back (the app must be stopped). A `.zip` replaces the database and the
-    stored calculation files; an old `.db` backup replaces only the database. Everything is
+    stored files (calculations and article images); an old `.db` backup replaces only the
+    database. Everything is
     unpacked and checked in a staging folder first; the database is replaced last, so a
     failure before that leaves the database as it was."""
     path = find_backup(settings.backup_dir, name)
@@ -311,8 +320,9 @@ def restore(settings: Settings, name: str) -> None:
         if path.suffix == ".db":
             shutil.copyfile(path, staging / ARCHIVE_DB)
         else:
-            files = staging / FILES_FOLDER
-            files.mkdir()
+            files = staging
+            for folder in FOLDERS:
+                (staging / folder).mkdir()
             with zipfile.ZipFile(path) as archive:
                 total = sum(member.file_size for member in _check_archive(archive))
                 if total > shutil.disk_usage(settings.data_dir).free:
@@ -323,7 +333,10 @@ def restore(settings: Settings, name: str) -> None:
                         open(staging / member.filename, "xb") as out,
                     ):
                         shutil.copyfileobj(source, out)
-        for item in [staging / ARCHIVE_DB, *(files.iterdir() if files else [])]:
+        stored = (
+            [path for folder in FOLDERS for path in (staging / folder).iterdir()] if files else []
+        )
+        for item in [staging / ARCHIVE_DB, *stored]:
             os.chmod(item, 0o600)
         _check_database(staging / ARCHIVE_DB)
         _swap(settings.database_path, staging / ARCHIVE_DB, files)
@@ -335,13 +348,15 @@ def restore(settings: Settings, name: str) -> None:
 
 
 def _swap(database: Path, new_database: Path, files: Path | None) -> None:
+    """`files` is the staging folder with one folder per entry of `FOLDERS`."""
     if files is not None:
-        target = database.parent / FILES_FOLDER
-        target.mkdir(mode=0o700, exist_ok=True)
-        for path in _stored_files(target):  # waiting uploads (pending) stay untouched
-            path.unlink()
-        for path in files.iterdir():
-            os.replace(path, target / path.name)
+        for folder in FOLDERS:
+            target = database.parent / folder
+            target.mkdir(mode=0o700, exist_ok=True)
+            for path in _stored_files(target, folder):  # waiting uploads (pending) stay
+                path.unlink()
+            for path in (files / folder).iterdir():
+                os.replace(path, target / path.name)
     os.replace(new_database, database)  # last: the database is the point of no return
     for suffix in ("-wal", "-shm"):
         database.with_name(database.name + suffix).unlink(missing_ok=True)

@@ -17,7 +17,7 @@
 <p role="alert"><mark>{{ t('article.has_errors') }}</mark></p>
 {% endif %}
 {% set action = '/templates/' ~ tpl.id ~ '/variants/new' %}
-<form method="post" action="{{ action }}" novalidate{% if popup %} hx-post="{{ action }}" hx-target="#popup-body" hx-swap="innerHTML"{% endif %}>
+<form method="post" action="{{ action }}" enctype="multipart/form-data" novalidate{% if popup %} hx-post="{{ action }}" hx-encoding="multipart/form-data" hx-target="#popup-body" hx-swap="innerHTML"{% endif %}>
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <label for="number">{{ t('article.field.number') }}</label>
   <input type="text" maxlength="50" autocomplete="off" {{ field_attrs('number', errors) }}{% if popup %} autofocus{% endif %} value="{{ values.get('number', '') }}"{% if tpl.number %} data-number-prefix="{{ tpl.number }}"{% endif %}>
@@ -37,6 +37,7 @@
   <label for="note">{{ t('article.field.note') }}</label>
   <textarea rows="3" maxlength="2000" {{ field_attrs('note', errors) }}>{{ values.get('note', '') }}</textarea>
   {{ feedback('note', errors, t, 'article.hint.') }}
+  {% include "_image_field.html" %}
   <div class="form-actions">
     <button type="submit">{{ t('article.create') }}</button>
     {% if popup %}<button type="button" class="secondary outline" data-popup-close>{{ t('article.cancel') }}</button>

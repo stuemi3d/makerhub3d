@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from app import (
     APP_NAME,
     analysis_total,
+    article_image,
     audit,
     auth,
     backup,
@@ -170,16 +171,24 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     engine = make_engine(settings.database_path)
     new_session = sessionmaker(engine)
     file_store = FileStore(settings.data_dir)
+    image_store = article_image.image_store(settings.data_dir)
 
     @event.listens_for(new_session, "after_commit")
     def remove_files_of_deleted_calculations(session: Session) -> None:
         # Only after the commit: a rollback must never lose a file
         for name in session.info.pop(calc_store.FILES_KEY, []):
             file_store.delete(name)
+        for name in session.info.pop(article_image.DELETE_KEY, []):
+            image_store.delete(name)
+        session.info.pop(article_image.NEW_KEY, None)
 
     @event.listens_for(new_session, "after_rollback")
     def forget_files(session: Session) -> None:
         session.info.pop(calc_store.FILES_KEY, None)
+        session.info.pop(article_image.DELETE_KEY, None)
+        # An image stored for a change that did not happen is not used by anything
+        for name in session.info.pop(article_image.NEW_KEY, []):
+            image_store.delete(name)
 
     secure_cookies = not settings.insecure_cookies
     session_cookie, csrf_cookie = auth.cookie_names(secure_cookies)
@@ -209,6 +218,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             message = translate(language, "setup.log_code").format(code=app.state.setup_code)
             print(message, file=sys.stderr, flush=True)
         file_store.clean_pending()
+        image_store.clean_pending()
         nightly = asyncio.create_task(backup.nightly_loop(settings))
         yield
         nightly.cancel()
@@ -639,9 +649,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         else None
     )
     add_bambuddy_routes(app, new_session, bambuddy_cipher, render, read_form)
-    add_article_routes(app, new_session, render, read_form, language)
+    add_article_routes(app, new_session, render, read_form, language, image_store)
     add_template_routes(app, new_session, render, read_form, language)
-    add_variant_routes(app, new_session, render, read_form, language)
+    add_variant_routes(app, new_session, render, read_form, language, image_store)
     add_variant_bulk_routes(app, new_session, render, read_form)
     add_stock_routes(app, new_session, render, read_form, language)
     add_spool_routes(app, new_session, bambuddy_cipher, render, read_form, language)

@@ -100,6 +100,9 @@ class Article(Base):
     min_stock: Mapped[int | None] = mapped_column(Integer)
     # Free text (issue #266); empty = no note. Never inherited from the template.
     note: Mapped[str] = mapped_column(String(2000), server_default="")
+    # Optional image (issue #267): the generated file name in /data and the shown name
+    image_stored: Mapped[str | None] = mapped_column(String(50))
+    image_name: Mapped[str | None] = mapped_column(String(80))
     active: Mapped[bool] = mapped_column(Boolean, server_default=true())
     created_at: Mapped[datetime] = mapped_column(DateTime)
     # Set for a variant (issue #49): the template it belongs to. Price and minimum

@@ -354,6 +354,25 @@
   white-space: pre-line;
 }
 
+/* The image of an article (issue 267): never wider than the card, never huge */
+.article-image {
+  display: block;
+  max-width: 100%;
+  max-height: 20rem;
+  width: auto;
+  height: auto;
+  margin-bottom: 1rem;
+  border-radius: var(--pico-border-radius);
+}
+
+.image-state {
+  margin-bottom: 0.25rem;
+}
+
+.image-remove {
+  margin-bottom: 1rem;
+}
+
 .badge {
   display: inline-block;
   padding: 0.1rem 0.6rem;
