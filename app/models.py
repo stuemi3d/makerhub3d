@@ -98,6 +98,8 @@ class Article(Base):
     selling_price: Mapped[Decimal | None] = mapped_column(DecimalText)
     # Pieces; empty = no minimum
     min_stock: Mapped[int | None] = mapped_column(Integer)
+    # Free text (issue #266); empty = no note. Never inherited from the template.
+    note: Mapped[str] = mapped_column(String(2000), server_default="")
     active: Mapped[bool] = mapped_column(Boolean, server_default=true())
     created_at: Mapped[datetime] = mapped_column(DateTime)
     # Set for a variant (issue #49): the template it belongs to. Price and minimum

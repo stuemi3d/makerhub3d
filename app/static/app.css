@@ -345,6 +345,15 @@
   overflow-wrap: anywhere;
 }
 
+/* A long entry (the article note) uses the whole width; its line breaks are kept. */
+.details .details-wide {
+  grid-column: 1 / -1;
+}
+
+.article-note {
+  white-space: pre-line;
+}
+
 .badge {
   display: inline-block;
   padding: 0.1rem 0.6rem;

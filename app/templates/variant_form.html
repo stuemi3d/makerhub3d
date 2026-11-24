@@ -34,6 +34,9 @@
   <label for="min_stock">{{ t('article.field.min_stock') }}</label>
   <input type="text" inputmode="numeric" autocomplete="off" {{ field_attrs('min_stock', errors) }}{% if tpl.inherited.get('min_stock') %} placeholder="{{ t('variant.placeholder').format(value=tpl.inherited['min_stock']) }}"{% endif %} value="{{ values.get('min_stock', '') }}">
   {{ feedback('min_stock', errors, t, 'article.hint.') }}
+  <label for="note">{{ t('article.field.note') }}</label>
+  <textarea rows="3" maxlength="2000" {{ field_attrs('note', errors) }}>{{ values.get('note', '') }}</textarea>
+  {{ feedback('note', errors, t, 'article.hint.') }}
   <div class="form-actions">
     <button type="submit">{{ t('article.create') }}</button>
     {% if popup %}<button type="button" class="secondary outline" data-popup-close>{{ t('article.cancel') }}</button>

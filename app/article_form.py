@@ -11,8 +11,11 @@ _NUMBER = re.compile(r"-?[0-9]+(?:[.,][0-9]+)?")
 _MAX_INPUT_LENGTH = 20
 NUMBER_MAX_LENGTH = 50
 NAME_MAX_LENGTH = 100
+NOTE_MAX_LENGTH = 2000
 MAX_MIN_STOCK = 1_000_000
-FIELD_NAMES = ("number", "name", "selling_price", "min_stock")
+FIELD_NAMES = ("number", "name", "selling_price", "min_stock", "note")
+# Line breaks and tabs are fine in a note; every other control character is refused.
+_NOTE_ALLOWED = frozenset("\n\t")
 
 
 @dataclass(frozen=True)
@@ -93,6 +96,19 @@ def validate_defaults(raw: dict[str, str]) -> tuple[dict[str, object], dict[str,
     return values, errors
 
 
+def clean_note(raw: str) -> tuple[str, str | None]:
+    """The free note (issue #266): line breaks made uniform, spaces around it removed.
+
+    Returns the cleaned text and the translation key of the error, if any.
+    """
+    text = raw.replace("\r\n", "\n").replace("\r", "\n").strip()
+    if len(text) > NOTE_MAX_LENGTH:
+        return text, "article.error.note_too_long"
+    if any(not char.isprintable() and char not in _NOTE_ALLOWED for char in text):
+        return text, "article.error.note_chars"
+    return text, None
+
+
 def validate(raw: dict[str, str]) -> tuple[dict[str, object], dict[str, str]]:
     """Checks the submitted form.
 
@@ -111,6 +127,12 @@ def validate(raw: dict[str, str]) -> tuple[dict[str, object], dict[str, str]]:
             errors[name] = "article.error.too_long" if len(text) > limit else "article.error.chars"
         else:
             values[name] = text
+
+    note, note_error = clean_note(raw.get("note", ""))
+    if note_error:
+        errors["note"] = note_error
+    else:
+        values["note"] = note
 
     default_values, default_errors = validate_defaults(raw)
     values.update(default_values)

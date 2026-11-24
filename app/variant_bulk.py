@@ -146,6 +146,7 @@ def add_variant_bulk_routes(
                         number_key=number_key(number),
                         selling_price=None,
                         min_stock=None,
+                        note="",
                         active=True,
                         created_at=auth.utcnow(),
                         template_id=template_id,
