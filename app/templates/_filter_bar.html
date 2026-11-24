@@ -7,7 +7,9 @@
     {% for f in bar.fields %}
     <label class="filter-field">
       <span>{{ f.label }}</span>
-      {% if f.choices %}
+      {% if f.kind == 'date' %}
+      <input type="date" name="{{ f.name }}" value="{{ f.value }}" hx-get="{{ bar.path }}" hx-include="closest form" hx-trigger="change" hx-sync="closest form:replace" hx-target="#{{ region }}" hx-select="#{{ region }}" hx-select-oob="#filter-summary" hx-swap="outerHTML" hx-push-url="true">
+      {% elif f.choices %}
       <select name="{{ f.name }}" hx-get="{{ bar.path }}" hx-include="closest form" hx-trigger="change" hx-sync="closest form:replace" hx-target="#{{ region }}" hx-select="#{{ region }}" hx-select-oob="#filter-summary" hx-swap="outerHTML" hx-push-url="true">
         {% for value, text in f.choices %}<option value="{{ value }}"{% if value == f.value %} selected{% endif %}>{{ text }}</option>{% endfor %}
       </select>

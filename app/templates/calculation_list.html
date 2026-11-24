@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% from "_data_table.html" import head, actions_head, chip, icon_link, icon_post with context %}
 {% from "_form_macros.html" import popup_attrs %}
+{% from "_filter_bar.html" import filter_bar, filter_chips with context %}
 {% block title %}{{ t('calc.list.title') }}{% if article %} – {{ article.number }}{% endif %} – {{ app_name }}{% endblock %}
 {% block content %}
 {% set filter = ('?filter=' ~ article.id) if article else '' %}
@@ -21,20 +22,25 @@
   </div>
 </div>
 {% if article %}<p>{{ article.number }} · {{ article.name }}</p>{% endif %}
+{{ filter_bar(filters, 'calc-list') }}
 {# Refreshed after a pop-up was saved (app.js) #}
 <div id="calc-list" data-popup-refresh>
 {% if notice %}<p role="status"><ins>{{ t('calc.notice.' ~ notice) }}</ins></p>{% endif %}
+{{ filter_chips(filters) }}
 {% if rows %}
+<p class="muted">{{ t('calc.list.unit') }}</p>
 <article class="data-card">
 <div class="data-scroll">
-<table class="data-table">
+<table class="data-table wrap-head sticky-actions">
   <thead>
     <tr>
-      {{ head(t('calc.col.article'), sort_links.article) }}
+      {{ head(t('article.field.number'), sort_links.number) }}
+      {{ head(t('article.field.name'), sort_links.name) }}
       {{ head(t('calc.col.date'), sort_links.date) }}
       {{ head(t('calc.col.printer'), sort_links.printer) }}
-      {{ head(t('calc.col.cost'), sort_links.cost, numeric=true) }}
-      {{ head(t('calc.col.price'), sort_links.price, numeric=true) }}
+      {% for key in ('material', 'power', 'machine', 'labour', 'cost', 'margin', 'price', 'profit') %}
+      {{ head(t('calc.col.' ~ key), sort_links[key], numeric=true) }}
+      {% endfor %}
       {{ head(t('calc.col.state')) }}
       {{ actions_head() }}
     </tr>
@@ -42,14 +48,17 @@
   <tbody>
     {% for r in rows %}
     <tr class="calc-row" data-id="{{ r.id }}">
-      <td class="cell-strong"><a href="/articles/{{ r.article_id }}">{{ r.article }}</a></td>
-      <td><a {{ popup_attrs('/calculation/' ~ r.id) }}>{{ r.date }}</a></td>
-      <td>{{ r.printer }}</td>
-      <td class="num">{{ r.cost }}</td>
-      <td class="num">{{ r.price }}</td>
-      <td>{% if r.is_main %}{{ chip(t('calc.chip.main'), 'active') }}{% endif %}</td>
+      <td class="cell-strong col-number">{{ r.number }}</td>
+      <td class="col-name">{{ r.name }}</td>
+      <td class="col-date">{{ r.date }}</td>
+      <td class="col-printer">{{ r.printer }}</td>
+      {% for key in ('material', 'power', 'machine', 'labour', 'cost', 'margin', 'price', 'profit') %}
+      <td class="num col-{{ key }}">{{ r.texts[key] }}</td>
+      {% endfor %}
+      <td class="col-state">{% if r.is_main %}{{ chip(t('calc.chip.main'), 'active') }}{% endif %}</td>
       <td class="row-actions">
         {{ icon_link('/calculation/' ~ r.id, 'view', true, r.date) }}
+        {{ icon_link('/articles/' ~ r.article_id, 'article', false, r.number) }}
         {% if can('edit') %}
         {{ icon_link('/calculation/' ~ r.id ~ '/edit' ~ filter, 'edit', true, r.date) }}
         {{ icon_link('/calculation/new?copy=' ~ r.id ~ ('&filter=' ~ article.id if article else ''), 'copy', true, r.date) }}
@@ -63,6 +72,9 @@
 </table>
 </div>
 </article>
+{# Just the article filter: the plain hint (nothing saved); other filters: no hits. #}
+{% elif filters.chips|rejectattr('name', 'equalto', 'article')|list %}
+<article class="empty-hint"><p>{{ t('filter.no_results') }}</p></article>
 {% else %}
 <p>{{ t('calc.list.empty') }}</p>
 {% endif %}

@@ -18,10 +18,11 @@
 <th scope="col" class="row-actions"><span class="visually-hidden">{{ t('table.actions') }}</span></th>
 {% endmacro %}
 
-{# The drawing of an icon button. kind: view, edit, copy, main, book, add_value, password, two_factor, cancel, delete, activate, deactivate, take, release, split, up, down or grip. #}
+{# The drawing of an icon button. kind: view, article, edit, copy, main, book, add_value, password, two_factor, cancel, delete, activate, deactivate, take, release, split, up, down or grip. #}
 {% macro icon_svg(kind) %}
 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
   {% if kind == 'view' %}<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/>
+  {% elif kind == 'article' %}<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14L21 3"/>
   {% elif kind == 'book' or kind == 'add_value' %}<circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/>
   {% elif kind == 'copy' %}<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/>
   {% elif kind == 'main' %}<path d="M12 3l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.8l-5.8 3.1 1.1-6.5L2.6 9.8l6.5-.9z"/>

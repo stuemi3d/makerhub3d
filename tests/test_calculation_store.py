@@ -318,7 +318,8 @@ def test_8_every_article_and_variant_has_its_own_calculations(ready: Ready) -> N
     assert [c.is_main for c in stored()] == [True, True]
     html = ready.client.get(f"/calculation?article={one}").text
     assert html.count('<tr class="calc-row') == 1
-    assert address(one, other) not in html and "3D-0002" not in html
+    table = html[html.index("<table") :]
+    assert address(one, other) not in html and "3D-0002" not in table
     both = ready.client.get("/calculation").text
     assert both.count('<tr class="calc-row') == 2
     assert "3D-0001" in both and "3D-0002" in both
@@ -675,8 +676,8 @@ def test_186_the_list_shows_the_article_of_every_row_and_the_new_button(ready: R
     article_id = base()
     saved_one(ready, article_id)
     html = ready.client.get("/calculation").text
-    assert DE["calc.col.article"] in html
-    assert f'<a href="/articles/{article_id}">3D-0001' in html
+    assert DE["article.field.number"] in html and DE["article.field.name"] in html
+    assert f'<a class="icon-btn" href="/articles/{article_id}"' in html
     assert 'hx-get="/calculation/start"' in html
     assert "data-popup-refresh" in html
     # Opened from the list without a filter the actions carry no filter
@@ -688,7 +689,8 @@ def test_186_the_filtered_list_names_the_article_and_hides_other_articles(ready:
     saved_one(ready, one)
     saved_one(ready, two)
     html = ready.client.get(f"/calculation?article={one}").text
-    assert "3D-0001" in html and "3D-0002" not in html
+    table = html[html.index("<table") :]
+    assert "3D-0001" in table and "3D-0002" not in table
     assert ready.client.get("/calculation?article=999").status_code == 404
     assert ready.client.get("/calculation?article=x").status_code == 404
 

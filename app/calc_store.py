@@ -7,7 +7,7 @@ by the caller's transaction through the functions here.
 
 from dataclasses import dataclass
 from datetime import date
-from decimal import Decimal
+from decimal import ROUND_FLOOR, ROUND_HALF_UP, Decimal
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -24,7 +24,20 @@ from app.models import (
 )
 from app.production_form import input_text
 
-SORT_KEYS = ("article", "date", "printer", "cost", "price")
+SORT_KEYS = (
+    "number",
+    "name",
+    "date",
+    "printer",
+    "material",
+    "power",
+    "machine",
+    "labour",
+    "cost",
+    "margin",
+    "price",
+    "profit",
+)
 DEFAULT_SORT = ("date", "desc")
 
 
@@ -173,17 +186,45 @@ def delete_for_article(db: Session, article_id: int) -> int:
 
 @dataclass(frozen=True)
 class ListRow:
+    """One row of the list: texts to show and the real values to sort by. The money columns
+    are per piece, with the share of the scrap, so they add up to the cost."""
+
     id: int
     article_id: int
-    article: str
-    date: str
-    sort_date: tuple[date, int]
+    number: str
+    name: str
+    day: date
     printer: str
-    cost: str
-    price: str
-    sort_cost: Decimal
-    sort_price: Decimal
+    texts: dict[str, str]
+    values: dict[str, Decimal]
     is_main: bool
+
+    @property
+    def date(self) -> str:
+        return self.texts["date"]
+
+
+def parts_per_piece(item: Calculation) -> dict[str, Decimal]:
+    """Material, power and machine of one piece including the scrap, labour per piece."""
+    scrap = 1 + item.scrap_percent / 100
+    return {
+        "material": item.material_per_plate / item.pieces * scrap,
+        "power": item.power_per_plate / item.pieces * scrap,
+        "machine": item.machine_per_plate / item.pieces * scrap,
+        "labour": item.labour_cost,
+    }
+
+
+def rounded_parts(parts: dict[str, Decimal], total: Decimal) -> dict[str, Decimal]:
+    """The parts rounded to the cent so that they add up to the rounded total exactly: the
+    part that lost the most by rounding down gets the missing cent (largest remainder)."""
+    cent = Decimal("0.01")
+    exact = {key: value.quantize(cent, rounding=ROUND_FLOOR) for key, value in parts.items()}
+    missing = int((total.quantize(cent, rounding=ROUND_HALF_UP) - sum(exact.values())) / cent)
+    by_loss = sorted(parts, key=lambda key: exact[key] - parts[key])
+    for key in by_loss[: max(missing, 0)]:
+        exact[key] += cent
+    return exact
 
 
 def rows(db: Session, language: str, article_id: int | None = None) -> list[ListRow]:
@@ -191,22 +232,33 @@ def rows(db: Session, language: str, article_id: int | None = None) -> list[List
     query = select(Calculation, Article).join(Article, Article.id == Calculation.article_id)
     if article_id is not None:
         query = query.where(Calculation.article_id == article_id)
-    return [
-        ListRow(
-            id=item.id,
-            article_id=article.id,
-            article=f"{article.number} · {article.name}",
-            date=stock.format_date(item.created_on, language),
-            sort_date=(item.created_on, item.id),
-            printer=item.printer_name,
-            cost=cents(item.cost_with_labour, language),
-            price=cents(item.suggested_price, language),
-            sort_cost=item.cost_with_labour,
-            sort_price=item.suggested_price,
-            is_main=item.is_main,
+    found = []
+    for item, article in db.execute(query):
+        parts = parts_per_piece(item)
+        money = {
+            **rounded_parts(parts, item.cost_with_labour),
+            "cost": item.cost_with_labour,
+            "price": item.suggested_price,
+            "profit": item.profit,
+        }
+        found.append(
+            ListRow(
+                id=item.id,
+                article_id=article.id,
+                number=article.number,
+                name=article.name,
+                day=item.created_on,
+                printer=item.printer_name,
+                texts={
+                    "date": stock.format_date(item.created_on, language),
+                    "margin": f"{input_text(item.margin_percent, language)} %",
+                    **{key: cents(value, language) for key, value in money.items()},
+                },
+                values={**money, "margin": item.margin_percent},
+                is_main=item.is_main,
+            )
         )
-        for item, article in db.execute(query)
-    ]
+    return found
 
 
 def arranged(
@@ -220,14 +272,13 @@ def arranged(
     links of the table."""
     chosen = table_sort.chosen_sort(SORT_KEYS, sort, direction)
     key, order = chosen or DEFAULT_SORT
-    shown = sorted(shown, key=lambda row: row.sort_date, reverse=True)
+    shown = sorted(shown, key=lambda row: (row.day, row.id), reverse=True)
     column = {
-        "article": lambda row: row.article.casefold(),
-        "date": lambda row: row.sort_date,
+        "number": lambda row: row.number.casefold(),
+        "name": lambda row: row.name.casefold(),
+        "date": lambda row: (row.day, row.id),
         "printer": lambda row: row.printer.casefold(),
-        "cost": lambda row: row.sort_cost,
-        "price": lambda row: row.sort_price,
-    }[key]
+    }.get(key) or (lambda row: row.values[key])
     shown = sorted(shown, key=column, reverse=order == "desc")
     return shown, table_sort.sort_links(path, SORT_KEYS, chosen, DEFAULT_SORT, keep)
 
