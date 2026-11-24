@@ -11,13 +11,22 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app import print_list, production, production_form, production_view, stock
+from app import (
+    list_filter,
+    print_list,
+    production,
+    production_form,
+    production_view,
+    stock,
+    table_sort,
+)
 from app.archive_parts import archive_parts
 from app.article_pages import confirmed, varied, wants_popup
 from app.bambuddy import BambuddyClient, BambuddyError
 from app.calc_form import spool_name
 from app.default_price import standard_price_spools
 from app.i18n import translate
+from app.list_filter import Field
 from app.models import AppSettings, Article, BambuddyConnection
 from app.permissions import Permission, requires
 from app.production_parts import detect, same_article, stored_detected
@@ -343,6 +352,53 @@ def add_production_routes(
 
     # --- Productions: list, detail, cancelling ------------------------------------------------
 
+    def list_fields(rows: list[production_view.ListRow]) -> tuple[Field, ...]:
+        """The filter bar: the choices are the articles and printers that productions have."""
+        with new_session() as db:
+            articles = db.execute(
+                select(Article.id, Article.number, Article.name)
+                .where(Article.id.in_({i for row in rows for i in row.article_ids}))
+                .order_by(Article.number_key)
+            ).all()
+        printers = sorted({name for row in rows for name in row.printers}, key=str.casefold)
+        return (
+            Field(
+                "article",
+                "production.filter.article",
+                (
+                    ("", "production.filter.article.all"),
+                    *((str(a.id), f"{a.number} · {a.name}") for a in articles),
+                ),
+            ),
+            Field("from", "production.filter.from", kind="date"),
+            Field("to", "production.filter.to", kind="date"),
+            Field(
+                "printer",
+                "production.filter.printer",
+                (("", "production.filter.printer.all"), *((n, n) for n in printers)),
+            ),
+            Field(
+                "status",
+                "production.filter.state",
+                (
+                    ("all", "production.filter.status.all"),
+                    ("booked", "production.filter.status.booked"),
+                    ("cancelled", "production.filter.status.cancelled"),
+                ),
+                "all",
+            ),
+        )
+
+    def keeps(row: production_view.ListRow, values: dict[str, str]) -> bool:
+        first, last = list_filter.date_of(values["from"]), list_filter.date_of(values["to"])
+        return (
+            (first is None or row.booked_on >= first)
+            and (last is None or row.booked_on <= last)
+            and (not values["article"] or int(values["article"]) in row.article_ids)
+            and (not values["printer"] or values["printer"] in row.printers)
+            and (values["status"] == "all" or row.cancelled == (values["status"] == "cancelled"))
+        )
+
     @app.get("/production/list", response_class=HTMLResponse, dependencies=view_right)
     def production_overview(
         request: Request,
@@ -352,14 +408,31 @@ def add_production_routes(
         direction: str | None = Query(None, alias="dir"),
     ) -> HTMLResponse:
         with new_session() as db:
-            rows = production_view.list_rows(db, language)
-        rows, links = production_view.arranged(rows, sort, direction)
+            everything = production_view.list_rows(db, language)
+        fields = list_fields(everything)
+        values = list_filter.read(fields, dict(request.query_params))
+        rows = [row for row in everything if keeps(row, values)]
+        chosen = table_sort.chosen_sort(production_view.SORT_KEYS, sort, direction)
+        sorting = {"sort": chosen[0], "dir": chosen[1]} if chosen else {}
+        rows, links = production_view.arranged(
+            rows, sort, direction, list_filter.params(fields, values)
+        )
+        bar = list_filter.build(
+            "/production/list",
+            fields,
+            values,
+            lambda key: translate(language, key),
+            sorting,
+            lambda day: stock.format_date(day, language),
+        )
         return render(
             request,
             "production_list.html",
             "nav.production",
             rows=rows,
+            has_any=bool(everything),
             sort_links=links,
+            filters=bar,
             booked=booked == "1",
             cancelled=cancelled == "1",
         )

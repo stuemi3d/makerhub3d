@@ -428,6 +428,7 @@ def check(db: Session, draft: Draft, found: dict[int, PrintRow], today: date) ->
     checked = Checked()
     errors = checked.errors
     printers = load_printers(db)
+    names = dict(printers.choices)
 
     if not draft.ids:
         errors["prints"] = "production.error.no_print"
@@ -461,6 +462,7 @@ def check(db: Session, draft: Draft, found: dict[int, PrintRow], today: date) ->
                 filament_type=row.filament_type,
                 filament_color=row.filament_color,
                 waste_share=waste_share,
+                printer_name=names.get(device) if device is not None else None,
             )
         )
 
