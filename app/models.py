@@ -103,6 +103,9 @@ class Article(Base):
     # Optional image (issue #267): the generated file name in /data and the shown name
     image_stored: Mapped[str | None] = mapped_column(String(50))
     image_name: Mapped[str | None] = mapped_column(String(80))
+    # Optional .gcode.3mf file (issue #268), only kept for downloading: generated and shown name
+    print_file_stored: Mapped[str | None] = mapped_column(String(50))
+    print_file_name: Mapped[str | None] = mapped_column(String(80))
     active: Mapped[bool] = mapped_column(Boolean, server_default=true())
     created_at: Mapped[datetime] = mapped_column(DateTime)
     # Set for a variant (issue #49): the template it belongs to. Price and minimum

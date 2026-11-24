@@ -1,5 +1,6 @@
 {% extends "_popup_layout.html" if popup else "base.html" %}
 {% from "_form_macros.html" import field_attrs, feedback %}
+{% from "_file_field.html" import file_field %}
 {% block title %}{{ t('variant.new.title') }} – {{ app_name }}{% endblock %}
 {% block content %}
 {% if not popup %}
@@ -37,7 +38,10 @@
   <label for="note">{{ t('article.field.note') }}</label>
   <textarea rows="3" maxlength="2000" {{ field_attrs('note', errors) }}>{{ values.get('note', '') }}</textarea>
   {{ feedback('note', errors, t, 'article.hint.') }}
-  {% include "_image_field.html" %}
+  {% set waiting_files = waiting_files or {} %}
+  {% set removing = removing or {} %}
+  {{ file_field('image', 'image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp', article.image_name if article else none, waiting_files.get('image'), removing.get('image'), errors, t) }}
+  {{ file_field('print_file', '.3mf', article.print_file_name if article else none, waiting_files.get('print_file'), removing.get('print_file'), errors, t) }}
   <div class="form-actions">
     <button type="submit">{{ t('article.create') }}</button>
     {% if popup %}<button type="button" class="secondary outline" data-popup-close>{{ t('article.cancel') }}</button>

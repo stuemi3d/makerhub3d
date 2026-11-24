@@ -365,11 +365,11 @@
   border-radius: var(--pico-border-radius);
 }
 
-.image-state {
+.file-state {
   margin-bottom: 0.25rem;
 }
 
-.image-remove {
+.file-remove {
   margin-bottom: 1rem;
 }
 

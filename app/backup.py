@@ -2,7 +2,8 @@
 
 A backup is one zip archive with the database (`makerhub3d.db`), the stored calculation
 files (`calculation_files/<generated name>`) and the images of articles
-(`article_images/<generated name>`, issue #267). Waiting uploads are not part of it. Older
+(`article_images/<generated name>`, issue #267) and their .gcode.3mf files
+(`article_files/<generated name>`, issue #268). Waiting uploads are not part of it. Older
 backups are plain `.db` files (database only); they are still listed, downloaded, cleaned up
 and can be restored.
 
@@ -29,11 +30,12 @@ import zipfile
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
+from functools import partial
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from app.article_image import FOLDER as IMAGES_FOLDER
-from app.article_image import valid_name as valid_image_name
+from app.article_attachments import KINDS as ARTICLE_KINDS
+from app.article_attachments import valid_name as valid_article_name
 from app.calculation_file_store import FOLDER as FILES_FOLDER
 from app.calculation_file_store import valid_name as valid_file_name
 from app.config import Settings
@@ -51,7 +53,10 @@ _NAME = re.compile(r"makerhub3d-(\d{8})-(\d{6})-(daily|manual|premigration)\.(db
 ARCHIVE_DB = "makerhub3d.db"
 # The folders of stored files in the data directory (and in the archive), with the check of
 # the generated names that may be in each
-FOLDERS = {FILES_FOLDER: valid_file_name, IMAGES_FOLDER: valid_image_name}
+FOLDERS = {
+    FILES_FOLDER: valid_file_name,
+    **{kind.folder: partial(valid_article_name, kind) for kind in ARTICLE_KINDS},
+}
 
 
 class Kind(StrEnum):
@@ -306,7 +311,7 @@ def _check_database(path: Path) -> None:
 
 def restore(settings: Settings, name: str) -> None:
     """Puts a backup back (the app must be stopped). A `.zip` replaces the database and the
-    stored files (calculations and article images); an old `.db` backup replaces only the
+    stored files (calculations, article images and files); an old `.db` backup replaces only the
     database. Everything is
     unpacked and checked in a staging folder first; the database is replaced last, so a
     failure before that leaves the database as it was."""

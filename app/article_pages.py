@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session, object_session
 
 from app import (
     analysis,
-    article_image,
+    article_attachments,
     article_productions,
     article_purge,
     audit,
@@ -30,8 +30,8 @@ from app import (
     stock,
     variants,
 )
+from app.article_attachments import FileForm
 from app.article_form import FIELD_NAMES, form_values, number_key, validate
-from app.article_image import ImageForm
 from app.calculation_file_store import FileStore
 from app.i18n import translate
 from app.list_filter import Field
@@ -154,25 +154,13 @@ def varied(response: Response) -> Response:
     return response
 
 
-def image_context(image: ImageForm, errors: dict[str, str], store: FileStore) -> dict:
-    """What the form shows about the image after a refused save: the waiting image (its token
-    travels in the form) and the error of a refused upload. An image that is no longer waiting
-    (a save that failed at the last moment already took it) is not offered again."""
-    if image.error:
-        errors["image"] = image.error
-    chosen = image.chosen
-    if chosen is not None and not store.has_pending(chosen.token):
-        chosen = None
-    return {"waiting_image": chosen, "image_remove": image.remove}
-
-
 def add_article_routes(
     app: FastAPI,
     new_session: Callable[[], Session],
     render: Callable[..., HTMLResponse],
     read_form: Callable[[Request, tuple[str, ...]], Awaitable[dict[str, str]]],
     language: str,
-    image_store: FileStore,
+    file_stores: dict[str, FileStore],
 ) -> None:
     view = [requires(Permission.VIEW)]
     edit = [requires(Permission.EDIT)]
@@ -196,6 +184,7 @@ def add_article_routes(
             "image_name": article.image_name,
             # Part of the address, so that a browser never shows a replaced image from its cache
             "image_version": (article.image_stored or "")[:8],
+            "print_file_name": article.print_file_name,
             "template": None if template is None else {"id": template.id, "name": template.name},
             "inherited": variants.inherited_texts(template, language) if template else {},
             "sources": {name: variants.source(article, name) for name in variants.INHERITED_FIELDS}
@@ -280,12 +269,11 @@ def add_article_routes(
         return form_page(request, article=None, values={}, errors={})
 
     def create(
-        actor_id: int, raw: dict[str, str], image: ImageForm
+        actor_id: int, raw: dict[str, str], files: dict[str, FileForm]
     ) -> tuple[dict[str, str], int | None]:
         """Saves a new article; returns the errors (empty when saved) and the new id."""
         values, errors = validate(raw)
-        if image.error:
-            errors["image"] = image.error
+        errors.update(article_attachments.errors_of(files))
         if errors:
             return errors, None
         try:
@@ -303,10 +291,10 @@ def add_article_routes(
                     created_at=auth.utcnow(),
                 )
                 db.add(article)
-                change = article_image.apply(db, image_store, article, image)
+                changes = article_attachments.apply(db, file_stores, article, files)
                 db.flush()
                 audit.record_change(
-                    db, actor_id, "article.created", article.number, [change] if change else None
+                    db, actor_id, "article.created", article.number, changes or None
                 )
                 return {}, article.id
         except IntegrityError:
@@ -316,10 +304,10 @@ def add_article_routes(
     @app.post("/articles/new", response_class=HTMLResponse, dependencies=edit)
     async def create_article(request: Request) -> Response:
         raw = await read_form(request, FIELD_NAMES)
-        image = await article_image.read(request, image_store)
-        errors, article_id = await run_in_threadpool(create, request.state.user.id, raw, image)
+        files = await article_attachments.read(request, file_stores)
+        errors, article_id = await run_in_threadpool(create, request.state.user.id, raw, files)
         if errors:
-            extra = image_context(image, errors, image_store)
+            extra = article_attachments.context(files, errors, file_stores)
             return form_page(request, 422, article=None, values=raw, errors=errors, **extra)
         if wants_popup(request):
             return saved_in_popup()
@@ -369,11 +357,14 @@ def add_article_routes(
             return _attribute_fields(db, article)
 
     def change(
-        article_id: int, actor_id: int, raw: dict[str, str], fields: list[dict], image: ImageForm
+        article_id: int,
+        actor_id: int,
+        raw: dict[str, str],
+        fields: list[dict],
+        files: dict[str, FileForm],
     ) -> tuple[dict[str, str], dict]:
         values, errors = validate(raw)
-        if image.error:
-            errors["image"] = image.error
+        errors.update(article_attachments.errors_of(files))
         try:
             with new_session() as db, db.begin():
                 article = db.get(Article, article_id)
@@ -410,9 +401,7 @@ def add_article_routes(
                     details += variants.value_changes(
                         variants.describe(db, old_choices), variants.describe(db, choices)
                     )
-                image_change = article_image.apply(db, image_store, article, image)
-                if image_change:
-                    details.append(image_change)
+                details += article_attachments.apply(db, file_stores, article, files)
                 if details:
                     for name, value in values.items():
                         setattr(article, name, value)
@@ -430,12 +419,12 @@ def add_article_routes(
         fields = await run_in_threadpool(attribute_fields_of, article_id)
         names = FIELD_NAMES + tuple(variants.field_name(field["id"]) for field in fields)
         raw = await read_form(request, names)
-        image = await article_image.read(request, image_store)
+        files = await article_attachments.read(request, file_stores)
         errors, article = await run_in_threadpool(
-            change, article_id, request.state.user.id, raw, fields, image
+            change, article_id, request.state.user.id, raw, fields, files
         )
         if errors:
-            extra = image_context(image, errors, image_store)
+            extra = article_attachments.context(files, errors, file_stores)
             return form_page(
                 request,
                 422,
@@ -601,12 +590,30 @@ def add_article_routes(
         with new_session() as db:
             article = db.get(Article, article_id)
             stored = None if article is None else article.image_stored
-        path = image_store.path_of(stored)
+        path = file_stores["image"].path_of(stored)
         if path is None:
             raise HTTPException(status_code=404)
         return FileResponse(
             path,
-            media_type=article_image.MEDIA_TYPES[path.suffix],
+            media_type=article_attachments.MEDIA_TYPES[path.suffix],
+            headers={"X-Content-Type-Options": "nosniff", "Cache-Control": "private"},
+        )
+
+    @app.get("/articles/{article_id}/file", dependencies=view)
+    def article_print_file(article_id: int) -> Response:
+        """The stored .gcode.3mf file for every role, only after login: always a download with
+        a fixed type, under the cleaned name of the upload (never a path)."""
+        with new_session() as db:
+            article = db.get(Article, article_id)
+            stored = None if article is None else article.print_file_stored
+            name = None if article is None else article.print_file_name
+        path = file_stores["print_file"].path_of(stored)
+        if path is None:
+            raise HTTPException(status_code=404)
+        return FileResponse(
+            path,
+            media_type="application/octet-stream",
+            filename=name or path.name,
             headers={"X-Content-Type-Options": "nosniff", "Cache-Control": "private"},
         )
 

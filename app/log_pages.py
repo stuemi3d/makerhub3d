@@ -32,6 +32,7 @@ _ARTICLE_FIELDS = {
     "min_stock",
     "note",
     "image",
+    "print_file",
     "template",
     "attribute_value",
     "abbreviation",
