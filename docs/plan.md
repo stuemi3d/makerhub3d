@@ -67,7 +67,7 @@ Der Artikel ist der Knotenpunkt; alles andere hängt über die Artikelnummer an 
 | Tabelle | Wichtigste Felder | Verknüpfung nach außen |
 | --- | --- | --- |
 | Artikelvorlage | Vorlagennummer, Name, Beschreibung, Merkmale (z. B. Farbe, Größe; jeder Merkmalswert mit Kürzel), Standardwerte für Preis und Mindestbestand, aktiv | nur Vorlage: kein Bestand, kein Verkauf |
-| Artikel | Artikelnummer, Bezeichnung, optional Vorlage + Merkmalswerte (= Variante), Soll-Verkaufspreis, Mindestbestand, aktiv | Artikelnummer = Schlüssel zur Rechnungs-Software |
+| Artikel | Artikelnummer, Bezeichnung, optional Vorlage + Merkmalswerte (= Variante), Soll-Verkaufspreis, Mindestbestand, aktiv; freiwillig: Notiz, ein Bild, eine `.gcode.3mf`-Datei (siehe „Notiz, Bild und Datei am Artikel“ unten in diesem Abschnitt; #265) | Artikelnummer = Schlüssel zur Rechnungs-Software |
 | Kalkulation (optional) | Artikel (auch eine Variante, nie eine Vorlage), Datum, „maßgeblich“-Kennzeichen, Art (mit Datei / von Hand), optional die gespeicherte `.gcode.3mf`-Datei, Materialzeilen (Material, Gramm; je Zeile eine oder mehrere Bambuddy-Spulen mit Gramm und Preis/kg als Wert), Druckzeit, Teile pro Platte, Drucker, Ausschussquote %, Rüstzeit pro Platte (Min.), Nacharbeit pro Stück (Min.), Gewinnaufschlag %, Ergebnis pro Stück (Selbstkosten ohne/mit Arbeitszeit, Verkaufspreis-Vorschlag) | Spule aus Bambuddy (nur gelesen) |
 | Produktion | Datum, Notiz, Gesamtkosten, Arbeitszeit (Minuten), Stundensatz und Arbeitskosten als Wert, Ausschuss in Stück (früher „Fehldruck-Stücke“; ab #215 aus der Teile-Maske vorbelegt und nur zur Information, bis #216 umgesetzt ist; danach je Druck Ausschussanteil in % und Ausschussbetrag als Wert, siehe „Teile einer Platte und Ausschuss“ unten in diesem Abschnitt), storniert | – |
 | Produktion – Drucke | Produktion, Material-, Strom-, Maschinenkosten als Wert (Maschinenkosten = Druckstunden × Maschinensatz des gewählten Druckers, Satz siehe Abschnitt 6; der Verschleiß steckt im Satz und wird nicht aus Bambuddy übernommen), Druckzeit, Filament in Gramm und Strom in kWh als Wert (leer, wenn Bambuddy sie nicht kennt), Filament (Material als Text, Farben als Farbcodes), Status (erfolgreich/fehlgeschlagen) | Bambuddy-Archiv-ID |
@@ -96,12 +96,23 @@ Der Artikel ist der Knotenpunkt; alles andere hängt über die Artikelnummer an 
 
 **Nummernschema:** Die Vorlage hat eine Vorlagennummer (z. B. `123456`), jeder Merkmalswert ein Kürzel (z. B. blau = `bl`, rot = `rt`, mittel = `m`). Beim Anlegen einer Variante wird die Artikelnummer automatisch zusammengesetzt: Vorlagennummer + Kürzel der gewählten Werte, in der Reihenfolge der Merkmale der Vorlage, getrennt durch `-` (z. B. `123456-bl-m`). Im Formular ist der Vorschlag vor dem Speichern änderbar; die Eindeutigkeit der Artikelnummer wird weiterhin geprüft. Artikel ohne Vorlage bekommen ihre Nummer wie bisher von Hand.
 
+**Notiz, Bild und Datei am Artikel (#265):** Jeder Artikel, auch jede Variante, hat drei freiwillige Felder. Vorlagen haben sie nicht; eine Variante erbt sie nicht von der Vorlage.
+
+- **Notiz:** freier, mehrzeiliger Text (#266).
+- **Bild:** ein Bild pro Artikel, JPG, PNG oder WebP, höchstens 5 MB (#267).
+- **`.gcode.3mf`-Datei:** eine Datei pro Artikel, z. B. um den Artikel später wieder zu drucken; sie wird nur abgelegt und lässt sich herunterladen, am Artikel wird nichts daraus berechnet (#268). Die Kalkulation bietet sie an (siehe Abschnitt 6, #269).
+- Alle drei lassen sich **beim Anlegen und beim Bearbeiten** eines Artikels oder einer einzelnen Variante setzen, ersetzen und entfernen (im selben Pop-up). Bei „Alle Kombinationen erzeugen“ (mehrere Varianten auf einmal aus der Vorlage) bleiben sie leer.
+- Die Artikel-Ansicht zeigt Notiz und Bild sowie den Dateinamen mit „Herunterladen“. Die Übersichtstabelle der Artikel bleibt unverändert.
+- Rechte: Wer Artikel anlegen und bearbeiten darf, darf auch diese Felder ändern; ansehen und herunterladen dürfen alle Rollen.
+- Ändern, Ersetzen und Entfernen steht wie andere Artikel-Änderungen im Änderungsprotokoll.
+- Wird ein Artikel gelöscht (jede Stufe unten), werden sein Bild und seine Datei mitgelöscht. Deaktivieren ändert daran nichts.
+
 **Löschen von Artikeln und Vorlagen:** Normalfall ist „Deaktivieren“ (der Artikel verschwindet aus den Listen und kann wieder aktiviert werden). Löschen gibt es in vier Stufen:
 
 1. **Nichts verknüpft:** „Löschen“ mit Rückfrage (Admin und Mitarbeiter; „Nur lesen“ nie).
 2. **Nur Kalkulationen verknüpft:** Löschen möglich (Admin und Mitarbeiter); die Rückfrage nennt, was mitgelöscht wird, und rät zum Deaktivieren.
 3. **Produktionen, Lagerbewegungen oder Verkäufe verknüpft:** für Mitarbeiter nur Deaktivieren, mit erklärendem Hinweis.
-4. **Admin, „Endgültig löschen“:** löscht den Artikel samt allem Zugehörigen (bei Kalkulationen auch die gespeicherten Dateien). Die Warnung nennt die Anzahl der betroffenen Datensätze und weist darauf hin, dass es nicht rückgängig zu machen ist; zur Bestätigung wird die Artikelnummer abgetippt. Das Änderungsprotokoll hält fest, wer wann welchen Artikel mit wie vielen Datensätzen gelöscht hat. Der Button wird nur angeboten, wenn Stufe 3 gilt (etwas hängt am Artikel). Dies ist die einzige Ausnahme von der Regel „nie löschen, sondern stornieren“; gedacht vor allem für Testdaten zu Beginn.
+4. **Admin, „Endgültig löschen“:** löscht den Artikel samt allem Zugehörigen (bei Kalkulationen auch die gespeicherten Dateien, dazu Bild und Datei des Artikels). Die Warnung nennt die Anzahl der betroffenen Datensätze und weist darauf hin, dass es nicht rückgängig zu machen ist; zur Bestätigung wird die Artikelnummer abgetippt. Das Änderungsprotokoll hält fest, wer wann welchen Artikel mit wie vielen Datensätzen gelöscht hat. Der Button wird nur angeboten, wenn Stufe 3 gilt (etwas hängt am Artikel). Dies ist die einzige Ausnahme von der Regel „nie löschen, sondern stornieren“; gedacht vor allem für Testdaten zu Beginn.
 
 **Vorlagen** haben nie Bestand, Produktion oder Verkauf; für sie gelten deshalb nur die Stufen 1 und 2 plus Deaktivieren. Eine Vorlage lässt sich erst löschen, wenn alle ihre Varianten gelöscht sind. Eine deaktivierte Vorlage kann nicht mehr für neue Varianten genutzt werden; vorhandene Varianten bleiben unberührt.
 
@@ -129,7 +140,7 @@ Der Artikel ist der Knotenpunkt; alles andere hängt über die Artikelnummer an 
 | Seite | Inhalt |
 | --- | --- |
 | Dashboard (Startseite) | Kennzahlen des Zeitraums, Mindestbestand, nicht zugeordnete Drucke, Warnungen |
-| Artikel | Vorlagen und Artikel anlegen; Variante aus Vorlage erzeugen. Artikel-Detail mit Kacheln **Kalkulationen · Produktionen · Lager · Verkäufe** (jeweils mit Anzahl); Klick öffnet die Tabelle mit Links zur Produktion und zum Bambuddy-Druck. Oben auf der Seite steht die Schaltfläche „Auswertung ansehen“ (für alle Rollen) |
+| Artikel | Vorlagen und Artikel anlegen; Variante aus Vorlage erzeugen. Anlegen und Bearbeiten mit Notiz, Bild und `.gcode.3mf`-Datei (freiwillig; #265). Artikel-Detail mit Notiz, Bild und Datei (Herunterladen) sowie Kacheln **Kalkulationen · Produktionen · Lager · Verkäufe** (jeweils mit Anzahl); Klick öffnet die Tabelle mit Links zur Produktion und zum Bambuddy-Druck. Oben auf der Seite steht die Schaltfläche „Auswertung ansehen“ (für alle Rollen) |
 | Filamente (M3b) | Eigener **Menüpunkt „Filamente“** (oben in der Navigation, nicht in den Einstellungen). Tabelle mit dem gemeinsamen Baustein (Name, Marke, Material, Standardpreis, Status, Symbol-Buttons rechts); Anlegen, Bearbeiten, Deaktivieren und Löschen als Pop-ups. Dieselbe Seite: Bestand und Preise je Sorte, Liste „Spulen ohne Filament“ |
 | Kalkulation | Eigene Liste aller Kalkulationen wie bei der Produktion (Artikelnummer und Bezeichnung getrennt, Datum, Drucker, Material, Strom, Maschine und Arbeit pro Stück (mit anteiligem Ausschuss, sie ergeben die Selbstkosten), Selbstkosten, Aufschlag, Verkaufspreis-Vorschlag, Gewinn pro Stück, „maßgeblich“; Symbol-Buttons rechts: Ansehen, Artikel öffnen, Bearbeiten, Kopieren, maßgeblich, Löschen; alle Spalten sortierbar), mit Filterleiste (Suche, Artikel, Zeitraum, Drucker, nur maßgebliche; Issue #260); oben rechts „Neue Kalkulation“. Neu, Bearbeiten, Kopieren und Ansehen sind Pop-ups; im Formular: Artikel (oder Variante), „mit Datei“ oder „von Hand“, Drucker, Werte (aus der `.gcode.3mf` oder eingetippt), Spulen, Arbeit; Live-Berechnung; Speichern nur mit gewähltem Artikel oder gewählter Variante (ohne bleibt es eine Schnellkalkulation), die Datei wird mitgespeichert. Die Kachel „Kalkulationen“ am Artikel öffnet dieselbe Liste, gefiltert auf diesen Artikel |
 | Produktion | Liste erfolgreicher und fehlgeschlagener Bambuddy-Drucke; einen oder mehrere auswählen → Produktion mit einem Ergebnis-Artikel und den Gutteilen; Kosten pro Stück in der Vorschau prüfen; oder „Ignorieren“; ab #215 mit Teile-Maske (Auswahl „mehrere gleiche Artikel“ oder „verschiedene Einzelteile eines Artikels“, Menge, Gut und Ausschuss je Teil, siehe Abschnitt 4) |
@@ -150,7 +161,7 @@ Der Artikel ist der Knotenpunkt; alles andere hängt über die Artikelnummer an 
 
 1. Man wählt „mit Datei“ oder „von Hand“.
 2. Man wählt den Drucker (aktive Drucker; sein Modell braucht eine Stromtabelle).
-3. Werte: Mit Datei lädt man eine `.gcode.3mf` hoch (nur dieses Format; Größenlimit und Typprüfung); die Seite zeigt übersichtlich Druckzeit sowie Gramm und Zeitanteil je Material und Farbe. Von Hand trägt man diese Werte selbst ein. Der Zeitanteil in Minuten erscheint nur, wenn es mehr als ein Material gibt (bei einem Material ist er die Druckzeit); beim zweiten Material ist der erste mit der Druckzeit vorbelegt, und die Summe der Zeitanteile wird neben der Druckzeit angezeigt (nur als Hinweis). Die Menge (Teile pro Platte) trägt man immer ein; bei einer Datei ist sie vorbelegt, falls die Datei die Zahl liefert.
+3. Werte: Mit Datei lädt man eine `.gcode.3mf` hoch (nur dieses Format; Größenlimit und Typprüfung); die Seite zeigt übersichtlich Druckzeit sowie Gramm und Zeitanteil je Material und Farbe. Von Hand trägt man diese Werte selbst ein. Der Zeitanteil in Minuten erscheint nur, wenn es mehr als ein Material gibt (bei einem Material ist er die Druckzeit); beim zweiten Material ist der erste mit der Druckzeit vorbelegt, und die Summe der Zeitanteile wird neben der Druckzeit angezeigt (nur als Hinweis). Die Menge (Teile pro Platte) trägt man immer ein; bei einer Datei ist sie vorbelegt, falls die Datei die Zahl liefert. Hat der gewählte Artikel eine `.gcode.3mf`-Datei, bietet das Formular „Datei vom Artikel verwenden“ an; die Werte werden dann daraus gelesen wie bei einem Upload, und die Kalkulation speichert eine eigene Kopie (ein späteres Ersetzen oder Löschen der Datei am Artikel ändert die Kalkulation nicht; #269).
 4. Je Position wählt man die Spule(n) aus Bambuddy (siehe „Spulen“ unten).
 5. Optional Rüstzeit und Nacharbeit; Ausschussquote und Gewinnaufschlag kommen als Standard aus den Einstellungen und lassen sich ändern. Die Berechnung läuft live.
 6. Gespeichert wird nur mit gewähltem Artikel oder gewählter Variante (sonst ist „Speichern“ gesperrt, eine Schnellkalkulation ohne Speichern bleibt möglich); die Datei wird mit der Kalkulation gespeichert. Später denkbar: einen Artikel direkt in der Kalkulation anlegen.
@@ -239,9 +250,11 @@ Das Tool wird von Anfang an so gebaut, dass es als Open Source veröffentlicht *
 
 **Datei-Uploads:** Hochgeladene `.gcode.3mf`-Dateien (Kalkulation) haben ein Größenlimit und eine Typprüfung, werden nur in einem temporären Ordner ausgepackt und unter einem erzeugten Namen in `/data` abgelegt (nie unter dem Dateinamen des Nutzers). Die gespeicherten Dateien (`/data/calculation_files`) gehören zur Sicherung (Archiv mit Datenbank und Dateien).
 
+**Bild und Datei am Artikel (#265):** Die `.gcode.3mf`-Datei am Artikel wird genauso geprüft und abgelegt wie bei der Kalkulation, in einem eigenen Ordner unter `/data`. Bilder: höchstens 5 MB; der Typ (JPG, PNG, WebP) wird am Inhalt der Datei geprüft, nicht nur an der Endung; SVG und andere Formate werden abgelehnt (SVG kann Skripte enthalten). Abgelegt unter einem erzeugten Namen in einem eigenen Ordner unter `/data`, nie unter dem Dateinamen des Nutzers. Der ursprüngliche Dateiname wird nur als Text gespeichert (zum Anzeigen, escaped, und als bereinigter Name beim Herunterladen), nie als Pfad. Das Bild wird unverändert gespeichert und ausgeliefert, aber nie auf dem Server verarbeitet (keine Bildbearbeitung, keine neue Abhängigkeit). Bild und Datei werden nur nach Login ausgeliefert, mit festem Inhaltstyp und ohne dass der Browser den Typ selbst errät. Beide Ordner gehören zur Sicherung.
+
 **Dateien aus Bambuddy (ab #214):** Eine aus Bambuddy geladene Archiv-Datei wird wie ein Upload behandelt: Größenlimit, Typprüfung, Auspacken nur in einem temporären Ordner, Pfade nie aus Namen in der Datei übernehmen, Datei danach löschen. Der Zugriff ist nur lesend und läuft ausschließlich über den einen Bambuddy-Baustein.
 
-**Datensicherung:** nächtliche Sicherung der Datenbank und der gespeicherten Kalkulations-Dateien (ein Archiv) nach `/data/backups` über die SQLite-Backup-Funktion; 14 Tages- und 12 Monatssicherungen; automatische Sicherung vor jeder Migration; „Sicherung herunterladen“ für Admins; getestete Wiederherstellung mit Anleitung.
+**Datensicherung:** nächtliche Sicherung der Datenbank, der gespeicherten Kalkulations-Dateien sowie der Bilder und Dateien der Artikel (ein Archiv) nach `/data/backups` über die SQLite-Backup-Funktion; 14 Tages- und 12 Monatssicherungen; automatische Sicherung vor jeder Migration; „Sicherung herunterladen“ für Admins; getestete Wiederherstellung mit Anleitung.
 
 **Steuern:** Das Tool führt keine steuerrelevanten Aufzeichnungen (Rechnungen, Kasse, Buchhaltung liegen in der Rechnungs-Software). Es ist trotzdem „GoBD-nah“ gebaut: Stornieren statt Löschen (einzige Ausnahme: endgültiges Löschen eines Artikels durch einen Admin, protokolliert), Änderungsprotokoll.
 
@@ -356,6 +369,14 @@ Der Maintainer hat die frühere Bedingung („erst nach Alltagsnutzung von M1“
 - [x] Produktion: Teile-Maske mit Gut und Ausschuss pro Teil (#215)
 - [x] Ausschussbetrag speichern und in die Fehldruckkosten einrechnen (#216)
 - [ ] Später, eigene Entscheidung: normaler und außergewöhnlicher Ausschuss in den Stückkosten
+
+**M4b – Artikel: Notiz, Bild und Datei**
+
+- [x] Plan: Notiz, Bild und `.gcode.3mf`-Datei am Artikel (#265)
+- [ ] Artikel: Notiz (#266)
+- [ ] Artikel: Bild (#267)
+- [ ] Artikel: `.gcode.3mf`-Datei (#268)
+- [ ] Kalkulation: Datei vom Artikel anbieten (#269)
 
 **M5 – Anbindung Rechnungs-Software (später)**
 
