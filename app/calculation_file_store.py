@@ -5,6 +5,9 @@ saving the calculation moves it to its final place under another generated name.
 the upload never becomes a path: every path here is built from a name that matches a fixed
 pattern of hexadecimal characters. Nothing is unpacked here (the file is only read in memory by
 `slice_reader`).
+
+The same store keeps the images of articles (issue #267) in a folder of their own, with the
+endings of the allowed image types (see `app.article_image`).
 """
 
 import contextlib
@@ -21,21 +24,33 @@ SUFFIX = ".gcode.3mf"
 # An upload that is not saved within a day is forgotten
 PENDING_SECONDS = 24 * 3600
 _TOKEN = re.compile(r"[0-9a-f]{32}")
-_STORED = re.compile(r"[0-9a-f]{32}\.gcode\.3mf")
 
 
 def valid_token(text: str) -> bool:
     return bool(_TOKEN.fullmatch(text))
 
 
+def valid_stored(text: str | None, suffixes: tuple[str, ...]) -> bool:
+    """True for a generated name: 32 hexadecimal characters and one of the given endings."""
+    if not text or not _TOKEN.fullmatch(text[:32]):
+        return False
+    return text[32:] in suffixes
+
+
 def valid_name(text: str | None) -> bool:
-    return bool(text) and bool(_STORED.fullmatch(text or ""))
+    return valid_stored(text, (SUFFIX,))
 
 
 class FileStore:
-    def __init__(self, data_dir: Path) -> None:
-        self.folder = data_dir / FOLDER
+    def __init__(
+        self, data_dir: Path, folder: str = FOLDER, suffixes: tuple[str, ...] = (SUFFIX,)
+    ) -> None:
+        self.folder = data_dir / folder
         self.pending = self.folder / PENDING
+        self.suffixes = suffixes
+
+    def valid(self, name: str | None) -> bool:
+        return valid_stored(name, self.suffixes)
 
     def _make_folders(self) -> None:
         self.pending.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -53,13 +68,14 @@ class FileStore:
     def has_pending(self, token: str) -> bool:
         return valid_token(token) and (self.pending / token).is_file()
 
-    def adopt(self, token: str) -> str | None:
+    def adopt(self, token: str, suffix: str | None = None) -> str | None:
         """Moves the waiting upload to its final place; returns the generated name, or None when
         the token is unknown (also when it was used before)."""
-        if not valid_token(token):
+        suffix = self.suffixes[0] if suffix is None else suffix
+        if not valid_token(token) or suffix not in self.suffixes:
             return None
         source = self.pending / token
-        name = secrets.token_hex(16) + SUFFIX
+        name = secrets.token_hex(16) + suffix
         try:
             os.replace(source, self.folder / name)
         except OSError:
@@ -83,13 +99,13 @@ class FileStore:
 
     def path_of(self, name: str | None) -> Path | None:
         """The path of a stored file, or None for a name that is not ours or a missing file."""
-        if not valid_name(name):
+        if not self.valid(name):
             return None
         path = self.folder / str(name)
         return path if path.is_file() else None
 
     def delete(self, name: str | None) -> None:
-        if valid_name(name):
+        if self.valid(name):
             with contextlib.suppress(OSError):
                 (self.folder / str(name)).unlink()
 

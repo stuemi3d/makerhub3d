@@ -53,6 +53,9 @@
 <p role="status"><ins>{{ t('article.saved') }}</ins></p>
 {% endif %}
 <article class="detail-card">
+  {% if article.image_name %}
+  <img class="article-image" src="/articles/{{ article.id }}/image?v={{ article.image_version }}" alt="{{ article.image_name }}">
+  {% endif %}
   <dl class="details">
     <div>
       <dt>{{ t('article.field.number') }}</dt>
