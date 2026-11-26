@@ -41,6 +41,7 @@
     <tr>
       {% if can_choose %}<th scope="col"><span class="visually-hidden">{{ t('production.choose_print') }}</span></th>{% endif %}
       {{ head(t('production.col.date'), sort_links.date) }}
+      {{ head(t('production.col.printer'), sort_links.printer) }}
       {{ head(t('production.col.name'), sort_links.name) }}
       {{ head(t('production.col.duration')) }}
       {{ head(t('production.col.status')) }}
@@ -56,6 +57,7 @@
       <td>{% if p.status in ('completed', 'failed', 'cancelled') %}<input type="checkbox" name="prints" value="{{ p.archive_id }}" form="select-form" aria-label="{{ t('production.choose_print') }}: {{ p.name }}">{% endif %}</td>
       {% endif %}
       <td>{{ p.when }}</td>
+      <td class="col-printer">{{ p.printer_name if p.printer_name else t('table.empty_value') }}</td>
       <td class="cell-strong">{{ p.name }}</td>
       <td>{{ p.duration if p.duration else t('table.empty_value') }}</td>
       <td>{{ chip(t('production.status.' ~ p.status) if p.status in ('completed', 'failed', 'printing', 'cancelled') else p.status, 'warn' if p.failed else ('active' if p.status == 'completed' else 'inactive')) }}</td>
