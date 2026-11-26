@@ -1,8 +1,10 @@
 {% extends "base.html" %}
 {% from "_data_table.html" import head, actions_head, chip with context %}
+{% from "_filter_bar.html" import filter_bar, filter_chips with context %}
 {% block title %}{{ t('production.title') }} – {{ app_name }}{% endblock %}
 {% block content %}
-{% set can_choose = can('edit') and view == 'open' and rows and not prints.not_set_up and not prints.error %}
+{# has_any: the view has prints before filtering, so the form stays when a filter finds nothing #}
+{% set can_choose = can('edit') and view == 'open' and has_any and not prints.not_set_up and not prints.error %}
 {% if not prints.not_set_up %}
 {% set active = view %}
 {% include "_production_tabs.html" %}
@@ -29,11 +31,14 @@
 <p role="alert"><span class="chip chip-warn">{{ t(prints.error[0]) }}</span>{% if prints.error[1] %} <code>{{ prints.error[1] }}</code>{% endif %}</p>
 {% else %}
 {% if prints.truncated %}<p role="status"><mark>{{ t('production.truncated') }}</mark></p>{% endif %}
-{% if rows %}
 {% if can_choose %}
 {# The ticked prints go to the form for a new production; the boxes and the button belong to this form from afar, so that the buttons of the rows can have forms of their own #}
 <form id="select-form" method="get" action="/production/new" hx-get="/production/new" hx-target="#popup-body" hx-swap="innerHTML" data-popup></form>
 {% endif %}
+{% if has_any %}{{ filter_bar(filters, 'print-list') }}{% endif %}
+<div id="print-list">
+{{ filter_chips(filters) }}
+{% if rows %}
 <article class="data-card">
 <div class="data-scroll">
 <table class="data-table">
@@ -69,6 +74,7 @@
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
           <input type="hidden" name="archive_id" value="{{ p.archive_id }}">
           <input type="hidden" name="view" value="{{ view }}">
+          {% for name, value in back.items() %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endfor %}
           <button type="submit" class="secondary outline">{{ t('production.unignore' if p.state == 'ignored' else 'production.ignore') }}</button>
         </form>
         {% elif p.state == 'assigned' %}
@@ -81,9 +87,12 @@
 </table>
 </div>
 </article>
+{% elif has_any %}
+<article class="empty-hint"><p>{{ t('filter.no_results') }}</p></article>
 {% else %}
 <article class="empty-hint"><p>{{ t('production.empty.' ~ view) }}</p></article>
 {% endif %}
+</div>
 {% endif %}
 {% endif %}
 {% endblock %}

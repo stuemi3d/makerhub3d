@@ -35,6 +35,8 @@ from app.two_factor import Cipher
 _PRINT_ID = re.compile(r"[1-9][0-9]{0,8}")
 # Ids beyond this cannot exist (and would overflow the database): answered with 404
 MAX_ID = 2**31 - 1
+# Fields of the forms "ignore" and "bring back": the print, then the way back to the list
+BACK_FIELDS = ("archive_id", "view", "sort", "dir", *print_list.BACK_FILTER)
 
 
 def add_production_routes(
@@ -127,7 +129,22 @@ def add_production_routes(
     ) -> HTMLResponse:
         view = view if view in print_list.VIEWS else "open"
         prints = read_prints()
-        rows, links = print_list.arranged(prints.rows, view, "/production", sort, direction)
+        everything = print_list.in_view(prints.rows, view)
+        fields = print_list.filter_fields(everything, view, article_choices(everything))
+        values = list_filter.read(fields, dict(request.query_params))
+        kept = [row for row in prints.rows if print_list.keeps(row, values)]
+        active = list_filter.params(fields, values)
+        rows, links = print_list.arranged(kept, view, "/production", sort, direction, active)
+        chosen = table_sort.chosen_sort(print_list.SORT_KEYS, sort, direction)
+        sorting = {"sort": chosen[0], "dir": chosen[1]} if chosen else {}
+        bar = list_filter.build(
+            "/production",
+            fields,
+            values,
+            lambda key: translate(language, key),
+            {"view": view, **sorting},
+            lambda day: stock.format_date(day, language),
+        )
         return render(
             request,
             "production.html",
@@ -135,11 +152,28 @@ def add_production_routes(
             status_code=status_code,
             prints=prints,
             rows=rows,
+            has_any=bool(everything),
             view=view,
             views=print_list.VIEWS,
             sort_links=links,
+            filters=bar,
+            # Filter and sorting go along with ignoring, so the list comes back as it was
+            back={**active, **sorting},
             error=error,
         )
+
+    def article_choices(rows: list[print_list.PrintRow]) -> list[tuple[int, str]]:
+        """The result articles of the given prints as (id, "number · name"), by number."""
+        wanted = {i for row in rows for i in row.article_ids}
+        if not wanted:
+            return []
+        with new_session() as db:
+            found = db.execute(
+                select(Article.id, Article.number, Article.name)
+                .where(Article.id.in_(wanted))
+                .order_by(Article.number_key)
+            ).all()
+        return [(a.id, f"{a.number} · {a.name}") for a in found]
 
     @app.get("/production", response_class=HTMLResponse, dependencies=view_right)
     async def production_list(
@@ -164,17 +198,16 @@ def add_production_routes(
                 production.unignore(db, request.state.user.id, archive_id)
         if error:
             return production_page(request, view, None, None, 422, error)
-        target = view if view in print_list.VIEWS else "open"
-        return RedirectResponse(f"/production?view={target}", status_code=303)
+        return RedirectResponse(print_list.way_back(view, raw), status_code=303)
 
     @app.post("/production/ignore", response_class=HTMLResponse, dependencies=edit_right)
     async def ignore_print(request: Request) -> Response:
-        raw = await read_form(request, ("archive_id", "view"))
+        raw = await read_form(request, BACK_FIELDS)
         return await run_in_threadpool(change, request, "ignore", raw)
 
     @app.post("/production/unignore", response_class=HTMLResponse, dependencies=edit_right)
     async def unignore_print(request: Request) -> Response:
-        raw = await read_form(request, ("archive_id", "view"))
+        raw = await read_form(request, BACK_FIELDS)
         return await run_in_threadpool(change, request, "unignore", raw)
 
     # --- Creating a production (issues #127, #140) --------------------------------------------
