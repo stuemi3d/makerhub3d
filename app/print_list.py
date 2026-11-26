@@ -11,18 +11,19 @@ from datetime import datetime
 from decimal import Decimal
 
 import httpx2
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import production, table_sort
 from app.bambuddy import Archive, BambuddyClient, BambuddyError
-from app.models import BambuddyConnection
+from app.models import BambuddyConnection, Device
 from app.settings_form import format_decimal
 from app.two_factor import Cipher
 
 # Bambuddy statuses that count as a failed print (shown in red)
 FAILED_STATUSES = frozenset({"failed", "cancelled"})
 VIEWS = ("open", "assigned", "ignored")
-SORT_KEYS = ("date", "name")
+SORT_KEYS = ("date", "printer", "name")
 DEFAULT_SORT = ("date", "desc")
 DASHBOARD_TIMEOUT = 3.0
 DASHBOARD_ROWS = 5
@@ -55,6 +56,8 @@ class PrintRow:
     printer_id: int | None = None
     # When the print ended (to find its lines in Bambuddy's usage history, issue #228)
     finished_at: datetime | None = None
+    # Name of the printer shown in the list (issue #275); None = not known
+    printer_name: str | None = None
 
 
 @dataclass(frozen=True)
@@ -80,7 +83,30 @@ def _money(value: Decimal | None, language: str) -> str | None:
     return None if value is None else format_decimal(value, language)
 
 
-def _row(archive: Archive, language: str, assigned: dict[int, int], ignored: set[int]) -> PrintRow:
+@dataclass(frozen=True)
+class _Known:
+    """What MakerHub itself knows about the prints."""
+
+    assigned: dict[int, int]
+    ignored: set[int]
+    # Archive id -> printer stored with its active production
+    stored_printers: dict[int, str]
+    # Bambuddy printer id -> name of the linked printer device
+    linked_printers: dict[int, str]
+
+
+def linked_printer_names(db: Session) -> dict[int, str]:
+    """Bambuddy printer id -> name of the printer device linked to it, switched off or not."""
+    found = db.execute(
+        select(Device.bambuddy_printer_id, Device.name).where(
+            Device.kind == "printer", Device.bambuddy_printer_id.is_not(None)
+        )
+    )
+    return {printer_id: name for printer_id, name in found}
+
+
+def _row(archive: Archive, language: str, known: _Known) -> PrintRow:
+    assigned, ignored = known.assigned, known.ignored
     moment = archive.started_at or archive.created_at or archive.completed_at
     if archive.id in assigned:
         state = "assigned"
@@ -113,6 +139,9 @@ def _row(archive: Archive, language: str, assigned: dict[int, int], ignored: set
         filament_color=archive.filament_color,
         printer_id=archive.printer_id,
         finished_at=archive.completed_at,
+        # The printer booked with the production first, else the one linked in MakerHub
+        printer_name=(known.stored_printers.get(archive.id) if state == "assigned" else None)
+        or (None if archive.printer_id is None else known.linked_printers.get(archive.printer_id)),
     )
 
 
@@ -133,8 +162,12 @@ def load(
         api_key = cipher.decrypt(token) if cipher is not None else None
         if api_key is None:
             return PrintList([], error=("bambuddy.error.key_unreadable", ""))
-        assigned = production.assigned_productions(db)
-        ignored = production.ignored_archive_ids(db)
+        known = _Known(
+            assigned=production.assigned_productions(db),
+            ignored=production.ignored_archive_ids(db),
+            stored_printers=production.assigned_printer_names(db),
+            linked_printers=linked_printer_names(db),
+        )
     extra = {} if timeout is None else {"timeout": timeout}
     try:
         # A short wait counts for the whole reading, not only for one page
@@ -143,9 +176,7 @@ def load(
         ).archives_since(since, budget=timeout)
     except BambuddyError as error:
         return PrintList([], error=(f"bambuddy.error.{error.code}", error.path))
-    return PrintList(
-        [_row(archive, language, assigned, ignored) for archive in archives], truncated=truncated
-    )
+    return PrintList([_row(archive, language, known) for archive in archives], truncated=truncated)
 
 
 def arranged(
@@ -161,7 +192,11 @@ def arranged(
     shown = [row for row in rows if row.state == view]
     # Newest first as the base order, so equal values keep it
     shown.sort(key=lambda row: (row.sort_time, row.archive_id), reverse=True)
-    column = {"date": lambda row: row.sort_time, "name": lambda row: row.name.casefold()}[key]
+    column = {
+        "date": lambda row: row.sort_time,
+        "printer": lambda row: (row.printer_name or "").casefold(),
+        "name": lambda row: row.name.casefold(),
+    }[key]
     shown.sort(key=column, reverse=order == "desc")
     links = table_sort.sort_links(path, SORT_KEYS, chosen, DEFAULT_SORT, {"view": view})
     return shown, links

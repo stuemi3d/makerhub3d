@@ -116,6 +116,9 @@ def test_list_and_dashboard_fit_the_screen(admin_page: Page, fake_bambuddy: str)
     admin_page.goto("/production")
     expect(admin_page.locator("tr.print-row")).to_have_count(2)
     expect(admin_page.locator("tr.print-failed")).to_have_count(1)
+    # Column "Printer" next to the date (issue #275); the table still fits the screen
+    expect(admin_page.locator("tr.print-row td.col-printer")).to_have_count(2)
+    expect(admin_page.locator("thead th").nth(2)).to_contain_text(t("production.col.printer"))
     assert fits_screen_width(admin_page)
 
     admin_page.goto("/")
