@@ -5,17 +5,20 @@ history is neither read nor shown. Which print is open, in a production or ignor
 decided here from MakerHub's own tables.
 """
 
+import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
+from urllib.parse import urlencode
 
 import httpx2
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app import production, table_sort
+from app import list_filter, production, table_sort
 from app.bambuddy import Archive, BambuddyClient, BambuddyError
+from app.list_filter import Field
 from app.models import BambuddyConnection, Device
 from app.settings_form import format_decimal
 from app.two_factor import Cipher
@@ -58,6 +61,8 @@ class PrintRow:
     finished_at: datetime | None = None
     # Name of the printer shown in the list (issue #275); None = not known
     printer_name: str | None = None
+    # Result articles of its active production (for the filter, issue #276)
+    article_ids: tuple[int, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -93,6 +98,8 @@ class _Known:
     stored_printers: dict[int, str]
     # Bambuddy printer id -> name of the linked printer device
     linked_printers: dict[int, str]
+    # Archive id -> result articles of its active production
+    articles: dict[int, tuple[int, ...]]
 
 
 def linked_printer_names(db: Session) -> dict[int, str]:
@@ -142,6 +149,7 @@ def _row(archive: Archive, language: str, known: _Known) -> PrintRow:
         # The printer booked with the production first, else the one linked in MakerHub
         printer_name=(known.stored_printers.get(archive.id) if state == "assigned" else None)
         or (None if archive.printer_id is None else known.linked_printers.get(archive.printer_id)),
+        article_ids=known.articles.get(archive.id, ()) if state == "assigned" else (),
     )
 
 
@@ -167,6 +175,7 @@ def load(
             ignored=production.ignored_archive_ids(db),
             stored_printers=production.assigned_printer_names(db),
             linked_printers=linked_printer_names(db),
+            articles=production.assigned_articles(db),
         )
     extra = {} if timeout is None else {"timeout": timeout}
     try:
@@ -179,17 +188,85 @@ def load(
     return PrintList([_row(archive, language, known) for archive in archives], truncated=truncated)
 
 
+def in_view(rows: list[PrintRow], view: str) -> list[PrintRow]:
+    return [row for row in rows if row.state == view]
+
+
+def filter_fields(
+    rows: list[PrintRow], view: str, articles: list[tuple[int, str]]
+) -> tuple[Field, ...]:
+    """The filter bar of one view (issue #276): the printer choices are those shown in its rows;
+    only the view "assigned" has the article, with the given (id, label) choices."""
+    printers = sorted({row.printer_name for row in rows if row.printer_name}, key=str.casefold)
+    fields = (
+        Field("from", "production.filter.from", kind="date"),
+        Field("to", "production.filter.to", kind="date"),
+        Field(
+            "printer",
+            "production.filter.printer",
+            (("", "production.filter.printer.all"), *((n, n) for n in printers)),
+        ),
+        Field("q", "filter.search"),
+    )
+    if view != "assigned":
+        return fields
+    article = Field(
+        "article",
+        "production.filter.article",
+        (("", "production.filter.article.all"), *((str(i), label) for i, label in articles)),
+    )
+    return (*fields, article)
+
+
+def keeps(row: PrintRow, values: dict[str, str]) -> bool:
+    """Whether a print passes the filter; the day is the one shown in the list."""
+    first, last = list_filter.date_of(values["from"]), list_filter.date_of(values["to"])
+    day = None if row.sort_time == datetime.min else row.sort_time.date()
+    return (
+        (first is None or (day is not None and day >= first))
+        and (last is None or (day is not None and day <= last))
+        and (not values["printer"] or values["printer"] == row.printer_name)
+        and list_filter.matches(values["q"], row.name)
+        and (not values.get("article") or int(values["article"]) in row.article_ids)
+    )
+
+
+# What the way back after ignoring may carry: the filter of every view and the sorting
+BACK_FILTER = ("from", "to", "printer", "q", "article")
+
+
+def way_back(view: str, raw: dict[str, str]) -> str:
+    """The address of the list after ignoring or bringing back (issue #276): the same view,
+    filter and sorting. Only known names; dates and the sorting are checked, texts are cut, so
+    the address always stays on this page."""
+    kept = {"view": view if view in VIEWS else "open"}
+    for name in BACK_FILTER:
+        value = (raw.get(name) or "").strip()[: list_filter.MAX_TEXT]
+        if name in ("from", "to") and list_filter.date_of(value) is None:
+            continue
+        if name == "article" and not re.fullmatch(r"[0-9]{1,9}", value):
+            continue
+        if value:
+            kept[name] = value
+    chosen = table_sort.chosen_sort(SORT_KEYS, raw.get("sort"), raw.get("dir"))
+    if chosen:
+        kept.update(sort=chosen[0], dir=chosen[1])
+    return "/production?" + urlencode(kept)
+
+
 def arranged(
     rows: list[PrintRow],
     view: str,
     path: str,
     sort: str | None,
     direction: str | None,
+    keep: dict[str, str] | None = None,
 ) -> tuple[list[PrintRow], dict[str, dict[str, str]]]:
-    """The rows of one view in the order asked for, and the header links of the table."""
+    """The rows of one view in the order asked for, and the header links of the table; `keep`
+    are the filter values the links carry along."""
     chosen = table_sort.chosen_sort(SORT_KEYS, sort, direction)
     key, order = chosen or DEFAULT_SORT
-    shown = [row for row in rows if row.state == view]
+    shown = in_view(rows, view)
     # Newest first as the base order, so equal values keep it
     shown.sort(key=lambda row: (row.sort_time, row.archive_id), reverse=True)
     column = {
@@ -198,7 +275,9 @@ def arranged(
         "name": lambda row: row.name.casefold(),
     }[key]
     shown.sort(key=column, reverse=order == "desc")
-    links = table_sort.sort_links(path, SORT_KEYS, chosen, DEFAULT_SORT, {"view": view})
+    links = table_sort.sort_links(
+        path, SORT_KEYS, chosen, DEFAULT_SORT, {"view": view, **(keep or {})}
+    )
     return shown, links
 
 

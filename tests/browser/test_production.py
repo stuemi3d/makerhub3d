@@ -5,6 +5,7 @@ app (a separate process) reads from it, the browser only talks to the test app.
 """
 
 import json
+import re
 import threading
 from collections.abc import Iterator
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -131,6 +132,42 @@ def test_list_and_dashboard_fit_the_screen(admin_page: Page, fake_bambuddy: str)
     assert fits_screen_width(admin_page)
     card = admin_page.locator("#open-prints .data-card").bounding_box()
     assert card["x"] >= 0 and card["x"] + card["width"] <= admin_page.viewport_size["width"]
+
+
+def test_the_prints_can_be_filtered_on_every_screen(
+    admin_page: Page, fake_bambuddy: str, viewport_name: str
+) -> None:
+    """Issue #276: the filter bar of the print views, on the phone behind the "Filter" button."""
+    connect(admin_page, fake_bambuddy)
+    admin_page.goto("/production?sort=name&dir=asc")
+    rows = admin_page.locator("tr.print-row")
+    expect(rows).to_have_count(2)
+    summary = admin_page.locator("details[data-filter-bar] > summary")
+    search = admin_page.locator("input[type=search][name=q]")
+    if viewport_name == "phone":
+        expect(search).not_to_be_visible()
+        summary.click()
+    expect(search).to_be_visible()
+    assert fits_screen_width(admin_page)
+
+    search.fill("fehldruck")
+    expect(rows).to_have_count(1)
+    expect(admin_page).to_have_url(re.compile(r"q=fehldruck"))
+    expect(admin_page).to_have_url(re.compile(r"sort=name"))
+    expect(admin_page.locator("li.filter-chip")).to_have_count(1)
+    assert fits_screen_width(admin_page)
+
+    # Choosing still works on the replaced rows
+    button = admin_page.get_by_role("button", name=t("production.create"), exact=True)
+    expect(button).to_be_disabled()
+    rows.first.locator("input[name=prints]").check()
+    expect(button).to_be_enabled()
+
+    search.fill("gibt es nicht")
+    expect(admin_page.get_by_text(t("filter.no_results"))).to_be_visible()
+    admin_page.get_by_role("link", name=t("filter.reset")).first.click()
+    expect(rows).to_have_count(2)
+    expect(admin_page).to_have_url(re.compile(r"view=open"))
 
 
 def test_ignoring_works_with_the_buttons(admin_page: Page, fake_bambuddy: str) -> None:

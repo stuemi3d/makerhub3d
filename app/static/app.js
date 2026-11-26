@@ -218,14 +218,18 @@ if (window.htmx) {
 (() => {
   const button = document.querySelector("[data-requires-checked]");
   if (!button) return;
-  const boxes = Array.from(document.querySelectorAll("input[name='prints'][form='select-form']"));
   const label = document.querySelector("[data-selected-text]");
+  // Read the boxes each time: a filter (issue #276) replaces the rows of the list
   const update = () => {
-    const count = boxes.filter((box) => box.checked).length;
+    const boxes = document.querySelectorAll("input[name='prints'][form='select-form']");
+    const count = Array.from(boxes).filter((box) => box.checked).length;
     button.disabled = count === 0;
     if (label) label.textContent = count ? `${count} ${label.dataset.selectedText}` : "";
   };
-  for (const box of boxes) box.addEventListener("change", update);
+  document.addEventListener("change", (event) => {
+    if (event.target.matches && event.target.matches("input[name='prints']")) update();
+  });
+  document.body.addEventListener("htmx:afterSettle", update);
   // Also when the browser brings the page back with the boxes as they were (back button)
   window.addEventListener("pageshow", update);
   update();

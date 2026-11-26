@@ -182,6 +182,22 @@ def assigned_printer_names(db: Session) -> dict[int, str]:
     return {archive_id: name for archive_id, name in found if name}
 
 
+def assigned_articles(db: Session) -> dict[int, tuple[int, ...]]:
+    """For every print in an active production: the ids of its result articles (issue #276)."""
+    found = db.execute(
+        select(ProductionPrint.archive_id, ProductionResult.article_id)
+        .join(Production, Production.id == ProductionPrint.production_id)
+        .join(ProductionResult, ProductionResult.production_id == Production.id)
+        .where(Production.cancelled.is_(False))
+        .order_by(ProductionResult.id)
+    )
+    articles: dict[int, tuple[int, ...]] = {}
+    for archive_id, article_id in found:
+        if article_id not in articles.get(archive_id, ()):
+            articles[archive_id] = (*articles.get(archive_id, ()), article_id)
+    return articles
+
+
 def ignored_archive_ids(db: Session) -> set[int]:
     return set(db.scalars(select(IgnoredPrint.archive_id)))
 
