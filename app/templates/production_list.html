@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "_data_table.html" import head, actions_head, chip, icon_link with context %}
+{% from "_filter_bar.html" import filter_bar, filter_chips with context %}
 {% block title %}{{ t('production.tab.list') }} – {{ app_name }}{% endblock %}
 {% block content %}
 {% set active = 'productions' %}
@@ -7,8 +8,11 @@
 <div class="page-head">
   <h1>{{ t('production.title') }}</h1>
 </div>
+{{ filter_bar(filters, 'production-list') }}
+<div id="production-list">
 {% if booked %}<p role="status"><ins>{{ t('production.booked') }}</ins></p>{% endif %}
 {% if cancelled %}<p role="status"><ins>{{ t('production.cancelled_done') }}</ins></p>{% endif %}
+{{ filter_chips(filters) }}
 {% if rows %}
 <article class="data-card">
 <div class="data-scroll">
@@ -16,6 +20,7 @@
   <thead>
     <tr>
       {{ head(t('production.col.date'), sort_links.date) }}
+      {{ head(t('production.col.printer'), sort_links.printer) }}
       {{ head(t('production.col.note')) }}
       {{ head(t('production.col.prints'), numeric=true) }}
       {{ head(t('production.col.articles')) }}
@@ -27,7 +32,8 @@
   <tbody>
     {% for r in rows %}
     <tr class="production-row{% if r.cancelled %} production-cancelled{% endif %}" data-id="{{ r.id }}">
-      <td><a href="/production/{{ r.id }}">{{ r.date }}</a></td>
+      <td class="col-date"><a href="/production/{{ r.id }}">{{ r.date }}</a></td>
+      <td class="col-printer">{{ r.printers|join(', ') if r.printers else t('table.empty_value') }}</td>
       <td>{{ r.note }}</td>
       <td class="num">{{ r.print_count }}</td>
       <td>{{ r.articles }}</td>
@@ -42,7 +48,10 @@
 </table>
 </div>
 </article>
+{% elif has_any %}
+<article class="empty-hint"><p>{{ t('filter.no_results') }}</p></article>
 {% else %}
 <article class="empty-hint"><p>{{ t('production.list.empty') }}</p></article>
 {% endif %}
+</div>
 {% endblock %}

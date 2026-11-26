@@ -231,6 +231,9 @@ class ProductionPrint(Base):
     # Material text and the valid colour codes, comma separated
     filament_type: Mapped[str | None] = mapped_column(String(50))
     filament_colors: Mapped[str | None] = mapped_column(String(200))
+    # Name of the printer device the print was booked on (issue #259), kept as text because a
+    # device can be deleted later; empty for productions booked before
+    printer_name: Mapped[str | None] = mapped_column(String(100))
 
 
 class ProductionResult(Base):

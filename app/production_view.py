@@ -11,7 +11,7 @@ from app import print_list, production, stock, table_sort
 from app.models import Article, PrintStatus, Production
 from app.production_form import input_text, money_text
 
-SORT_KEYS = ("date", "cost")
+SORT_KEYS = ("date", "printer", "cost")
 DEFAULT_SORT = ("date", "desc")
 
 
@@ -27,6 +27,10 @@ class ListRow:
     cost: Decimal
     cost_text: str
     cancelled: bool
+    # Names of the printers of its prints (each once, in the order of the prints; issue #259)
+    printers: tuple[str, ...] = ()
+    # Ids of the result articles
+    article_ids: tuple[int, ...] = ()
 
 
 def list_rows(db: Session, language: str) -> list[ListRow]:
@@ -47,22 +51,33 @@ def list_rows(db: Session, language: str) -> list[ListRow]:
                 cost=item.total_cost,
                 cost_text=money_text(item.total_cost, language),
                 cancelled=item.cancelled,
+                printers=tuple(
+                    dict.fromkeys(p.printer_name for p in item.prints if p.printer_name)
+                ),
+                article_ids=tuple(r.article_id for r in item.results),
             )
         )
     return rows
 
 
 def arranged(
-    rows: list[ListRow], sort: str | None, direction: str | None
+    rows: list[ListRow],
+    sort: str | None,
+    direction: str | None,
+    keep: dict[str, str] | None = None,
 ) -> tuple[list[ListRow], dict[str, dict[str, str]]]:
     """The rows in the order asked for in the address (default: newest first) and the header
     links of the table."""
     chosen = table_sort.chosen_sort(SORT_KEYS, sort, direction)
     key, order = chosen or DEFAULT_SORT
     shown = sorted(rows, key=lambda row: (row.booked_on, row.created_at, row.id), reverse=True)
-    column = {"date": lambda row: (row.booked_on, row.created_at), "cost": lambda row: row.cost}
+    column = {
+        "date": lambda row: (row.booked_on, row.created_at),
+        "printer": lambda row: ", ".join(row.printers).casefold(),
+        "cost": lambda row: row.cost,
+    }
     shown = sorted(shown, key=column[key], reverse=order == "desc")
-    links = table_sort.sort_links("/production/list", SORT_KEYS, chosen, DEFAULT_SORT)
+    links = table_sort.sort_links("/production/list", SORT_KEYS, chosen, DEFAULT_SORT, keep)
     return shown, links
 
 

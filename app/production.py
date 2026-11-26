@@ -83,6 +83,8 @@ class PrintInput:
     # Share of the print that is waste (issue #216), a fraction from 0 to 1; a failed print as
     # a whole counts 1 whatever is given
     waste_share: Decimal = Decimal(0)
+    # Name of the printer device of the print (issue #259); None = not known
+    printer_name: str | None = None
 
     @property
     def cost(self) -> Decimal:
@@ -298,6 +300,7 @@ def book(
                 energy_kwh=_amount(print_.kwh),
                 filament_type=clean_type(print_.filament_type),
                 filament_colors=clean_colors(print_.filament_color),
+                printer_name=(print_.printer_name or "")[:100] or None,
             )
         )
     db.add(item)
